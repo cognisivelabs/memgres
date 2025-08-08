@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Schema.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">MemGres Core</a> &gt; <a href="index.source.html" class="el_package">com.memgres.storage</a> &gt; <span class="el_source">Schema.java</span></div><h1>Schema.java</h1><pre class="source lang-java linenums">package com.memgres.storage;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.Set;
+
+/**
+ * Represents a database schema containing tables and other database objects.
+ */
+public class Schema {
+<span class="fc" id="L16">    private static final Logger logger = LoggerFactory.getLogger(Schema.class);</span>
+    
+    private final String name;
+    private final ConcurrentMap&lt;String, Table&gt; tables;
+    private final ReadWriteLock schemaLock;
+    
+<span class="fc" id="L22">    public Schema(String name) {</span>
+<span class="pc bpc" id="L23" title="2 of 4 branches missed.">        if (name == null || name.trim().isEmpty()) {</span>
+<span class="nc" id="L24">            throw new IllegalArgumentException(&quot;Schema name cannot be null or empty&quot;);</span>
+        }
+        
+<span class="fc" id="L27">        this.name = name.toLowerCase(); // PostgreSQL converts schema names to lowercase</span>
+<span class="fc" id="L28">        this.tables = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="fc" id="L29">        this.schemaLock = new ReentrantReadWriteLock();</span>
+        
+<span class="fc" id="L31">        logger.debug(&quot;Created schema: {}&quot;, this.name);</span>
+<span class="fc" id="L32">    }</span>
+    
+    /**
+     * Get the schema name
+     * @return the schema name
+     */
+    public String getName() {
+<span class="nc" id="L39">        return name;</span>
+    }
+    
+    /**
+     * Create a table in this schema
+     * @param table the table to create
+     * @return true if table was created, false if it already exists
+     */
+    public boolean createTable(Table table) {
+<span class="pc bpc" id="L48" title="1 of 2 branches missed.">        if (table == null) {</span>
+<span class="nc" id="L49">            throw new IllegalArgumentException(&quot;Table cannot be null&quot;);</span>
+        }
+        
+<span class="fc" id="L52">        String tableName = table.getName().toLowerCase();</span>
+        
+<span class="fc" id="L54">        schemaLock.writeLock().lock();</span>
+        try {
+<span class="pc bpc" id="L56" title="1 of 2 branches missed.">            if (tables.containsKey(tableName)) {</span>
+<span class="nc" id="L57">                logger.warn(&quot;Table already exists in schema {}: {}&quot;, name, tableName);</span>
+<span class="nc" id="L58">                return false;</span>
+            }
+            
+<span class="fc" id="L61">            tables.put(tableName, table);</span>
+<span class="fc" id="L62">            logger.debug(&quot;Created table {} in schema {}&quot;, tableName, name);</span>
+<span class="fc" id="L63">            return true;</span>
+        } finally {
+<span class="fc" id="L65">            schemaLock.writeLock().unlock();</span>
+        }
+    }
+    
+    /**
+     * Drop a table from this schema
+     * @param tableName the name of the table to drop
+     * @return true if table was dropped, false if it didn't exist
+     */
+    public boolean dropTable(String tableName) {
+<span class="nc bnc" id="L75" title="All 4 branches missed.">        if (tableName == null || tableName.trim().isEmpty()) {</span>
+<span class="nc" id="L76">            throw new IllegalArgumentException(&quot;Table name cannot be null or empty&quot;);</span>
+        }
+        
+<span class="nc" id="L79">        String normalizedName = tableName.toLowerCase();</span>
+        
+<span class="nc" id="L81">        schemaLock.writeLock().lock();</span>
+        try {
+<span class="nc" id="L83">            Table removedTable = tables.remove(normalizedName);</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">            if (removedTable != null) {</span>
+<span class="nc" id="L85">                logger.debug(&quot;Dropped table {} from schema {}&quot;, normalizedName, name);</span>
+<span class="nc" id="L86">                return true;</span>
+            } else {
+<span class="nc" id="L88">                logger.warn(&quot;Table does not exist in schema {}: {}&quot;, name, normalizedName);</span>
+<span class="nc" id="L89">                return false;</span>
+            }
+        } finally {
+<span class="nc" id="L92">            schemaLock.writeLock().unlock();</span>
+        }
+    }
+    
+    /**
+     * Get a table by name
+     * @param tableName the table name
+     * @return the table or null if not found
+     */
+    public Table getTable(String tableName) {
+<span class="pc bpc" id="L102" title="2 of 4 branches missed.">        if (tableName == null || tableName.trim().isEmpty()) {</span>
+<span class="nc" id="L103">            return null;</span>
+        }
+        
+<span class="fc" id="L106">        String normalizedName = tableName.toLowerCase();</span>
+        
+<span class="fc" id="L108">        schemaLock.readLock().lock();</span>
+        try {
+<span class="fc" id="L110">            return tables.get(normalizedName);</span>
+        } finally {
+<span class="fc" id="L112">            schemaLock.readLock().unlock();</span>
+        }
+    }
+    
+    /**
+     * Check if a table exists in this schema
+     * @param tableName the table name
+     * @return true if the table exists
+     */
+    public boolean hasTable(String tableName) {
+<span class="nc bnc" id="L122" title="All 2 branches missed.">        return getTable(tableName) != null;</span>
+    }
+    
+    /**
+     * Check if this schema has any tables
+     * @return true if the schema contains at least one table
+     */
+    public boolean hasTable() {
+<span class="nc" id="L130">        schemaLock.readLock().lock();</span>
+        try {
+<span class="nc bnc" id="L132" title="All 2 branches missed.">            return !tables.isEmpty();</span>
+        } finally {
+<span class="nc" id="L134">            schemaLock.readLock().unlock();</span>
+        }
+    }
+    
+    /**
+     * Get all table names in this schema
+     * @return set of table names
+     */
+    public Set&lt;String&gt; getTableNames() {
+<span class="nc" id="L143">        schemaLock.readLock().lock();</span>
+        try {
+<span class="nc" id="L145">            return Set.copyOf(tables.keySet());</span>
+        } finally {
+<span class="nc" id="L147">            schemaLock.readLock().unlock();</span>
+        }
+    }
+    
+    /**
+     * Get the number of tables in this schema
+     * @return number of tables
+     */
+    public int getTableCount() {
+<span class="nc" id="L156">        schemaLock.readLock().lock();</span>
+        try {
+<span class="nc" id="L158">            return tables.size();</span>
+        } finally {
+<span class="nc" id="L160">            schemaLock.readLock().unlock();</span>
+        }
+    }
+    
+    @Override
+    public String toString() {
+<span class="nc" id="L166">        return &quot;Schema{&quot; +</span>
+                &quot;name='&quot; + name + '\'' +
+<span class="nc" id="L168">                &quot;, tableCount=&quot; + getTableCount() +</span>
+                '}';
+    }
+    
+    @Override
+    public boolean equals(Object o) {
+<span class="nc bnc" id="L174" title="All 2 branches missed.">        if (this == o) return true;</span>
+<span class="nc bnc" id="L175" title="All 4 branches missed.">        if (o == null || getClass() != o.getClass()) return false;</span>
+        
+<span class="nc" id="L177">        Schema schema = (Schema) o;</span>
+<span class="nc" id="L178">        return name.equals(schema.name);</span>
+    }
+    
+    @Override
+    public int hashCode() {
+<span class="nc" id="L183">        return name.hashCode();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LiteralExpression.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">MemGres Core</a> &gt; <a href="index.source.html" class="el_package">com.memgres.sql.ast.expression</a> &gt; <span class="el_source">LiteralExpression.java</span></div><h1>LiteralExpression.java</h1><pre class="source lang-java linenums">package com.memgres.sql.ast.expression;
+
+import com.memgres.sql.ast.AstVisitor;
+
+/**
+ * Represents a literal value in SQL (string, number, boolean, null, etc.).
+ */
+public class LiteralExpression extends Expression {
+    
+    private final Object value;
+    private final LiteralType type;
+    
+<span class="fc" id="L13">    public enum LiteralType {</span>
+<span class="fc" id="L14">        STRING, INTEGER, DECIMAL, BOOLEAN, NULL</span>
+    }
+    
+<span class="fc" id="L17">    public LiteralExpression(Object value, LiteralType type) {</span>
+<span class="fc" id="L18">        this.value = value;</span>
+<span class="fc" id="L19">        this.type = type;</span>
+<span class="fc" id="L20">    }</span>
+    
+    public Object getValue() {
+<span class="fc" id="L23">        return value;</span>
+    }
+    
+    public LiteralType getType() {
+<span class="nc" id="L27">        return type;</span>
+    }
+    
+    @Override
+    public &lt;T, C&gt; T accept(AstVisitor&lt;T, C&gt; visitor, C context) throws Exception {
+<span class="nc" id="L32">        return visitor.visitLiteralExpression(this, context);</span>
+    }
+    
+    @Override
+    public String toString() {
+<span class="nc" id="L37">        return &quot;Literal(&quot; + value + &quot;, &quot; + type + &quot;)&quot;;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

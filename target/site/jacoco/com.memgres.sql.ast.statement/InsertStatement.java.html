@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InsertStatement.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">MemGres Core</a> &gt; <a href="index.source.html" class="el_package">com.memgres.sql.ast.statement</a> &gt; <span class="el_source">InsertStatement.java</span></div><h1>InsertStatement.java</h1><pre class="source lang-java linenums">package com.memgres.sql.ast.statement;
+
+import com.memgres.sql.ast.AstVisitor;
+import com.memgres.sql.ast.expression.Expression;
+
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Represents an INSERT statement in SQL.
+ */
+public class InsertStatement extends Statement {
+    
+    private final String tableName;
+    private final Optional&lt;List&lt;String&gt;&gt; columns;
+    private final List&lt;List&lt;Expression&gt;&gt; valuesList;
+    
+<span class="fc" id="L18">    public InsertStatement(String tableName, Optional&lt;List&lt;String&gt;&gt; columns, List&lt;List&lt;Expression&gt;&gt; valuesList) {</span>
+<span class="fc" id="L19">        this.tableName = tableName;</span>
+<span class="fc" id="L20">        this.columns = columns;</span>
+<span class="fc" id="L21">        this.valuesList = valuesList;</span>
+<span class="fc" id="L22">    }</span>
+    
+    public String getTableName() {
+<span class="fc" id="L25">        return tableName;</span>
+    }
+    
+    public Optional&lt;List&lt;String&gt;&gt; getColumns() {
+<span class="nc" id="L29">        return columns;</span>
+    }
+    
+    public List&lt;List&lt;Expression&gt;&gt; getValuesList() {
+<span class="fc" id="L33">        return valuesList;</span>
+    }
+    
+    @Override
+    public &lt;T, C&gt; T accept(AstVisitor&lt;T, C&gt; visitor, C context) throws Exception {
+<span class="fc" id="L38">        return visitor.visitInsertStatement(this, context);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

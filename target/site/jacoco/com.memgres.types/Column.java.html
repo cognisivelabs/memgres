@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Column.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">MemGres Core</a> &gt; <a href="index.source.html" class="el_package">com.memgres.types</a> &gt; <span class="el_source">Column.java</span></div><h1>Column.java</h1><pre class="source lang-java linenums">package com.memgres.types;
+
+import java.util.Objects;
+
+/**
+ * Represents a database column with name, data type, and constraints.
+ * This class is immutable to ensure thread safety.
+ */
+public class Column {
+    private final String name;
+    private final DataType dataType;
+    private final boolean nullable;
+    private final boolean primaryKey;
+    private final boolean unique;
+    private final Object defaultValue;
+    private final int maxLength;
+    
+    /**
+     * Builder class for creating Column instances
+     */
+<span class="fc" id="L21">    public static class Builder {</span>
+        private String name;
+        private DataType dataType;
+<span class="fc" id="L24">        private boolean nullable = true;</span>
+<span class="fc" id="L25">        private boolean primaryKey = false;</span>
+<span class="fc" id="L26">        private boolean unique = false;</span>
+<span class="fc" id="L27">        private Object defaultValue = null;</span>
+<span class="fc" id="L28">        private int maxLength = -1;</span>
+        
+        public Builder name(String name) {
+<span class="fc" id="L31">            this.name = name;</span>
+<span class="fc" id="L32">            return this;</span>
+        }
+        
+        public Builder dataType(DataType dataType) {
+<span class="fc" id="L36">            this.dataType = dataType;</span>
+<span class="fc" id="L37">            return this;</span>
+        }
+        
+        public Builder nullable(boolean nullable) {
+<span class="fc" id="L41">            this.nullable = nullable;</span>
+<span class="fc" id="L42">            return this;</span>
+        }
+        
+        public Builder primaryKey(boolean primaryKey) {
+<span class="fc" id="L46">            this.primaryKey = primaryKey;</span>
+<span class="pc bpc" id="L47" title="1 of 2 branches missed.">            if (primaryKey) {</span>
+<span class="fc" id="L48">                this.nullable = false; // Primary keys cannot be null</span>
+<span class="fc" id="L49">                this.unique = true; // Primary keys are unique</span>
+            }
+<span class="fc" id="L51">            return this;</span>
+        }
+        
+        public Builder unique(boolean unique) {
+<span class="nc" id="L55">            this.unique = unique;</span>
+<span class="nc" id="L56">            return this;</span>
+        }
+        
+        public Builder defaultValue(Object defaultValue) {
+<span class="nc" id="L60">            this.defaultValue = defaultValue;</span>
+<span class="nc" id="L61">            return this;</span>
+        }
+        
+        public Builder maxLength(int maxLength) {
+<span class="nc" id="L65">            this.maxLength = maxLength;</span>
+<span class="nc" id="L66">            return this;</span>
+        }
+        
+        public Column build() {
+<span class="pc bpc" id="L70" title="2 of 4 branches missed.">            if (name == null || name.trim().isEmpty()) {</span>
+<span class="nc" id="L71">                throw new IllegalArgumentException(&quot;Column name cannot be null or empty&quot;);</span>
+            }
+<span class="pc bpc" id="L73" title="1 of 2 branches missed.">            if (dataType == null) {</span>
+<span class="nc" id="L74">                throw new IllegalArgumentException(&quot;Column data type cannot be null&quot;);</span>
+            }
+            
+<span class="fc" id="L77">            return new Column(this);</span>
+        }
+    }
+    
+<span class="fc" id="L81">    private Column(Builder builder) {</span>
+<span class="fc" id="L82">        this.name = builder.name.toLowerCase(); // PostgreSQL converts column names to lowercase</span>
+<span class="fc" id="L83">        this.dataType = builder.dataType;</span>
+<span class="fc" id="L84">        this.nullable = builder.nullable;</span>
+<span class="fc" id="L85">        this.primaryKey = builder.primaryKey;</span>
+<span class="fc" id="L86">        this.unique = builder.unique;</span>
+<span class="fc" id="L87">        this.defaultValue = builder.defaultValue;</span>
+<span class="fc" id="L88">        this.maxLength = builder.maxLength;</span>
+        
+        // Validate default value against data type
+<span class="pc bpc" id="L91" title="3 of 4 branches missed.">        if (defaultValue != null &amp;&amp; !dataType.isValidValue(defaultValue)) {</span>
+<span class="nc" id="L92">            throw new IllegalArgumentException(&quot;Default value is not compatible with column data type&quot;);</span>
+        }
+<span class="fc" id="L94">    }</span>
+    
+    /**
+     * Create a simple column with name and data type
+     * @param name the column name
+     * @param dataType the data type
+     * @return a new column
+     */
+    public static Column of(String name, DataType dataType) {
+<span class="nc" id="L103">        return new Builder()</span>
+<span class="nc" id="L104">                .name(name)</span>
+<span class="nc" id="L105">                .dataType(dataType)</span>
+<span class="nc" id="L106">                .build();</span>
+    }
+    
+    /**
+     * Create a not-null column
+     * @param name the column name
+     * @param dataType the data type
+     * @return a new not-null column
+     */
+    public static Column notNull(String name, DataType dataType) {
+<span class="nc" id="L116">        return new Builder()</span>
+<span class="nc" id="L117">                .name(name)</span>
+<span class="nc" id="L118">                .dataType(dataType)</span>
+<span class="nc" id="L119">                .nullable(false)</span>
+<span class="nc" id="L120">                .build();</span>
+    }
+    
+    /**
+     * Create a primary key column
+     * @param name the column name
+     * @param dataType the data type
+     * @return a new primary key column
+     */
+    public static Column primaryKey(String name, DataType dataType) {
+<span class="nc" id="L130">        return new Builder()</span>
+<span class="nc" id="L131">                .name(name)</span>
+<span class="nc" id="L132">                .dataType(dataType)</span>
+<span class="nc" id="L133">                .primaryKey(true)</span>
+<span class="nc" id="L134">                .build();</span>
+    }
+    
+    /**
+     * Get the column name
+     * @return the column name
+     */
+    public String getName() {
+<span class="fc" id="L142">        return name;</span>
+    }
+    
+    /**
+     * Get the data type
+     * @return the data type
+     */
+    public DataType getDataType() {
+<span class="fc" id="L150">        return dataType;</span>
+    }
+    
+    /**
+     * Check if the column allows null values
+     * @return true if nullable
+     */
+    public boolean isNullable() {
+<span class="fc" id="L158">        return nullable;</span>
+    }
+    
+    /**
+     * Check if the column is a primary key
+     * @return true if primary key
+     */
+    public boolean isPrimaryKey() {
+<span class="nc" id="L166">        return primaryKey;</span>
+    }
+    
+    /**
+     * Check if the column has a unique constraint
+     * @return true if unique
+     */
+    public boolean isUnique() {
+<span class="nc" id="L174">        return unique;</span>
+    }
+    
+    /**
+     * Get the default value
+     * @return the default value or null if none
+     */
+    public Object getDefaultValue() {
+<span class="nc" id="L182">        return defaultValue;</span>
+    }
+    
+    /**
+     * Get the maximum length for variable-length data types
+     * @return the maximum length or -1 if not applicable
+     */
+    public int getMaxLength() {
+<span class="nc" id="L190">        return maxLength;</span>
+    }
+    
+    /**
+     * Check if the column has a default value
+     * @return true if a default value is set
+     */
+    public boolean hasDefaultValue() {
+<span class="nc bnc" id="L198" title="All 2 branches missed.">        return defaultValue != null;</span>
+    }
+    
+    /**
+     * Validate a value against this column's constraints
+     * @param value the value to validate
+     * @return true if the value is valid for this column
+     */
+    public boolean isValidValue(Object value) {
+        // Check null constraint
+<span class="nc bnc" id="L208" title="All 2 branches missed.">        if (value == null) {</span>
+<span class="nc" id="L209">            return nullable;</span>
+        }
+        
+        // Check data type compatibility
+<span class="nc bnc" id="L213" title="All 2 branches missed.">        if (!dataType.isValidValue(value)) {</span>
+<span class="nc" id="L214">            return false;</span>
+        }
+        
+        // Check length constraint for string types
+<span class="nc bnc" id="L218" title="All 6 branches missed.">        if (maxLength &gt; 0 &amp;&amp; dataType == DataType.VARCHAR &amp;&amp; value instanceof String) {</span>
+<span class="nc bnc" id="L219" title="All 2 branches missed.">            return ((String) value).length() &lt;= maxLength;</span>
+        }
+        
+<span class="nc" id="L222">        return true;</span>
+    }
+    
+    /**
+     * Get the effective value for this column, applying default if necessary
+     * @param providedValue the provided value (may be null)
+     * @return the effective value to use
+     */
+    public Object getEffectiveValue(Object providedValue) {
+<span class="nc bnc" id="L231" title="All 2 branches missed.">        if (providedValue != null) {</span>
+<span class="nc" id="L232">            return providedValue;</span>
+        }
+        
+<span class="nc bnc" id="L235" title="All 2 branches missed.">        if (hasDefaultValue()) {</span>
+<span class="nc" id="L236">            return defaultValue;</span>
+        }
+        
+<span class="nc bnc" id="L239" title="All 2 branches missed.">        if (!nullable) {</span>
+<span class="nc" id="L240">            throw new IllegalArgumentException(&quot;Column &quot; + name + &quot; cannot be null and has no default value&quot;);</span>
+        }
+        
+<span class="nc" id="L243">        return null;</span>
+    }
+    
+    @Override
+    public boolean equals(Object o) {
+<span class="fc bfc" id="L248" title="All 2 branches covered.">        if (this == o) return true;</span>
+<span class="pc bpc" id="L249" title="2 of 4 branches missed.">        if (o == null || getClass() != o.getClass()) return false;</span>
+        
+<span class="fc" id="L251">        Column column = (Column) o;</span>
+<span class="pc bpc" id="L252" title="2 of 8 branches missed.">        return nullable == column.nullable &amp;&amp;</span>
+                primaryKey == column.primaryKey &amp;&amp;
+                unique == column.unique &amp;&amp;
+                maxLength == column.maxLength &amp;&amp;
+<span class="pc bpc" id="L256" title="3 of 4 branches missed.">                Objects.equals(name, column.name) &amp;&amp;</span>
+                dataType == column.dataType &amp;&amp;
+<span class="pc bnc" id="L258" title="All 2 branches missed.">                Objects.equals(defaultValue, column.defaultValue);</span>
+    }
+    
+    @Override
+    public int hashCode() {
+<span class="nc" id="L263">        return Objects.hash(name, dataType, nullable, primaryKey, unique, defaultValue, maxLength);</span>
+    }
+    
+    @Override
+    public String toString() {
+<span class="nc" id="L268">        StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L269">        sb.append(&quot;Column{name='&quot;).append(name).append('\'');</span>
+<span class="nc" id="L270">        sb.append(&quot;, dataType=&quot;).append(dataType);</span>
+<span class="nc bnc" id="L271" title="All 2 branches missed.">        if (!nullable) sb.append(&quot;, NOT NULL&quot;);</span>
+<span class="nc bnc" id="L272" title="All 2 branches missed.">        if (primaryKey) sb.append(&quot;, PRIMARY KEY&quot;);</span>
+<span class="nc bnc" id="L273" title="All 4 branches missed.">        if (unique &amp;&amp; !primaryKey) sb.append(&quot;, UNIQUE&quot;);</span>
+<span class="nc bnc" id="L274" title="All 2 branches missed.">        if (defaultValue != null) sb.append(&quot;, DEFAULT=&quot;).append(defaultValue);</span>
+<span class="nc bnc" id="L275" title="All 2 branches missed.">        if (maxLength &gt; 0) sb.append(&quot;, maxLength=&quot;).append(maxLength);</span>
+<span class="nc" id="L276">        sb.append('}');</span>
+<span class="nc" id="L277">        return sb.toString();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

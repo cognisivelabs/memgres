@@ -1,0 +1,7 @@
+com/memgres/functions/UuidFunctionsTest.class
+com/memgres/sql/SimpleSubqueryTest.class
+com/memgres/storage/btree/BPlusTreeIndexTest.class
+com/memgres/sql/SqlIntegrationTest.class
+com/memgres/storage/btree/BPlusTreeTest.class
+com/memgres/sql/SubqueryIntegrationTest.class
+com/memgres/sql/AggregationIntegrationTest.class

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SelectItem.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">MemGres Core</a> &gt; <a href="index.source.html" class="el_package">com.memgres.sql.ast.statement</a> &gt; <span class="el_source">SelectItem.java</span></div><h1>SelectItem.java</h1><pre class="source lang-java linenums">package com.memgres.sql.ast.statement;
+
+import com.memgres.sql.ast.AstNode;
+import com.memgres.sql.ast.AstVisitor;
+import com.memgres.sql.ast.expression.Expression;
+
+import java.util.Optional;
+
+/**
+ * Represents a single item in the SELECT list (e.g., column, expression, or *).
+ */
+public class SelectItem extends AstNode {
+    
+    private final Expression expression;
+    private final Optional&lt;String&gt; alias;
+    private final boolean isWildcard;
+    
+    /**
+     * Constructor for regular select items (column, expression).
+     */
+<span class="fc" id="L21">    public SelectItem(Expression expression, Optional&lt;String&gt; alias) {</span>
+<span class="fc" id="L22">        this.expression = expression;</span>
+<span class="fc" id="L23">        this.alias = alias;</span>
+<span class="fc" id="L24">        this.isWildcard = false;</span>
+<span class="fc" id="L25">    }</span>
+    
+    /**
+     * Constructor for wildcard select item (*).
+     */
+<span class="fc" id="L30">    public SelectItem() {</span>
+<span class="fc" id="L31">        this.expression = null;</span>
+<span class="fc" id="L32">        this.alias = Optional.empty();</span>
+<span class="fc" id="L33">        this.isWildcard = true;</span>
+<span class="fc" id="L34">    }</span>
+    
+    public Expression getExpression() {
+<span class="fc" id="L37">        return expression;</span>
+    }
+    
+    public Optional&lt;String&gt; getAlias() {
+<span class="fc" id="L41">        return alias;</span>
+    }
+    
+    public boolean isWildcard() {
+<span class="fc" id="L45">        return isWildcard;</span>
+    }
+    
+    @Override
+    public &lt;T, C&gt; T accept(AstVisitor&lt;T, C&gt; visitor, C context) throws Exception {
+<span class="nc" id="L50">        return visitor.visitSelectItem(this, context);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

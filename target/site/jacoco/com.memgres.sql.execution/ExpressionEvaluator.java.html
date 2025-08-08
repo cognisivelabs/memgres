@@ -1,0 +1,435 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ExpressionEvaluator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">MemGres Core</a> &gt; <a href="index.source.html" class="el_package">com.memgres.sql.execution</a> &gt; <span class="el_source">ExpressionEvaluator.java</span></div><h1>ExpressionEvaluator.java</h1><pre class="source lang-java linenums">package com.memgres.sql.execution;
+
+import com.memgres.core.MemGresEngine;
+import com.memgres.functions.UuidFunctions;
+import com.memgres.sql.ast.expression.AggregateFunction;
+import com.memgres.sql.ast.expression.BinaryExpression;
+import com.memgres.sql.ast.expression.ColumnReference;
+import com.memgres.sql.ast.expression.Expression;
+import com.memgres.sql.ast.expression.ExistsExpression;
+import com.memgres.sql.ast.expression.FunctionCall;
+import com.memgres.sql.ast.expression.InSubqueryExpression;
+import com.memgres.sql.ast.expression.LiteralExpression;
+import com.memgres.sql.ast.expression.SubqueryExpression;
+import com.memgres.sql.ast.expression.UnaryExpression;
+import com.memgres.storage.Table;
+import com.memgres.types.Column;
+import com.memgres.types.Row;
+
+import java.util.List;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Evaluates SQL expressions in the context of a row and table.
+ */
+public class ExpressionEvaluator {
+    
+<span class="fc" id="L32">    private static final Logger logger = LoggerFactory.getLogger(ExpressionEvaluator.class);</span>
+    private final MemGresEngine engine;
+    
+<span class="fc" id="L35">    public ExpressionEvaluator(MemGresEngine engine) {</span>
+<span class="fc" id="L36">        this.engine = engine;</span>
+<span class="fc" id="L37">    }</span>
+    
+    /**
+     * Evaluate an expression and return its value.
+     */
+    public Object evaluate(Expression expression, ExecutionContext context) {
+<span class="fc bfc" id="L43" title="All 2 branches covered.">        if (expression instanceof LiteralExpression) {</span>
+<span class="fc" id="L44">            return evaluateLiteral((LiteralExpression) expression);</span>
+        }
+<span class="fc bfc" id="L46" title="All 2 branches covered.">        else if (expression instanceof ColumnReference) {</span>
+<span class="fc" id="L47">            return evaluateColumnReference((ColumnReference) expression, context);</span>
+        }
+<span class="fc bfc" id="L49" title="All 2 branches covered.">        else if (expression instanceof BinaryExpression) {</span>
+<span class="fc" id="L50">            return evaluateBinaryExpression((BinaryExpression) expression, context);</span>
+        }
+<span class="pc bpc" id="L52" title="1 of 2 branches missed.">        else if (expression instanceof UnaryExpression) {</span>
+<span class="nc" id="L53">            return evaluateUnaryExpression((UnaryExpression) expression, context);</span>
+        }
+<span class="fc bfc" id="L55" title="All 2 branches covered.">        else if (expression instanceof FunctionCall) {</span>
+<span class="fc" id="L56">            return evaluateFunctionCall((FunctionCall) expression, context);</span>
+        }
+<span class="fc bfc" id="L58" title="All 2 branches covered.">        else if (expression instanceof SubqueryExpression) {</span>
+<span class="fc" id="L59">            return evaluateSubqueryExpression((SubqueryExpression) expression, context);</span>
+        }
+<span class="fc bfc" id="L61" title="All 2 branches covered.">        else if (expression instanceof ExistsExpression) {</span>
+<span class="fc" id="L62">            return evaluateExistsExpression((ExistsExpression) expression, context);</span>
+        }
+<span class="pc bpc" id="L64" title="1 of 2 branches missed.">        else if (expression instanceof InSubqueryExpression) {</span>
+<span class="fc" id="L65">            return evaluateInSubqueryExpression((InSubqueryExpression) expression, context);</span>
+        }
+<span class="nc bnc" id="L67" title="All 2 branches missed.">        else if (expression instanceof AggregateFunction) {</span>
+<span class="nc" id="L68">            throw new IllegalStateException(&quot;Aggregate functions must be handled at the SELECT statement level&quot;);</span>
+        }
+        else {
+<span class="nc" id="L71">            throw new IllegalArgumentException(&quot;Unsupported expression type: &quot; + expression.getClass());</span>
+        }
+    }
+    
+    private Object evaluateLiteral(LiteralExpression literal) {
+<span class="fc" id="L76">        return literal.getValue();</span>
+    }
+    
+    private Object evaluateColumnReference(ColumnReference colRef, ExecutionContext context) {
+<span class="fc" id="L80">        Row currentRow = context.getCurrentRow();</span>
+        
+<span class="pc bpc" id="L82" title="1 of 2 branches missed.">        if (currentRow == null) {</span>
+<span class="nc" id="L83">            throw new IllegalStateException(&quot;Cannot evaluate column reference without row context&quot;);</span>
+        }
+        
+        // Use joined columns if available, otherwise fall back to current table
+        java.util.List&lt;Column&gt; columns;
+<span class="fc bfc" id="L88" title="All 2 branches covered.">        if (context.getJoinedColumns() != null) {</span>
+<span class="fc" id="L89">            columns = context.getJoinedColumns();</span>
+        } else {
+<span class="fc" id="L91">            Table currentTable = context.getCurrentTable();</span>
+<span class="pc bpc" id="L92" title="1 of 2 branches missed.">            if (currentTable == null) {</span>
+<span class="nc" id="L93">                throw new IllegalStateException(&quot;Cannot evaluate column reference without table context&quot;);</span>
+            }
+<span class="fc" id="L95">            columns = currentTable.getColumns();</span>
+        }
+        
+        // Find column index (handle table-qualified references for correlated subqueries)
+<span class="fc" id="L99">        String columnName = colRef.getColumnName().toLowerCase();</span>
+<span class="fc" id="L100">        Map&lt;String, Integer&gt; columnIndexMap = new HashMap&lt;&gt;();</span>
+        
+        // For table-qualified references (e.g., employees.dept_id)
+<span class="fc bfc" id="L103" title="All 2 branches covered.">        if (colRef.getTableName().isPresent()) {</span>
+<span class="fc" id="L104">            String tableName = colRef.getTableName().get().toLowerCase();</span>
+            // In correlated subqueries, we might need to look in outer query context
+            // For now, just search all columns - proper table resolution would be more complex
+<span class="fc bfc" id="L107" title="All 2 branches covered.">            for (int i = 0; i &lt; columns.size(); i++) {</span>
+<span class="fc" id="L108">                Column col = columns.get(i);</span>
+<span class="fc" id="L109">                columnIndexMap.put(col.getName().toLowerCase(), i);</span>
+            }
+<span class="fc" id="L111">        } else {</span>
+            // Unqualified column reference
+<span class="fc bfc" id="L113" title="All 2 branches covered.">            for (int i = 0; i &lt; columns.size(); i++) {</span>
+<span class="fc" id="L114">                Column col = columns.get(i);</span>
+<span class="fc" id="L115">                columnIndexMap.put(col.getName().toLowerCase(), i);</span>
+            }
+        }
+        
+<span class="fc" id="L119">        Integer columnIndex = columnIndexMap.get(columnName);</span>
+<span class="pc bpc" id="L120" title="1 of 2 branches missed.">        if (columnIndex == null) {</span>
+            // For correlated subqueries, if column not found in current context, it might be from outer query
+            // This needs proper implementation of outer context passing
+<span class="nc" id="L123">            throw new IllegalArgumentException(&quot;Column not found: &quot; + columnName + </span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">                (colRef.getTableName().isPresent() ? &quot; in table &quot; + colRef.getTableName().get() : &quot;&quot;));</span>
+        }
+        
+<span class="fc" id="L127">        return currentRow.getData()[columnIndex];</span>
+    }
+    
+    private Object evaluateBinaryExpression(BinaryExpression binary, ExecutionContext context) {
+<span class="fc" id="L131">        Object left = evaluate(binary.getLeft(), context);</span>
+<span class="fc" id="L132">        Object right = evaluate(binary.getRight(), context);</span>
+        
+<span class="pc bpc" id="L134" title="14 of 17 branches missed.">        switch (binary.getOperator()) {</span>
+            // Arithmetic operators
+            case ADD:
+<span class="nc" id="L137">                return addValues(left, right);</span>
+            case SUBTRACT:
+<span class="nc" id="L139">                return subtractValues(left, right);</span>
+            case MULTIPLY:
+<span class="nc" id="L141">                return multiplyValues(left, right);</span>
+            case DIVIDE:
+<span class="nc" id="L143">                return divideValues(left, right);</span>
+            case MODULO:
+<span class="nc" id="L145">                return moduloValues(left, right);</span>
+                
+            // Comparison operators
+            case EQUALS:
+<span class="fc" id="L149">                return equalValues(left, right);</span>
+            case NOT_EQUALS:
+<span class="nc bnc" id="L151" title="All 2 branches missed.">                return !equalValues(left, right);</span>
+            case LESS_THAN:
+<span class="nc bnc" id="L153" title="All 2 branches missed.">                return compareValues(left, right) &lt; 0;</span>
+            case LESS_THAN_EQUALS:
+<span class="nc bnc" id="L155" title="All 2 branches missed.">                return compareValues(left, right) &lt;= 0;</span>
+            case GREATER_THAN:
+<span class="fc bfc" id="L157" title="All 2 branches covered.">                return compareValues(left, right) &gt; 0;</span>
+            case GREATER_THAN_EQUALS:
+<span class="nc bnc" id="L159" title="All 2 branches missed.">                return compareValues(left, right) &gt;= 0;</span>
+                
+            // Logical operators
+            case AND:
+<span class="fc bfc" id="L163" title="All 4 branches covered.">                return isTruthy(left) &amp;&amp; isTruthy(right);</span>
+            case OR:
+<span class="nc bnc" id="L165" title="All 4 branches missed.">                return isTruthy(left) || isTruthy(right);</span>
+                
+            // String operators
+            case CONCAT:
+<span class="nc" id="L169">                return String.valueOf(left) + String.valueOf(right);</span>
+            case LIKE:
+<span class="nc" id="L171">                return likeMatch(String.valueOf(left), String.valueOf(right));</span>
+                
+            // JSONB operators (simplified implementation)
+            case JSONB_CONTAINS:
+            case JSONB_CONTAINED:
+            case JSONB_EXISTS:
+            case JSONB_EXTRACT:
+            case JSONB_EXTRACT_TEXT:
+            case JSONB_PATH_EXTRACT:
+            case JSONB_PATH_EXTRACT_TEXT:
+<span class="nc" id="L181">                throw new UnsupportedOperationException(&quot;JSONB operators not yet implemented&quot;);</span>
+                
+            default:
+<span class="nc" id="L184">                throw new IllegalArgumentException(&quot;Unsupported binary operator: &quot; + binary.getOperator());</span>
+        }
+    }
+    
+    private Object evaluateUnaryExpression(UnaryExpression unary, ExecutionContext context) {
+<span class="nc" id="L189">        Object operand = evaluate(unary.getOperand(), context);</span>
+        
+<span class="nc bnc" id="L191" title="All 4 branches missed.">        switch (unary.getOperator()) {</span>
+            case NOT:
+<span class="nc bnc" id="L193" title="All 2 branches missed.">                return !isTruthy(operand);</span>
+            case MINUS:
+<span class="nc bnc" id="L195" title="All 2 branches missed.">                if (operand instanceof Number) {</span>
+<span class="nc bnc" id="L196" title="All 2 branches missed.">                    if (operand instanceof Integer) {</span>
+<span class="nc" id="L197">                        return -((Integer) operand);</span>
+<span class="nc bnc" id="L198" title="All 2 branches missed.">                    } else if (operand instanceof Long) {</span>
+<span class="nc" id="L199">                        return -((Long) operand);</span>
+<span class="nc bnc" id="L200" title="All 2 branches missed.">                    } else if (operand instanceof Double) {</span>
+<span class="nc" id="L201">                        return -((Double) operand);</span>
+<span class="nc bnc" id="L202" title="All 2 branches missed.">                    } else if (operand instanceof Float) {</span>
+<span class="nc" id="L203">                        return -((Float) operand);</span>
+                    }
+                }
+<span class="nc" id="L206">                throw new IllegalArgumentException(&quot;Cannot apply MINUS to non-numeric value&quot;);</span>
+            case PLUS:
+<span class="nc" id="L208">                return operand; // Unary plus doesn't change the value</span>
+            default:
+<span class="nc" id="L210">                throw new IllegalArgumentException(&quot;Unsupported unary operator: &quot; + unary.getOperator());</span>
+        }
+    }
+    
+    private Object evaluateFunctionCall(FunctionCall function, ExecutionContext context) {
+<span class="fc" id="L215">        String functionName = function.getFunctionName().toLowerCase();</span>
+        
+<span class="pc bpc" id="L217" title="3 of 4 branches missed.">        switch (functionName) {</span>
+            case &quot;gen_random_uuid&quot;:
+<span class="fc" id="L219">                return UuidFunctions.genRandomUuid();</span>
+            case &quot;uuid_generate_v1&quot;:
+<span class="nc" id="L221">                return UuidFunctions.uuidGenerateV1();</span>
+            case &quot;uuid_generate_v4&quot;:
+<span class="nc" id="L223">                return UuidFunctions.uuidGenerateV4();</span>
+            default:
+<span class="nc" id="L225">                throw new UnsupportedOperationException(&quot;Function not supported: &quot; + functionName);</span>
+        }
+    }
+    
+    private Object evaluateSubqueryExpression(SubqueryExpression subquery, ExecutionContext context) {
+        try {
+            // Execute the subquery using StatementExecutor with current execution context for correlated subqueries
+<span class="fc" id="L232">            StatementExecutor executor = new StatementExecutor(engine);</span>
+<span class="fc" id="L233">            SqlExecutionResult result = executor.execute(subquery.getSelectStatement(), context);</span>
+            
+<span class="pc bpc" id="L235" title="1 of 2 branches missed.">            if (result.getType() != SqlExecutionResult.ResultType.SELECT) {</span>
+<span class="nc" id="L236">                throw new IllegalStateException(&quot;Subquery must return a SELECT result&quot;);</span>
+            }
+            
+<span class="fc" id="L239">            List&lt;Row&gt; rows = result.getRows();</span>
+<span class="pc bpc" id="L240" title="1 of 2 branches missed.">            if (rows.isEmpty()) {</span>
+<span class="nc" id="L241">                return null; // Empty result set returns NULL</span>
+            }
+            
+<span class="pc bpc" id="L244" title="1 of 2 branches missed.">            if (rows.size() &gt; 1) {</span>
+<span class="nc" id="L245">                throw new IllegalStateException(&quot;Scalar subquery returned more than one row&quot;);</span>
+            }
+            
+<span class="fc" id="L248">            Row row = rows.get(0);</span>
+<span class="fc" id="L249">            Object[] data = row.getData();</span>
+<span class="pc bpc" id="L250" title="1 of 2 branches missed.">            if (data.length != 1) {</span>
+<span class="nc" id="L251">                throw new IllegalStateException(&quot;Scalar subquery must return exactly one column&quot;);</span>
+            }
+            
+<span class="fc" id="L254">            return data[0];</span>
+<span class="nc" id="L255">        } catch (SqlExecutionException e) {</span>
+<span class="nc" id="L256">            throw new RuntimeException(&quot;Failed to execute subquery&quot;, e);</span>
+        }
+    }
+    
+    private Object evaluateExistsExpression(ExistsExpression exists, ExecutionContext context) {
+        try {
+            // Execute the subquery using StatementExecutor
+<span class="fc" id="L263">            StatementExecutor executor = new StatementExecutor(engine);</span>
+<span class="fc" id="L264">            SqlExecutionResult result = executor.execute(exists.getSubquery());</span>
+            
+<span class="pc bpc" id="L266" title="1 of 2 branches missed.">            if (result.getType() != SqlExecutionResult.ResultType.SELECT) {</span>
+<span class="nc" id="L267">                throw new IllegalStateException(&quot;EXISTS subquery must return a SELECT result&quot;);</span>
+            }
+            
+            // EXISTS returns true if at least one row is returned, false otherwise
+<span class="pc bpc" id="L271" title="1 of 2 branches missed.">            return !result.getRows().isEmpty();</span>
+<span class="nc" id="L272">        } catch (SqlExecutionException e) {</span>
+<span class="nc" id="L273">            throw new RuntimeException(&quot;Failed to execute EXISTS subquery&quot;, e);</span>
+        }
+    }
+    
+    private Object evaluateInSubqueryExpression(InSubqueryExpression inSubquery, ExecutionContext context) {
+        // First evaluate the left-hand expression
+<span class="fc" id="L279">        Object leftValue = evaluate(inSubquery.getExpression(), context);</span>
+        
+        try {
+            // Execute the subquery using StatementExecutor
+<span class="fc" id="L283">            StatementExecutor executor = new StatementExecutor(engine);</span>
+<span class="fc" id="L284">            SqlExecutionResult result = executor.execute(inSubquery.getSubquery());</span>
+            
+<span class="pc bpc" id="L286" title="1 of 2 branches missed.">            if (result.getType() != SqlExecutionResult.ResultType.SELECT) {</span>
+<span class="nc" id="L287">                throw new IllegalStateException(&quot;IN subquery must return a SELECT result&quot;);</span>
+            }
+            
+<span class="fc" id="L290">            List&lt;Row&gt; rows = result.getRows();</span>
+            
+            // Check if the left value exists in any of the result rows
+<span class="fc" id="L293">            boolean found = false;</span>
+<span class="fc bfc" id="L294" title="All 2 branches covered.">            for (Row row : rows) {</span>
+<span class="fc" id="L295">                Object[] data = row.getData();</span>
+<span class="pc bpc" id="L296" title="1 of 2 branches missed.">                if (data.length != 1) {</span>
+<span class="nc" id="L297">                    throw new IllegalStateException(&quot;IN subquery must return exactly one column&quot;);</span>
+                }
+                
+<span class="fc bfc" id="L300" title="All 2 branches covered.">                if (equalValues(leftValue, data[0])) {</span>
+<span class="fc" id="L301">                    found = true;</span>
+<span class="fc" id="L302">                    break;</span>
+                }
+<span class="fc" id="L304">            }</span>
+            
+            // Apply negation if needed
+<span class="fc bfc" id="L307" title="All 4 branches covered.">            return inSubquery.isNegated() ? !found : found;</span>
+<span class="nc" id="L308">        } catch (SqlExecutionException e) {</span>
+<span class="nc" id="L309">            throw new RuntimeException(&quot;Failed to execute IN subquery&quot;, e);</span>
+        }
+    }
+    
+    // Helper methods for operations
+    private Object addValues(Object left, Object right) {
+<span class="nc bnc" id="L315" title="All 4 branches missed.">        if (left instanceof Number &amp;&amp; right instanceof Number) {</span>
+<span class="nc" id="L316">            Number leftNum = (Number) left;</span>
+<span class="nc" id="L317">            Number rightNum = (Number) right;</span>
+            
+<span class="nc bnc" id="L319" title="All 4 branches missed.">            if (left instanceof Double || right instanceof Double) {</span>
+<span class="nc" id="L320">                return leftNum.doubleValue() + rightNum.doubleValue();</span>
+<span class="nc bnc" id="L321" title="All 4 branches missed.">            } else if (left instanceof Float || right instanceof Float) {</span>
+<span class="nc" id="L322">                return leftNum.floatValue() + rightNum.floatValue();</span>
+<span class="nc bnc" id="L323" title="All 4 branches missed.">            } else if (left instanceof Long || right instanceof Long) {</span>
+<span class="nc" id="L324">                return leftNum.longValue() + rightNum.longValue();</span>
+            } else {
+<span class="nc" id="L326">                return leftNum.intValue() + rightNum.intValue();</span>
+            }
+        }
+<span class="nc" id="L329">        return String.valueOf(left) + String.valueOf(right);</span>
+    }
+    
+    private Object subtractValues(Object left, Object right) {
+<span class="nc bnc" id="L333" title="All 4 branches missed.">        if (left instanceof Number &amp;&amp; right instanceof Number) {</span>
+<span class="nc" id="L334">            Number leftNum = (Number) left;</span>
+<span class="nc" id="L335">            Number rightNum = (Number) right;</span>
+            
+<span class="nc bnc" id="L337" title="All 4 branches missed.">            if (left instanceof Double || right instanceof Double) {</span>
+<span class="nc" id="L338">                return leftNum.doubleValue() - rightNum.doubleValue();</span>
+<span class="nc bnc" id="L339" title="All 4 branches missed.">            } else if (left instanceof Float || right instanceof Float) {</span>
+<span class="nc" id="L340">                return leftNum.floatValue() - rightNum.floatValue();</span>
+<span class="nc bnc" id="L341" title="All 4 branches missed.">            } else if (left instanceof Long || right instanceof Long) {</span>
+<span class="nc" id="L342">                return leftNum.longValue() - rightNum.longValue();</span>
+            } else {
+<span class="nc" id="L344">                return leftNum.intValue() - rightNum.intValue();</span>
+            }
+        }
+<span class="nc" id="L347">        throw new IllegalArgumentException(&quot;Cannot subtract non-numeric values&quot;);</span>
+    }
+    
+    private Object multiplyValues(Object left, Object right) {
+<span class="nc bnc" id="L351" title="All 4 branches missed.">        if (left instanceof Number &amp;&amp; right instanceof Number) {</span>
+<span class="nc" id="L352">            Number leftNum = (Number) left;</span>
+<span class="nc" id="L353">            Number rightNum = (Number) right;</span>
+            
+<span class="nc bnc" id="L355" title="All 4 branches missed.">            if (left instanceof Double || right instanceof Double) {</span>
+<span class="nc" id="L356">                return leftNum.doubleValue() * rightNum.doubleValue();</span>
+<span class="nc bnc" id="L357" title="All 4 branches missed.">            } else if (left instanceof Float || right instanceof Float) {</span>
+<span class="nc" id="L358">                return leftNum.floatValue() * rightNum.floatValue();</span>
+<span class="nc bnc" id="L359" title="All 4 branches missed.">            } else if (left instanceof Long || right instanceof Long) {</span>
+<span class="nc" id="L360">                return leftNum.longValue() * rightNum.longValue();</span>
+            } else {
+<span class="nc" id="L362">                return leftNum.intValue() * rightNum.intValue();</span>
+            }
+        }
+<span class="nc" id="L365">        throw new IllegalArgumentException(&quot;Cannot multiply non-numeric values&quot;);</span>
+    }
+    
+    private Object divideValues(Object left, Object right) {
+<span class="nc bnc" id="L369" title="All 4 branches missed.">        if (left instanceof Number &amp;&amp; right instanceof Number) {</span>
+<span class="nc" id="L370">            Number leftNum = (Number) left;</span>
+<span class="nc" id="L371">            Number rightNum = (Number) right;</span>
+            
+<span class="nc bnc" id="L373" title="All 2 branches missed.">            if (rightNum.doubleValue() == 0) {</span>
+<span class="nc" id="L374">                throw new ArithmeticException(&quot;Division by zero&quot;);</span>
+            }
+            
+<span class="nc" id="L377">            return leftNum.doubleValue() / rightNum.doubleValue();</span>
+        }
+<span class="nc" id="L379">        throw new IllegalArgumentException(&quot;Cannot divide non-numeric values&quot;);</span>
+    }
+    
+    private Object moduloValues(Object left, Object right) {
+<span class="nc bnc" id="L383" title="All 4 branches missed.">        if (left instanceof Number &amp;&amp; right instanceof Number) {</span>
+<span class="nc" id="L384">            Number leftNum = (Number) left;</span>
+<span class="nc" id="L385">            Number rightNum = (Number) right;</span>
+            
+<span class="nc bnc" id="L387" title="All 2 branches missed.">            if (rightNum.doubleValue() == 0) {</span>
+<span class="nc" id="L388">                throw new ArithmeticException(&quot;Division by zero&quot;);</span>
+            }
+            
+<span class="nc" id="L391">            return leftNum.doubleValue() % rightNum.doubleValue();</span>
+        }
+<span class="nc" id="L393">        throw new IllegalArgumentException(&quot;Cannot modulo non-numeric values&quot;);</span>
+    }
+    
+    private boolean equalValues(Object left, Object right) {
+<span class="pc bpc" id="L397" title="3 of 4 branches missed.">        if (left == null &amp;&amp; right == null) return true;</span>
+<span class="pc bpc" id="L398" title="2 of 4 branches missed.">        if (left == null || right == null) return false;</span>
+<span class="fc" id="L399">        return left.equals(right);</span>
+    }
+    
+    @SuppressWarnings(&quot;unchecked&quot;)
+    private int compareValues(Object left, Object right) {
+<span class="pc bpc" id="L404" title="3 of 4 branches missed.">        if (left == null &amp;&amp; right == null) return 0;</span>
+<span class="pc bpc" id="L405" title="1 of 2 branches missed.">        if (left == null) return -1;</span>
+<span class="pc bpc" id="L406" title="1 of 2 branches missed.">        if (right == null) return 1;</span>
+        
+<span class="pc bpc" id="L408" title="2 of 4 branches missed.">        if (left instanceof Comparable &amp;&amp; right instanceof Comparable) {</span>
+            try {
+<span class="nc" id="L410">                return ((Comparable) left).compareTo(right);</span>
+<span class="fc" id="L411">            } catch (ClassCastException e) {</span>
+<span class="fc" id="L412">                return left.toString().compareTo(right.toString());</span>
+            }
+        }
+        
+<span class="nc" id="L416">        return left.toString().compareTo(right.toString());</span>
+    }
+    
+    private boolean isTruthy(Object value) {
+<span class="pc bpc" id="L420" title="1 of 2 branches missed.">        if (value == null) return false;</span>
+<span class="pc bpc" id="L421" title="1 of 2 branches missed.">        if (value instanceof Boolean) return (Boolean) value;</span>
+<span class="nc bnc" id="L422" title="All 4 branches missed.">        if (value instanceof Number) return ((Number) value).doubleValue() != 0;</span>
+<span class="nc bnc" id="L423" title="All 4 branches missed.">        if (value instanceof String) return !((String) value).isEmpty();</span>
+<span class="nc" id="L424">        return true;</span>
+    }
+    
+    private boolean likeMatch(String text, String pattern) {
+        // Simple LIKE implementation - convert SQL LIKE pattern to regex
+<span class="nc" id="L429">        String regexPattern = pattern</span>
+<span class="nc" id="L430">            .replace(&quot;%&quot;, &quot;.*&quot;)</span>
+<span class="nc" id="L431">            .replace(&quot;_&quot;, &quot;.&quot;);</span>
+<span class="nc" id="L432">        return text.matches(regexPattern);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

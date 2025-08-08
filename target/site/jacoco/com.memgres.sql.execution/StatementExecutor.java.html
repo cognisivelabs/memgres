@@ -1,0 +1,1508 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StatementExecutor.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">MemGres Core</a> &gt; <a href="index.source.html" class="el_package">com.memgres.sql.execution</a> &gt; <span class="el_source">StatementExecutor.java</span></div><h1>StatementExecutor.java</h1><pre class="source lang-java linenums">package com.memgres.sql.execution;
+
+import com.memgres.core.MemGresEngine;
+import com.memgres.functions.UuidFunctions;
+import com.memgres.sql.ast.AstVisitor;
+import com.memgres.sql.ast.expression.*;
+import com.memgres.sql.ast.statement.*;
+import com.memgres.storage.Table;
+import com.memgres.types.Column;
+import com.memgres.types.DataType;
+import com.memgres.types.Row;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+/**
+ * Executes SQL statement AST nodes against the MemGres storage layer.
+ */
+public class StatementExecutor implements AstVisitor&lt;SqlExecutionResult, ExecutionContext&gt; {
+<span class="fc" id="L22">    private static final Logger logger = LoggerFactory.getLogger(StatementExecutor.class);</span>
+    
+    private final MemGresEngine engine;
+    private final ExpressionEvaluator expressionEvaluator;
+    
+<span class="fc" id="L27">    public StatementExecutor(MemGresEngine engine) {</span>
+<span class="fc" id="L28">        this.engine = engine;</span>
+<span class="fc" id="L29">        this.expressionEvaluator = new ExpressionEvaluator(engine);</span>
+<span class="fc" id="L30">    }</span>
+    
+    /**
+     * Execute a statement and return the result.
+     */
+    public SqlExecutionResult execute(Statement statement) throws SqlExecutionException {
+        try {
+<span class="fc" id="L37">            ExecutionContext context = new ExecutionContext();</span>
+<span class="fc" id="L38">            return statement.accept(this, context);</span>
+<span class="fc" id="L39">        } catch (Exception e) {</span>
+<span class="pc bpc" id="L40" title="1 of 2 branches missed.">            if (e instanceof SqlExecutionException) {</span>
+<span class="fc" id="L41">                throw (SqlExecutionException) e;</span>
+            }
+<span class="nc" id="L43">            throw new SqlExecutionException(&quot;Failed to execute statement&quot;, e);</span>
+        }
+    }
+    
+    /**
+     * Execute a statement with a provided execution context (for correlated subqueries).
+     */
+    public SqlExecutionResult execute(Statement statement, ExecutionContext context) throws SqlExecutionException {
+        try {
+<span class="fc" id="L52">            return statement.accept(this, context);</span>
+<span class="nc" id="L53">        } catch (Exception e) {</span>
+<span class="nc bnc" id="L54" title="All 2 branches missed.">            if (e instanceof SqlExecutionException) {</span>
+<span class="nc" id="L55">                throw (SqlExecutionException) e;</span>
+            }
+<span class="nc" id="L57">            throw new SqlExecutionException(&quot;Failed to execute statement&quot;, e);</span>
+        }
+    }
+    
+    @Override
+    public SqlExecutionResult visitSelectStatement(SelectStatement node, ExecutionContext context) throws SqlExecutionException {
+        try {
+            // Process FROM clause and execute joins (or create empty row for subqueries without FROM)
+            JoinResult joinResult;
+<span class="fc bfc" id="L66" title="All 2 branches covered.">            if (node.getFromClause().isPresent()) {</span>
+<span class="fc" id="L67">                FromClause fromClause = node.getFromClause().get();</span>
+<span class="fc" id="L68">                joinResult = executeFromClause(fromClause, context);</span>
+<span class="fc" id="L69">            } else {</span>
+                // No FROM clause - create a single empty row for expression evaluation
+<span class="fc" id="L71">                joinResult = new JoinResult(List.of(), List.of(new Row(0L, new Object[0])));</span>
+            }
+            
+<span class="fc" id="L74">            List&lt;Row&gt; filteredRows = joinResult.rows;</span>
+            
+            // Apply WHERE clause if present
+<span class="fc bfc" id="L77" title="All 2 branches covered.">            if (node.getWhereClause().isPresent()) {</span>
+<span class="fc" id="L78">                WhereClause whereClause = node.getWhereClause().get();</span>
+<span class="fc" id="L79">                filteredRows = new ArrayList&lt;&gt;();</span>
+                
+<span class="fc bfc" id="L81" title="All 2 branches covered.">                for (Row row : joinResult.rows) {</span>
+<span class="fc" id="L82">                    context.setCurrentRow(row);</span>
+<span class="fc" id="L83">                    context.setJoinedColumns(joinResult.columns);</span>
+                    
+<span class="fc" id="L85">                    Object result = expressionEvaluator.evaluate(whereClause.getCondition(), context);</span>
+<span class="fc bfc" id="L86" title="All 2 branches covered.">                    if (Boolean.TRUE.equals(result)) {</span>
+<span class="fc" id="L87">                        filteredRows.add(row);</span>
+                    }
+<span class="fc" id="L89">                }</span>
+            }
+            
+            
+            // Handle GROUP BY and aggregation
+<span class="fc" id="L94">            List&lt;Row&gt; groupedRows = filteredRows;</span>
+<span class="fc" id="L95">            List&lt;Column&gt; groupedColumns = joinResult.columns;</span>
+            
+<span class="fc bfc" id="L97" title="All 4 branches covered.">            if (node.getGroupByClause().isPresent() || hasAggregateFunction(node.getSelectItems())) {</span>
+<span class="fc" id="L98">                AggregationResult aggregationResult = performAggregation(node, filteredRows, joinResult.columns, context);</span>
+<span class="fc" id="L99">                groupedRows = aggregationResult.rows;</span>
+<span class="fc" id="L100">                groupedColumns = aggregationResult.columns;</span>
+            }
+            
+            // Apply HAVING clause if present
+<span class="pc bpc" id="L104" title="1 of 2 branches missed.">            if (node.getHavingClause().isPresent()) {</span>
+<span class="nc" id="L105">                HavingClause havingClause = node.getHavingClause().get();</span>
+<span class="nc" id="L106">                List&lt;Row&gt; havingFilteredRows = new ArrayList&lt;&gt;();</span>
+                
+<span class="nc bnc" id="L108" title="All 2 branches missed.">                for (Row row : groupedRows) {</span>
+<span class="nc" id="L109">                    context.setCurrentRow(row);</span>
+<span class="nc" id="L110">                    context.setJoinedColumns(groupedColumns);</span>
+                    
+<span class="nc" id="L112">                    Object result = expressionEvaluator.evaluate(havingClause.getCondition(), context);</span>
+<span class="nc bnc" id="L113" title="All 2 branches missed.">                    if (Boolean.TRUE.equals(result)) {</span>
+<span class="nc" id="L114">                        havingFilteredRows.add(row);</span>
+                    }
+<span class="nc" id="L116">                }</span>
+<span class="nc" id="L117">                groupedRows = havingFilteredRows;</span>
+            }
+            
+            // Apply ORDER BY if present (on grouped results)
+<span class="fc bfc" id="L121" title="All 2 branches covered.">            if (node.getOrderByClause().isPresent()) {</span>
+<span class="fc" id="L122">                OrderByClause orderBy = node.getOrderByClause().get();</span>
+<span class="fc" id="L123">                groupedRows = applyOrderBy(groupedRows, orderBy, context, groupedColumns);</span>
+            }
+            
+            // Apply LIMIT if present
+<span class="fc bfc" id="L127" title="All 2 branches covered.">            if (node.getLimitClause().isPresent()) {</span>
+<span class="fc" id="L128">                LimitClause limitClause = node.getLimitClause().get();</span>
+<span class="fc" id="L129">                int limit = evaluateIntExpression(limitClause.getLimit(), context);</span>
+<span class="fc" id="L130">                int offset = 0;</span>
+<span class="pc bpc" id="L131" title="1 of 2 branches missed.">                if (limitClause.getOffset().isPresent()) {</span>
+<span class="nc" id="L132">                    offset = evaluateIntExpression(limitClause.getOffset().get(), context);</span>
+                }
+                
+<span class="fc" id="L135">                int fromIndex = Math.min(offset, groupedRows.size());</span>
+<span class="fc" id="L136">                int toIndex = Math.min(fromIndex + limit, groupedRows.size());</span>
+<span class="fc" id="L137">                groupedRows = groupedRows.subList(fromIndex, toIndex);</span>
+            }
+            
+            // Project columns based on SELECT list
+            List&lt;Column&gt; resultColumns;
+            List&lt;Row&gt; resultRows;
+            
+<span class="fc bfc" id="L144" title="All 4 branches covered.">            if (node.getGroupByClause().isPresent() || hasAggregateFunction(node.getSelectItems())) {</span>
+                // Aggregation already handled projection - use results directly
+<span class="fc" id="L146">                resultColumns = groupedColumns;</span>
+<span class="fc" id="L147">                resultRows = groupedRows;</span>
+<span class="fc bfc" id="L148" title="All 4 branches covered.">            } else if (node.getSelectItems().size() == 1 &amp;&amp; node.getSelectItems().get(0).isWildcard()) {</span>
+                // SELECT * - return all columns
+<span class="fc" id="L150">                resultColumns = groupedColumns;</span>
+<span class="fc" id="L151">                resultRows = groupedRows;</span>
+            } else {
+                // Project specific columns/expressions (non-aggregate case)
+<span class="fc" id="L154">                resultColumns = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L155">                resultRows = new ArrayList&lt;&gt;();</span>
+                
+                // Validate column references in SELECT items
+<span class="fc" id="L158">                context.setJoinedColumns(groupedColumns);</span>
+<span class="fc bfc" id="L159" title="All 2 branches covered.">                for (SelectItem item : node.getSelectItems()) {</span>
+<span class="fc" id="L160">                    validateColumnReferences(item.getExpression(), groupedColumns);</span>
+<span class="fc" id="L161">                }</span>
+                
+                // Determine result columns
+<span class="fc bfc" id="L164" title="All 2 branches covered.">                for (int i = 0; i &lt; node.getSelectItems().size(); i++) {</span>
+<span class="fc" id="L165">                    SelectItem item = node.getSelectItems().get(i);</span>
+<span class="fc" id="L166">                    String columnName = item.getAlias().orElse(&quot;column&quot; + i);</span>
+<span class="fc" id="L167">                    resultColumns.add(new Column.Builder()</span>
+<span class="fc" id="L168">                    .name(columnName)</span>
+<span class="fc" id="L169">                    .dataType(DataType.TEXT)</span>
+<span class="fc" id="L170">                    .build());</span>
+                }
+                
+                // Project rows
+<span class="fc bfc" id="L174" title="All 2 branches covered.">                for (Row row : groupedRows) {</span>
+<span class="fc" id="L175">                    context.setCurrentRow(row);</span>
+<span class="fc" id="L176">                    context.setJoinedColumns(groupedColumns);</span>
+                    
+<span class="fc" id="L178">                    Object[] projectedData = new Object[node.getSelectItems().size()];</span>
+<span class="fc bfc" id="L179" title="All 2 branches covered.">                    for (int i = 0; i &lt; node.getSelectItems().size(); i++) {</span>
+<span class="fc" id="L180">                        SelectItem item = node.getSelectItems().get(i);</span>
+<span class="fc" id="L181">                        projectedData[i] = expressionEvaluator.evaluate(item.getExpression(), context);</span>
+                    }
+                    
+<span class="fc" id="L184">                    resultRows.add(new Row(row.getId(), projectedData));</span>
+<span class="fc" id="L185">                }</span>
+            }
+            
+<span class="fc" id="L188">            logger.debug(&quot;SELECT executed: {} rows returned&quot;, resultRows.size());</span>
+<span class="fc" id="L189">            return new SqlExecutionResult(resultColumns, resultRows);</span>
+            
+<span class="fc" id="L191">        } catch (Exception e) {</span>
+<span class="fc" id="L192">            throw new SqlExecutionException(&quot;Failed to execute SELECT statement&quot;, e);</span>
+        }
+    }
+    
+    @Override
+    public SqlExecutionResult visitInsertStatement(InsertStatement node, ExecutionContext context) throws SqlExecutionException {
+        try {
+<span class="fc" id="L199">            String tableName = node.getTableName();</span>
+<span class="fc" id="L200">            Table table = engine.getTable(&quot;public&quot;, tableName);</span>
+<span class="pc bpc" id="L201" title="1 of 2 branches missed.">            if (table == null) {</span>
+<span class="nc" id="L202">                throw new SqlExecutionException(&quot;Table not found: &quot; + tableName);</span>
+            }
+            
+<span class="fc" id="L205">            List&lt;Column&gt; tableColumns = table.getColumns();</span>
+<span class="fc" id="L206">            int affectedRows = 0;</span>
+            
+            // Process each set of values
+<span class="fc bfc" id="L209" title="All 2 branches covered.">            for (List&lt;Expression&gt; values : node.getValuesList()) {</span>
+<span class="fc bfc" id="L210" title="All 2 branches covered.">                if (values.size() != tableColumns.size()) {</span>
+<span class="fc" id="L211">                    throw new SqlExecutionException(&quot;Column count mismatch: expected &quot; + </span>
+<span class="fc" id="L212">                        tableColumns.size() + &quot;, got &quot; + values.size());</span>
+                }
+                
+                // Evaluate values
+<span class="fc" id="L216">                Object[] rowData = new Object[values.size()];</span>
+<span class="fc bfc" id="L217" title="All 2 branches covered.">                for (int i = 0; i &lt; values.size(); i++) {</span>
+<span class="fc" id="L218">                    rowData[i] = expressionEvaluator.evaluate(values.get(i), context);</span>
+                    
+                    // Convert and validate data type
+<span class="fc" id="L221">                    Column column = tableColumns.get(i);</span>
+<span class="fc" id="L222">                    rowData[i] = column.getDataType().convertValue(rowData[i]);</span>
+                    
+<span class="pc bpc" id="L224" title="1 of 2 branches missed.">                    if (!column.getDataType().isValidValue(rowData[i])) {</span>
+<span class="nc" id="L225">                        throw new SqlExecutionException(&quot;Invalid value for column &quot; + </span>
+<span class="nc" id="L226">                            column.getName() + &quot;: &quot; + rowData[i]);</span>
+                    }
+                }
+                
+                // Insert row
+<span class="fc" id="L231">                table.insertRow(rowData);</span>
+<span class="fc" id="L232">                affectedRows++;</span>
+<span class="fc" id="L233">            }</span>
+            
+<span class="fc" id="L235">            logger.debug(&quot;INSERT executed: {} rows inserted into {}&quot;, affectedRows, tableName);</span>
+<span class="fc" id="L236">            return new SqlExecutionResult(SqlExecutionResult.ResultType.INSERT, affectedRows);</span>
+            
+<span class="fc" id="L238">        } catch (Exception e) {</span>
+<span class="fc" id="L239">            throw new SqlExecutionException(&quot;Failed to execute INSERT statement&quot;, e);</span>
+        }
+    }
+    
+    @Override
+    public SqlExecutionResult visitUpdateStatement(UpdateStatement node, ExecutionContext context) throws SqlExecutionException {
+        try {
+<span class="fc" id="L246">            String tableName = node.getTableName();</span>
+<span class="fc" id="L247">            Table table = engine.getTable(&quot;public&quot;, tableName);</span>
+<span class="pc bpc" id="L248" title="1 of 2 branches missed.">            if (table == null) {</span>
+<span class="nc" id="L249">                throw new SqlExecutionException(&quot;Table not found: &quot; + tableName);</span>
+            }
+            
+            // Get all rows and filter by WHERE clause if present
+<span class="fc" id="L253">            List&lt;Row&gt; allRows = table.getAllRows();</span>
+<span class="fc" id="L254">            List&lt;Row&gt; rowsToUpdate = allRows;</span>
+            
+<span class="pc bpc" id="L256" title="1 of 2 branches missed.">            if (node.getWhereClause().isPresent()) {</span>
+<span class="fc" id="L257">                WhereClause whereClause = node.getWhereClause().get();</span>
+<span class="fc" id="L258">                rowsToUpdate = new ArrayList&lt;&gt;();</span>
+                
+<span class="fc bfc" id="L260" title="All 2 branches covered.">                for (Row row : allRows) {</span>
+<span class="fc" id="L261">                    context.setCurrentRow(row);</span>
+<span class="fc" id="L262">                    context.setCurrentTable(table);</span>
+                    
+<span class="fc" id="L264">                    Object result = expressionEvaluator.evaluate(whereClause.getCondition(), context);</span>
+<span class="fc bfc" id="L265" title="All 2 branches covered.">                    if (Boolean.TRUE.equals(result)) {</span>
+<span class="fc" id="L266">                        rowsToUpdate.add(row);</span>
+                    }
+<span class="fc" id="L268">                }</span>
+            }
+            
+<span class="fc" id="L271">            int affectedRows = 0;</span>
+<span class="fc" id="L272">            List&lt;Column&gt; columns = table.getColumns();</span>
+<span class="fc" id="L273">            Map&lt;String, Integer&gt; columnIndexMap = new HashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L274" title="All 2 branches covered.">            for (int i = 0; i &lt; columns.size(); i++) {</span>
+<span class="fc" id="L275">                columnIndexMap.put(columns.get(i).getName().toLowerCase(), i);</span>
+            }
+            
+            // Update each matching row
+<span class="fc bfc" id="L279" title="All 2 branches covered.">            for (Row row : rowsToUpdate) {</span>
+<span class="fc" id="L280">                context.setCurrentRow(row);</span>
+<span class="fc" id="L281">                context.setCurrentTable(table);</span>
+                
+<span class="fc" id="L283">                Object[] newData = row.getData().clone();</span>
+                
+                // Apply updates
+<span class="fc bfc" id="L286" title="All 2 branches covered.">                for (UpdateStatement.UpdateItem updateItem : node.getUpdateItems()) {</span>
+<span class="fc" id="L287">                    String columnName = updateItem.getColumnName().toLowerCase();</span>
+<span class="fc" id="L288">                    Integer columnIndex = columnIndexMap.get(columnName);</span>
+<span class="pc bpc" id="L289" title="1 of 2 branches missed.">                    if (columnIndex == null) {</span>
+<span class="nc" id="L290">                        throw new SqlExecutionException(&quot;Column not found: &quot; + columnName);</span>
+                    }
+                    
+<span class="fc" id="L293">                    Object newValue = expressionEvaluator.evaluate(updateItem.getValue(), context);</span>
+<span class="fc" id="L294">                    Column column = columns.get(columnIndex);</span>
+                    
+                    // Convert and validate value
+<span class="fc" id="L297">                    newValue = column.getDataType().convertValue(newValue);</span>
+<span class="pc bpc" id="L298" title="1 of 2 branches missed.">                    if (!column.getDataType().isValidValue(newValue)) {</span>
+<span class="nc" id="L299">                        throw new SqlExecutionException(&quot;Invalid value for column &quot; + </span>
+                            columnName + &quot;: &quot; + newValue);
+                    }
+                    
+<span class="fc" id="L303">                    newData[columnIndex] = newValue;</span>
+<span class="fc" id="L304">                }</span>
+                
+                // Update the row
+<span class="fc" id="L307">                table.updateRow(row.getId(), newData);</span>
+<span class="fc" id="L308">                affectedRows++;</span>
+<span class="fc" id="L309">            }</span>
+            
+<span class="fc" id="L311">            logger.debug(&quot;UPDATE executed: {} rows updated in {}&quot;, affectedRows, tableName);</span>
+<span class="fc" id="L312">            return new SqlExecutionResult(SqlExecutionResult.ResultType.UPDATE, affectedRows);</span>
+            
+<span class="nc" id="L314">        } catch (Exception e) {</span>
+<span class="nc" id="L315">            throw new SqlExecutionException(&quot;Failed to execute UPDATE statement&quot;, e);</span>
+        }
+    }
+    
+    @Override
+    public SqlExecutionResult visitDeleteStatement(DeleteStatement node, ExecutionContext context) throws SqlExecutionException {
+        try {
+<span class="fc" id="L322">            String tableName = node.getTableName();</span>
+<span class="fc" id="L323">            Table table = engine.getTable(&quot;public&quot;, tableName);</span>
+<span class="pc bpc" id="L324" title="1 of 2 branches missed.">            if (table == null) {</span>
+<span class="nc" id="L325">                throw new SqlExecutionException(&quot;Table not found: &quot; + tableName);</span>
+            }
+            
+            // Get all rows and filter by WHERE clause if present
+<span class="fc" id="L329">            List&lt;Row&gt; allRows = table.getAllRows();</span>
+<span class="fc" id="L330">            List&lt;Row&gt; rowsToDelete = allRows;</span>
+            
+<span class="pc bpc" id="L332" title="1 of 2 branches missed.">            if (node.getWhereClause().isPresent()) {</span>
+<span class="fc" id="L333">                WhereClause whereClause = node.getWhereClause().get();</span>
+<span class="fc" id="L334">                rowsToDelete = new ArrayList&lt;&gt;();</span>
+                
+<span class="fc bfc" id="L336" title="All 2 branches covered.">                for (Row row : allRows) {</span>
+<span class="fc" id="L337">                    context.setCurrentRow(row);</span>
+<span class="fc" id="L338">                    context.setCurrentTable(table);</span>
+                    
+<span class="fc" id="L340">                    Object result = expressionEvaluator.evaluate(whereClause.getCondition(), context);</span>
+<span class="fc bfc" id="L341" title="All 2 branches covered.">                    if (Boolean.TRUE.equals(result)) {</span>
+<span class="fc" id="L342">                        rowsToDelete.add(row);</span>
+                    }
+<span class="fc" id="L344">                }</span>
+            }
+            
+<span class="fc" id="L347">            int affectedRows = 0;</span>
+            
+            // Delete matching rows
+<span class="fc bfc" id="L350" title="All 2 branches covered.">            for (Row row : rowsToDelete) {</span>
+<span class="pc bpc" id="L351" title="1 of 2 branches missed.">                if (table.deleteRow(row.getId())) {</span>
+<span class="fc" id="L352">                    affectedRows++;</span>
+                }
+<span class="fc" id="L354">            }</span>
+            
+<span class="fc" id="L356">            logger.debug(&quot;DELETE executed: {} rows deleted from {}&quot;, affectedRows, tableName);</span>
+<span class="fc" id="L357">            return new SqlExecutionResult(SqlExecutionResult.ResultType.DELETE, affectedRows);</span>
+            
+<span class="nc" id="L359">        } catch (Exception e) {</span>
+<span class="nc" id="L360">            throw new SqlExecutionException(&quot;Failed to execute DELETE statement&quot;, e);</span>
+        }
+    }
+    
+    @Override
+    public SqlExecutionResult visitCreateTableStatement(CreateTableStatement node, ExecutionContext context) throws SqlExecutionException {
+        try {
+<span class="fc" id="L367">            String tableName = node.getTableName();</span>
+            
+            // Build columns from column definitions
+<span class="fc" id="L370">            List&lt;Column&gt; columns = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L371" title="All 2 branches covered.">            for (ColumnDefinition colDef : node.getColumnDefinitions()) {</span>
+<span class="fc" id="L372">                String columnName = colDef.getColumnName();</span>
+<span class="fc" id="L373">                DataType dataType = colDef.getDataType().getDataType();</span>
+                
+                // Check constraints (simplified - only handling NOT NULL for now)
+<span class="pc bpc" id="L376" title="1 of 2 branches missed.">                boolean nullable = !colDef.getConstraints().contains(ColumnDefinition.Constraint.NOT_NULL);</span>
+                
+<span class="fc" id="L378">                columns.add(new Column.Builder()</span>
+<span class="fc" id="L379">                    .name(columnName)</span>
+<span class="fc" id="L380">                    .dataType(dataType)</span>
+<span class="fc" id="L381">                    .nullable(nullable)</span>
+<span class="fc" id="L382">                    .build());</span>
+<span class="fc" id="L383">            }</span>
+            
+            // Create table
+<span class="fc" id="L386">            Table table = new Table(tableName, columns);</span>
+<span class="fc" id="L387">            boolean created = engine.createTable(&quot;public&quot;, table);</span>
+            
+<span class="pc bpc" id="L389" title="1 of 2 branches missed.">            if (created) {</span>
+<span class="fc" id="L390">                logger.debug(&quot;CREATE TABLE executed: {} created&quot;, tableName);</span>
+<span class="fc" id="L391">                return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, </span>
+                    &quot;Table &quot; + tableName + &quot; created successfully&quot;);
+            } else {
+<span class="nc" id="L394">                return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, false, </span>
+                    &quot;Table &quot; + tableName + &quot; already exists&quot;);
+            }
+            
+<span class="nc" id="L398">        } catch (Exception e) {</span>
+<span class="nc" id="L399">            throw new SqlExecutionException(&quot;Failed to execute CREATE TABLE statement&quot;, e);</span>
+        }
+    }
+    
+    @Override
+    public SqlExecutionResult visitDropTableStatement(DropTableStatement node, ExecutionContext context) throws SqlExecutionException {
+        try {
+<span class="nc" id="L406">            String tableName = node.getTableName();</span>
+            
+            // For now, we don't have a direct dropTable method, so we'll simulate it
+<span class="nc" id="L409">            Table table = engine.getTable(&quot;public&quot;, tableName);</span>
+<span class="nc bnc" id="L410" title="All 2 branches missed.">            if (table == null) {</span>
+<span class="nc" id="L411">                return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, false, </span>
+                    &quot;Table &quot; + tableName + &quot; does not exist&quot;);
+            }
+            
+            // TODO: Implement actual table dropping in the engine
+<span class="nc" id="L416">            logger.debug(&quot;DROP TABLE executed: {} (simulated)&quot;, tableName);</span>
+<span class="nc" id="L417">            return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, </span>
+                &quot;Table &quot; + tableName + &quot; would be dropped (not implemented)&quot;);
+            
+<span class="nc" id="L420">        } catch (Exception e) {</span>
+<span class="nc" id="L421">            throw new SqlExecutionException(&quot;Failed to execute DROP TABLE statement&quot;, e);</span>
+        }
+    }
+    
+    /**
+     * Result of executing a FROM clause with potential joins.
+     */
+    private static class JoinResult {
+        final List&lt;Column&gt; columns;
+        final List&lt;Row&gt; rows;
+        
+<span class="fc" id="L432">        JoinResult(List&lt;Column&gt; columns, List&lt;Row&gt; rows) {</span>
+<span class="fc" id="L433">            this.columns = columns;</span>
+<span class="fc" id="L434">            this.rows = rows;</span>
+<span class="fc" id="L435">        }</span>
+    }
+    
+    /**
+     * Execute the FROM clause, handling both simple table references and joins.
+     */
+    private JoinResult executeFromClause(FromClause fromClause, ExecutionContext context) throws SqlExecutionException {
+<span class="fc" id="L442">        List&lt;JoinableTable&gt; joinableTables = fromClause.getJoinableTables();</span>
+        
+<span class="pc bpc" id="L444" title="1 of 2 branches missed.">        if (joinableTables.size() != 1) {</span>
+<span class="nc" id="L445">            throw new SqlExecutionException(&quot;Multi-table FROM clause not yet supported&quot;);</span>
+        }
+        
+<span class="fc" id="L448">        JoinableTable joinableTable = joinableTables.get(0);</span>
+        
+        // Get base table
+<span class="fc" id="L451">        TableReference baseTableRef = joinableTable.getBaseTable();</span>
+<span class="fc" id="L452">        String baseTableName = baseTableRef.getTableName();</span>
+<span class="fc" id="L453">        Table baseTable = engine.getTable(&quot;public&quot;, baseTableName);</span>
+<span class="fc bfc" id="L454" title="All 2 branches covered.">        if (baseTable == null) {</span>
+<span class="fc" id="L455">            throw new SqlExecutionException(&quot;Table not found: &quot; + baseTableName);</span>
+        }
+        
+        // Start with base table data
+<span class="fc" id="L459">        List&lt;Column&gt; resultColumns = new ArrayList&lt;&gt;(baseTable.getColumns());</span>
+<span class="fc" id="L460">        List&lt;Row&gt; resultRows = baseTable.getAllRows();</span>
+        
+        // Apply joins if present
+<span class="fc bfc" id="L463" title="All 2 branches covered.">        if (joinableTable.hasJoins()) {</span>
+<span class="fc bfc" id="L464" title="All 2 branches covered.">            for (JoinClause joinClause : joinableTable.getJoins()) {</span>
+<span class="fc" id="L465">                JoinResult joinResult = executeJoin(resultColumns, resultRows, joinClause, context);</span>
+<span class="fc" id="L466">                resultColumns = joinResult.columns;</span>
+<span class="fc" id="L467">                resultRows = joinResult.rows;</span>
+<span class="fc" id="L468">            }</span>
+        }
+        
+<span class="fc" id="L471">        return new JoinResult(resultColumns, resultRows);</span>
+    }
+    
+    /**
+     * Execute a single join operation with optimization.
+     */
+    private JoinResult executeJoin(List&lt;Column&gt; leftColumns, List&lt;Row&gt; leftRows, 
+                                  JoinClause joinClause, ExecutionContext context) throws SqlExecutionException {
+        
+        // Get right table
+<span class="fc" id="L481">        TableReference rightTableRef = joinClause.getTable();</span>
+<span class="fc" id="L482">        String rightTableName = rightTableRef.getTableName();</span>
+<span class="fc" id="L483">        Table rightTable = engine.getTable(&quot;public&quot;, rightTableName);</span>
+<span class="fc bfc" id="L484" title="All 2 branches covered.">        if (rightTable == null) {</span>
+<span class="fc" id="L485">            throw new SqlExecutionException(&quot;Table not found: &quot; + rightTableName);</span>
+        }
+        
+<span class="fc" id="L488">        List&lt;Row&gt; rightRows = rightTable.getAllRows();</span>
+<span class="fc" id="L489">        List&lt;Column&gt; rightColumns = rightTable.getColumns();</span>
+        
+        // Combine column schemas
+<span class="fc" id="L492">        List&lt;Column&gt; combinedColumns = new ArrayList&lt;&gt;(leftColumns);</span>
+<span class="fc" id="L493">        combinedColumns.addAll(rightColumns);</span>
+        
+<span class="fc" id="L495">        List&lt;Row&gt; joinedRows = new ArrayList&lt;&gt;();</span>
+        
+        // Choose optimal join algorithm based on conditions and data size
+<span class="fc" id="L498">        JoinAlgorithm algorithm = chooseOptimalJoinAlgorithm(</span>
+<span class="fc" id="L499">            leftRows, rightRows, leftColumns, rightColumns, joinClause.getOnCondition()</span>
+        );
+        
+<span class="fc" id="L502">        logger.debug(&quot;Using {} algorithm for {} join between {} and {} rows&quot;, </span>
+<span class="fc" id="L503">                    algorithm, joinClause.getJoinType(), leftRows.size(), rightRows.size());</span>
+        
+        // Execute join based on join type and chosen algorithm
+<span class="pc bpc" id="L506" title="1 of 5 branches missed.">        switch (joinClause.getJoinType()) {</span>
+            case INNER:
+<span class="fc" id="L508">                executeInnerJoinOptimized(leftRows, rightRows, leftColumns, rightColumns, </span>
+<span class="fc" id="L509">                                        joinClause.getOnCondition(), combinedColumns, joinedRows, context, algorithm);</span>
+<span class="fc" id="L510">                break;</span>
+            case LEFT:
+<span class="fc" id="L512">                executeLeftOuterJoinOptimized(leftRows, rightRows, leftColumns, rightColumns, </span>
+<span class="fc" id="L513">                                            joinClause.getOnCondition(), combinedColumns, joinedRows, context, algorithm);</span>
+<span class="fc" id="L514">                break;</span>
+            case RIGHT:
+<span class="fc" id="L516">                executeRightOuterJoinOptimized(leftRows, rightRows, leftColumns, rightColumns, </span>
+<span class="fc" id="L517">                                             joinClause.getOnCondition(), combinedColumns, joinedRows, context, algorithm);</span>
+<span class="fc" id="L518">                break;</span>
+            case FULL_OUTER:
+<span class="fc" id="L520">                executeFullOuterJoinOptimized(leftRows, rightRows, leftColumns, rightColumns, </span>
+<span class="fc" id="L521">                                            joinClause.getOnCondition(), combinedColumns, joinedRows, context, algorithm);</span>
+<span class="fc" id="L522">                break;</span>
+            default:
+<span class="nc" id="L524">                throw new SqlExecutionException(&quot;Unsupported join type: &quot; + joinClause.getJoinType());</span>
+        }
+        
+<span class="fc" id="L527">        return new JoinResult(combinedColumns, joinedRows);</span>
+    }
+    
+    /**
+     * Available JOIN algorithms for optimization.
+     */
+<span class="fc" id="L533">    private enum JoinAlgorithm {</span>
+<span class="fc" id="L534">        NESTED_LOOP,  // Original O(n*m) algorithm</span>
+<span class="fc" id="L535">        HASH_JOIN,    // Hash-based join for equi-joins</span>
+<span class="fc" id="L536">        SORT_MERGE    // Sort-merge join (future enhancement)</span>
+    }
+    
+    /**
+     * Choose optimal join algorithm based on data characteristics.
+     */
+    private JoinAlgorithm chooseOptimalJoinAlgorithm(List&lt;Row&gt; leftRows, List&lt;Row&gt; rightRows, 
+                                                   List&lt;Column&gt; leftColumns, List&lt;Column&gt; rightColumns,
+                                                   Optional&lt;Expression&gt; joinCondition) {
+        
+<span class="fc" id="L546">        int leftSize = leftRows.size();</span>
+<span class="fc" id="L547">        int rightSize = rightRows.size();</span>
+        
+        // For small datasets (&lt; 100 rows each), nested loop is efficient due to simplicity
+<span class="pc bpc" id="L550" title="2 of 4 branches missed.">        if (leftSize &lt; 100 &amp;&amp; rightSize &lt; 100) {</span>
+<span class="fc" id="L551">            return JoinAlgorithm.NESTED_LOOP;</span>
+        }
+        
+        // If we have a simple equi-join condition, prefer hash join for larger datasets
+<span class="nc bnc" id="L555" title="All 4 branches missed.">        if (joinCondition.isPresent() &amp;&amp; isSimpleEquiJoin(joinCondition.get(), leftColumns, rightColumns)) {</span>
+            // Hash join is particularly effective when one table is much smaller
+<span class="nc bnc" id="L557" title="All 2 branches missed.">            if (Math.min(leftSize, rightSize) &lt; Math.max(leftSize, rightSize) / 3) {</span>
+<span class="nc" id="L558">                return JoinAlgorithm.HASH_JOIN;</span>
+            }
+            // Also prefer hash join for medium-to-large datasets
+<span class="nc bnc" id="L561" title="All 4 branches missed.">            if (leftSize &gt; 50 || rightSize &gt; 50) {</span>
+<span class="nc" id="L562">                return JoinAlgorithm.HASH_JOIN;</span>
+            }
+        }
+        
+        // Default to nested loop for complex conditions or small datasets
+<span class="nc" id="L567">        return JoinAlgorithm.NESTED_LOOP;</span>
+    }
+    
+    /**
+     * Check if the join condition is a simple equi-join (col1 = col2).
+     */
+    private boolean isSimpleEquiJoin(Expression condition, List&lt;Column&gt; leftColumns, List&lt;Column&gt; rightColumns) {
+<span class="nc bnc" id="L574" title="All 2 branches missed.">        if (!(condition instanceof BinaryExpression)) {</span>
+<span class="nc" id="L575">            return false;</span>
+        }
+        
+<span class="nc" id="L578">        BinaryExpression binary = (BinaryExpression) condition;</span>
+<span class="nc bnc" id="L579" title="All 2 branches missed.">        if (!&quot;=&quot;.equals(binary.getOperator())) {</span>
+<span class="nc" id="L580">            return false;</span>
+        }
+        
+        // Check if both sides are simple column references
+<span class="nc bnc" id="L584" title="All 2 branches missed.">        return (binary.getLeft() instanceof ColumnReference) &amp;&amp; </span>
+<span class="nc bnc" id="L585" title="All 2 branches missed.">               (binary.getRight() instanceof ColumnReference);</span>
+    }
+    
+    /**
+     * Execute INNER JOIN operation with optimization.
+     */
+    private void executeInnerJoinOptimized(List&lt;Row&gt; leftRows, List&lt;Row&gt; rightRows,
+                                         List&lt;Column&gt; leftColumns, List&lt;Column&gt; rightColumns,
+                                         Optional&lt;Expression&gt; onCondition, List&lt;Column&gt; combinedColumns,
+                                         List&lt;Row&gt; result, ExecutionContext context, JoinAlgorithm algorithm) throws SqlExecutionException {
+        
+<span class="pc bpc" id="L596" title="1 of 2 branches missed.">        switch (algorithm) {</span>
+            case HASH_JOIN:
+<span class="nc" id="L598">                executeHashInnerJoin(leftRows, rightRows, leftColumns, rightColumns, </span>
+                                   onCondition, combinedColumns, result, context);
+<span class="nc" id="L600">                break;</span>
+            case NESTED_LOOP:
+            default:
+<span class="fc" id="L603">                executeNestedLoopInnerJoin(leftRows, rightRows, leftColumns, rightColumns, </span>
+                                         onCondition, combinedColumns, result, context);
+                break;
+        }
+<span class="fc" id="L607">    }</span>
+    
+    /**
+     * Execute INNER JOIN using nested loop algorithm.
+     */
+    private void executeNestedLoopInnerJoin(List&lt;Row&gt; leftRows, List&lt;Row&gt; rightRows,
+                                          List&lt;Column&gt; leftColumns, List&lt;Column&gt; rightColumns,
+                                          Optional&lt;Expression&gt; onCondition, List&lt;Column&gt; combinedColumns,
+                                          List&lt;Row&gt; result, ExecutionContext context) throws SqlExecutionException {
+        
+<span class="fc bfc" id="L617" title="All 2 branches covered.">        for (Row leftRow : leftRows) {</span>
+<span class="fc bfc" id="L618" title="All 2 branches covered.">            for (Row rightRow : rightRows) {</span>
+<span class="fc bfc" id="L619" title="All 2 branches covered.">                if (evaluateJoinCondition(leftRow, rightRow, leftColumns, rightColumns, </span>
+                                        onCondition, combinedColumns, context)) {
+<span class="fc" id="L621">                    Row joinedRow = combineRows(leftRow, rightRow);</span>
+<span class="fc" id="L622">                    result.add(joinedRow);</span>
+                }
+<span class="fc" id="L624">            }</span>
+<span class="fc" id="L625">        }</span>
+<span class="fc" id="L626">    }</span>
+    
+    /**
+     * Execute INNER JOIN using hash join algorithm for equi-joins.
+     */
+    private void executeHashInnerJoin(List&lt;Row&gt; leftRows, List&lt;Row&gt; rightRows,
+                                    List&lt;Column&gt; leftColumns, List&lt;Column&gt; rightColumns,
+                                    Optional&lt;Expression&gt; onCondition, List&lt;Column&gt; combinedColumns,
+                                    List&lt;Row&gt; result, ExecutionContext context) throws SqlExecutionException {
+        
+<span class="nc bnc" id="L636" title="All 2 branches missed.">        if (!onCondition.isPresent()) {</span>
+            // Fall back to nested loop for cross joins
+<span class="nc" id="L638">            executeNestedLoopInnerJoin(leftRows, rightRows, leftColumns, rightColumns, </span>
+                                     onCondition, combinedColumns, result, context);
+<span class="nc" id="L640">            return;</span>
+        }
+        
+        // Extract join keys from the equi-join condition
+<span class="nc" id="L644">        JoinKeys joinKeys = extractJoinKeys(onCondition.get(), leftColumns, rightColumns);</span>
+<span class="nc bnc" id="L645" title="All 2 branches missed.">        if (joinKeys == null) {</span>
+            // Fall back to nested loop for complex conditions
+<span class="nc" id="L647">            executeNestedLoopInnerJoin(leftRows, rightRows, leftColumns, rightColumns, </span>
+                                     onCondition, combinedColumns, result, context);
+<span class="nc" id="L649">            return;</span>
+        }
+        
+        // Choose smaller table for building hash table
+        List&lt;Row&gt; buildRows;
+        List&lt;Row&gt; probeRows;
+        int buildKeyIndex;
+        int probeKeyIndex;
+        boolean leftIsBuild;
+        
+<span class="nc bnc" id="L659" title="All 2 branches missed.">        if (leftRows.size() &lt;= rightRows.size()) {</span>
+<span class="nc" id="L660">            buildRows = leftRows;</span>
+<span class="nc" id="L661">            probeRows = rightRows;</span>
+<span class="nc" id="L662">            buildKeyIndex = joinKeys.leftKeyIndex;</span>
+<span class="nc" id="L663">            probeKeyIndex = joinKeys.rightKeyIndex;</span>
+<span class="nc" id="L664">            leftIsBuild = true;</span>
+        } else {
+<span class="nc" id="L666">            buildRows = rightRows;</span>
+<span class="nc" id="L667">            probeRows = leftRows;</span>
+<span class="nc" id="L668">            buildKeyIndex = joinKeys.rightKeyIndex;</span>
+<span class="nc" id="L669">            probeKeyIndex = joinKeys.leftKeyIndex;</span>
+<span class="nc" id="L670">            leftIsBuild = false;</span>
+        }
+        
+        // Build phase: create hash table
+<span class="nc" id="L674">        Map&lt;Object, List&lt;Row&gt;&gt; hashTable = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L675" title="All 2 branches missed.">        for (Row buildRow : buildRows) {</span>
+<span class="nc" id="L676">            Object key = buildRow.getData()[buildKeyIndex];</span>
+<span class="nc bnc" id="L677" title="All 2 branches missed.">            if (key != null) { // Skip null keys</span>
+<span class="nc" id="L678">                hashTable.computeIfAbsent(key, k -&gt; new ArrayList&lt;&gt;()).add(buildRow);</span>
+            }
+<span class="nc" id="L680">        }</span>
+        
+        // Probe phase: lookup and join
+<span class="nc bnc" id="L683" title="All 2 branches missed.">        for (Row probeRow : probeRows) {</span>
+<span class="nc" id="L684">            Object key = probeRow.getData()[probeKeyIndex];</span>
+<span class="nc bnc" id="L685" title="All 2 branches missed.">            if (key != null) {</span>
+<span class="nc" id="L686">                List&lt;Row&gt; matchingRows = hashTable.get(key);</span>
+<span class="nc bnc" id="L687" title="All 2 branches missed.">                if (matchingRows != null) {</span>
+<span class="nc bnc" id="L688" title="All 2 branches missed.">                    for (Row matchingRow : matchingRows) {</span>
+<span class="nc bnc" id="L689" title="All 2 branches missed.">                        Row joinedRow = leftIsBuild ? </span>
+<span class="nc" id="L690">                            combineRows(matchingRow, probeRow) :</span>
+<span class="nc" id="L691">                            combineRows(probeRow, matchingRow);</span>
+<span class="nc" id="L692">                        result.add(joinedRow);</span>
+<span class="nc" id="L693">                    }</span>
+                }
+            }
+<span class="nc" id="L696">        }</span>
+<span class="nc" id="L697">    }</span>
+    
+    /**
+     * Helper class to hold join key information.
+     */
+    private static class JoinKeys {
+        final int leftKeyIndex;
+        final int rightKeyIndex;
+        
+<span class="nc" id="L706">        JoinKeys(int leftKeyIndex, int rightKeyIndex) {</span>
+<span class="nc" id="L707">            this.leftKeyIndex = leftKeyIndex;</span>
+<span class="nc" id="L708">            this.rightKeyIndex = rightKeyIndex;</span>
+<span class="nc" id="L709">        }</span>
+    }
+    
+    /**
+     * Extract join keys from equi-join condition.
+     */
+    private JoinKeys extractJoinKeys(Expression condition, List&lt;Column&gt; leftColumns, List&lt;Column&gt; rightColumns) {
+<span class="nc bnc" id="L716" title="All 2 branches missed.">        if (!(condition instanceof BinaryExpression)) {</span>
+<span class="nc" id="L717">            return null;</span>
+        }
+        
+<span class="nc" id="L720">        BinaryExpression binary = (BinaryExpression) condition;</span>
+<span class="nc bnc" id="L721" title="All 2 branches missed.">        if (!&quot;=&quot;.equals(binary.getOperator())) {</span>
+<span class="nc" id="L722">            return null;</span>
+        }
+        
+<span class="nc" id="L725">        Expression left = binary.getLeft();</span>
+<span class="nc" id="L726">        Expression right = binary.getRight();</span>
+        
+<span class="nc bnc" id="L728" title="All 4 branches missed.">        if (!(left instanceof ColumnReference) || !(right instanceof ColumnReference)) {</span>
+<span class="nc" id="L729">            return null;</span>
+        }
+        
+<span class="nc" id="L732">        ColumnReference leftCol = (ColumnReference) left;</span>
+<span class="nc" id="L733">        ColumnReference rightCol = (ColumnReference) right;</span>
+        
+        // Find column indexes
+<span class="nc" id="L736">        Integer leftIndex = findColumnIndex(leftCol.getColumnName(), leftColumns);</span>
+<span class="nc" id="L737">        Integer rightIndex = findColumnIndex(rightCol.getColumnName(), rightColumns);</span>
+        
+<span class="nc bnc" id="L739" title="All 4 branches missed.">        if (leftIndex != null &amp;&amp; rightIndex != null) {</span>
+<span class="nc" id="L740">            return new JoinKeys(leftIndex, rightIndex + leftColumns.size());</span>
+        }
+        
+        // Try the reverse (right column might be from left table)
+<span class="nc" id="L744">        rightIndex = findColumnIndex(leftCol.getColumnName(), rightColumns);</span>
+<span class="nc" id="L745">        leftIndex = findColumnIndex(rightCol.getColumnName(), leftColumns);</span>
+        
+<span class="nc bnc" id="L747" title="All 4 branches missed.">        if (leftIndex != null &amp;&amp; rightIndex != null) {</span>
+<span class="nc" id="L748">            return new JoinKeys(leftIndex, rightIndex + leftColumns.size());</span>
+        }
+        
+<span class="nc" id="L751">        return null;</span>
+    }
+    
+    /**
+     * Find column index by name.
+     */
+    private Integer findColumnIndex(String columnName, List&lt;Column&gt; columns) {
+<span class="nc bnc" id="L758" title="All 2 branches missed.">        for (int i = 0; i &lt; columns.size(); i++) {</span>
+<span class="nc bnc" id="L759" title="All 2 branches missed.">            if (columns.get(i).getName().equalsIgnoreCase(columnName)) {</span>
+<span class="nc" id="L760">                return i;</span>
+            }
+        }
+<span class="nc" id="L763">        return null;</span>
+    }
+    
+    /**
+     * Execute LEFT OUTER JOIN operation with optimization.
+     */
+    private void executeLeftOuterJoinOptimized(List&lt;Row&gt; leftRows, List&lt;Row&gt; rightRows,
+                                             List&lt;Column&gt; leftColumns, List&lt;Column&gt; rightColumns,
+                                             Optional&lt;Expression&gt; onCondition, List&lt;Column&gt; combinedColumns,
+                                             List&lt;Row&gt; result, ExecutionContext context, JoinAlgorithm algorithm) throws SqlExecutionException {
+        
+<span class="pc bpc" id="L774" title="1 of 2 branches missed.">        switch (algorithm) {</span>
+            case HASH_JOIN:
+<span class="nc" id="L776">                executeHashLeftOuterJoin(leftRows, rightRows, leftColumns, rightColumns, </span>
+                                       onCondition, combinedColumns, result, context);
+<span class="nc" id="L778">                break;</span>
+            case NESTED_LOOP:
+            default:
+<span class="fc" id="L781">                executeNestedLoopLeftOuterJoin(leftRows, rightRows, leftColumns, rightColumns, </span>
+                                             onCondition, combinedColumns, result, context);
+                break;
+        }
+<span class="fc" id="L785">    }</span>
+    
+    /**
+     * Execute LEFT OUTER JOIN using nested loop algorithm.
+     */
+    private void executeNestedLoopLeftOuterJoin(List&lt;Row&gt; leftRows, List&lt;Row&gt; rightRows,
+                                              List&lt;Column&gt; leftColumns, List&lt;Column&gt; rightColumns,
+                                              Optional&lt;Expression&gt; onCondition, List&lt;Column&gt; combinedColumns,
+                                              List&lt;Row&gt; result, ExecutionContext context) throws SqlExecutionException {
+        
+<span class="fc bfc" id="L795" title="All 2 branches covered.">        for (Row leftRow : leftRows) {</span>
+<span class="fc" id="L796">            boolean hasMatch = false;</span>
+            
+<span class="fc bfc" id="L798" title="All 2 branches covered.">            for (Row rightRow : rightRows) {</span>
+<span class="fc bfc" id="L799" title="All 2 branches covered.">                if (evaluateJoinCondition(leftRow, rightRow, leftColumns, rightColumns, </span>
+                                        onCondition, combinedColumns, context)) {
+<span class="fc" id="L801">                    Row joinedRow = combineRows(leftRow, rightRow);</span>
+<span class="fc" id="L802">                    result.add(joinedRow);</span>
+<span class="fc" id="L803">                    hasMatch = true;</span>
+                }
+<span class="fc" id="L805">            }</span>
+            
+            // If no match found, add left row with nulls for right columns
+<span class="fc bfc" id="L808" title="All 2 branches covered.">            if (!hasMatch) {</span>
+<span class="fc" id="L809">                Row nullRightRow = createNullRow(rightColumns.size());</span>
+<span class="fc" id="L810">                Row joinedRow = combineRows(leftRow, nullRightRow);</span>
+<span class="fc" id="L811">                result.add(joinedRow);</span>
+            }
+<span class="fc" id="L813">        }</span>
+<span class="fc" id="L814">    }</span>
+    
+    /**
+     * Execute LEFT OUTER JOIN using hash join algorithm for equi-joins.
+     */
+    private void executeHashLeftOuterJoin(List&lt;Row&gt; leftRows, List&lt;Row&gt; rightRows,
+                                        List&lt;Column&gt; leftColumns, List&lt;Column&gt; rightColumns,
+                                        Optional&lt;Expression&gt; onCondition, List&lt;Column&gt; combinedColumns,
+                                        List&lt;Row&gt; result, ExecutionContext context) throws SqlExecutionException {
+        
+<span class="nc bnc" id="L824" title="All 2 branches missed.">        if (!onCondition.isPresent()) {</span>
+            // Fall back to nested loop for cross joins
+<span class="nc" id="L826">            executeNestedLoopLeftOuterJoin(leftRows, rightRows, leftColumns, rightColumns, </span>
+                                         onCondition, combinedColumns, result, context);
+<span class="nc" id="L828">            return;</span>
+        }
+        
+        // Extract join keys from the equi-join condition
+<span class="nc" id="L832">        JoinKeys joinKeys = extractJoinKeys(onCondition.get(), leftColumns, rightColumns);</span>
+<span class="nc bnc" id="L833" title="All 2 branches missed.">        if (joinKeys == null) {</span>
+            // Fall back to nested loop for complex conditions
+<span class="nc" id="L835">            executeNestedLoopLeftOuterJoin(leftRows, rightRows, leftColumns, rightColumns, </span>
+                                         onCondition, combinedColumns, result, context);
+<span class="nc" id="L837">            return;</span>
+        }
+        
+        // Build hash table from right table (probe side)
+<span class="nc" id="L841">        Map&lt;Object, List&lt;Row&gt;&gt; hashTable = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L842" title="All 2 branches missed.">        for (Row rightRow : rightRows) {</span>
+<span class="nc" id="L843">            Object key = rightRow.getData()[joinKeys.rightKeyIndex];</span>
+<span class="nc bnc" id="L844" title="All 2 branches missed.">            if (key != null) { // Skip null keys</span>
+<span class="nc" id="L845">                hashTable.computeIfAbsent(key, k -&gt; new ArrayList&lt;&gt;()).add(rightRow);</span>
+            }
+<span class="nc" id="L847">        }</span>
+        
+        // Probe with left table and preserve all left rows
+<span class="nc bnc" id="L850" title="All 2 branches missed.">        for (Row leftRow : leftRows) {</span>
+<span class="nc" id="L851">            Object key = leftRow.getData()[joinKeys.leftKeyIndex];</span>
+<span class="nc bnc" id="L852" title="All 2 branches missed.">            List&lt;Row&gt; matchingRows = (key != null) ? hashTable.get(key) : null;</span>
+            
+<span class="nc bnc" id="L854" title="All 4 branches missed.">            if (matchingRows != null &amp;&amp; !matchingRows.isEmpty()) {</span>
+                // Found matches, add all combinations
+<span class="nc bnc" id="L856" title="All 2 branches missed.">                for (Row rightRow : matchingRows) {</span>
+<span class="nc" id="L857">                    Row joinedRow = combineRows(leftRow, rightRow);</span>
+<span class="nc" id="L858">                    result.add(joinedRow);</span>
+<span class="nc" id="L859">                }</span>
+            } else {
+                // No match found, add left row with nulls for right columns
+<span class="nc" id="L862">                Row nullRightRow = createNullRow(rightColumns.size());</span>
+<span class="nc" id="L863">                Row joinedRow = combineRows(leftRow, nullRightRow);</span>
+<span class="nc" id="L864">                result.add(joinedRow);</span>
+            }
+<span class="nc" id="L866">        }</span>
+<span class="nc" id="L867">    }</span>
+    
+    /**
+     * Execute RIGHT OUTER JOIN operation with optimization.
+     */
+    private void executeRightOuterJoinOptimized(List&lt;Row&gt; leftRows, List&lt;Row&gt; rightRows,
+                                               List&lt;Column&gt; leftColumns, List&lt;Column&gt; rightColumns,
+                                               Optional&lt;Expression&gt; onCondition, List&lt;Column&gt; combinedColumns,
+                                               List&lt;Row&gt; result, ExecutionContext context, JoinAlgorithm algorithm) throws SqlExecutionException {
+        
+<span class="pc bpc" id="L877" title="1 of 2 branches missed.">        switch (algorithm) {</span>
+            case HASH_JOIN:
+<span class="nc" id="L879">                executeHashRightOuterJoin(leftRows, rightRows, leftColumns, rightColumns, </span>
+                                        onCondition, combinedColumns, result, context);
+<span class="nc" id="L881">                break;</span>
+            case NESTED_LOOP:
+            default:
+<span class="fc" id="L884">                executeNestedLoopRightOuterJoin(leftRows, rightRows, leftColumns, rightColumns, </span>
+                                              onCondition, combinedColumns, result, context);
+                break;
+        }
+<span class="fc" id="L888">    }</span>
+    
+    /**
+     * Execute RIGHT OUTER JOIN using nested loop algorithm.
+     */
+    private void executeNestedLoopRightOuterJoin(List&lt;Row&gt; leftRows, List&lt;Row&gt; rightRows,
+                                                List&lt;Column&gt; leftColumns, List&lt;Column&gt; rightColumns,
+                                                Optional&lt;Expression&gt; onCondition, List&lt;Column&gt; combinedColumns,
+                                                List&lt;Row&gt; result, ExecutionContext context) throws SqlExecutionException {
+        
+<span class="fc bfc" id="L898" title="All 2 branches covered.">        for (Row rightRow : rightRows) {</span>
+<span class="fc" id="L899">            boolean hasMatch = false;</span>
+            
+<span class="fc bfc" id="L901" title="All 2 branches covered.">            for (Row leftRow : leftRows) {</span>
+<span class="fc bfc" id="L902" title="All 2 branches covered.">                if (evaluateJoinCondition(leftRow, rightRow, leftColumns, rightColumns, </span>
+                                        onCondition, combinedColumns, context)) {
+<span class="fc" id="L904">                    Row joinedRow = combineRows(leftRow, rightRow);</span>
+<span class="fc" id="L905">                    result.add(joinedRow);</span>
+<span class="fc" id="L906">                    hasMatch = true;</span>
+                }
+<span class="fc" id="L908">            }</span>
+            
+            // If no match found, add right row with nulls for left columns
+<span class="fc bfc" id="L911" title="All 2 branches covered.">            if (!hasMatch) {</span>
+<span class="fc" id="L912">                Row nullLeftRow = createNullRow(leftColumns.size());</span>
+<span class="fc" id="L913">                Row joinedRow = combineRows(nullLeftRow, rightRow);</span>
+<span class="fc" id="L914">                result.add(joinedRow);</span>
+            }
+<span class="fc" id="L916">        }</span>
+<span class="fc" id="L917">    }</span>
+    
+    /**
+     * Execute RIGHT OUTER JOIN using hash join algorithm for equi-joins.
+     */
+    private void executeHashRightOuterJoin(List&lt;Row&gt; leftRows, List&lt;Row&gt; rightRows,
+                                         List&lt;Column&gt; leftColumns, List&lt;Column&gt; rightColumns,
+                                         Optional&lt;Expression&gt; onCondition, List&lt;Column&gt; combinedColumns,
+                                         List&lt;Row&gt; result, ExecutionContext context) throws SqlExecutionException {
+        
+<span class="nc bnc" id="L927" title="All 2 branches missed.">        if (!onCondition.isPresent()) {</span>
+            // Fall back to nested loop for cross joins
+<span class="nc" id="L929">            executeNestedLoopRightOuterJoin(leftRows, rightRows, leftColumns, rightColumns, </span>
+                                          onCondition, combinedColumns, result, context);
+<span class="nc" id="L931">            return;</span>
+        }
+        
+        // Extract join keys from the equi-join condition
+<span class="nc" id="L935">        JoinKeys joinKeys = extractJoinKeys(onCondition.get(), leftColumns, rightColumns);</span>
+<span class="nc bnc" id="L936" title="All 2 branches missed.">        if (joinKeys == null) {</span>
+            // Fall back to nested loop for complex conditions
+<span class="nc" id="L938">            executeNestedLoopRightOuterJoin(leftRows, rightRows, leftColumns, rightColumns, </span>
+                                          onCondition, combinedColumns, result, context);
+<span class="nc" id="L940">            return;</span>
+        }
+        
+        // Build hash table from left table
+<span class="nc" id="L944">        Map&lt;Object, List&lt;Row&gt;&gt; hashTable = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L945" title="All 2 branches missed.">        for (Row leftRow : leftRows) {</span>
+<span class="nc" id="L946">            Object key = leftRow.getData()[joinKeys.leftKeyIndex];</span>
+<span class="nc bnc" id="L947" title="All 2 branches missed.">            if (key != null) { // Skip null keys</span>
+<span class="nc" id="L948">                hashTable.computeIfAbsent(key, k -&gt; new ArrayList&lt;&gt;()).add(leftRow);</span>
+            }
+<span class="nc" id="L950">        }</span>
+        
+        // Probe with right table and preserve all right rows
+<span class="nc bnc" id="L953" title="All 2 branches missed.">        for (Row rightRow : rightRows) {</span>
+<span class="nc" id="L954">            Object key = rightRow.getData()[joinKeys.rightKeyIndex];</span>
+<span class="nc bnc" id="L955" title="All 2 branches missed.">            List&lt;Row&gt; matchingRows = (key != null) ? hashTable.get(key) : null;</span>
+            
+<span class="nc bnc" id="L957" title="All 4 branches missed.">            if (matchingRows != null &amp;&amp; !matchingRows.isEmpty()) {</span>
+                // Found matches, add all combinations
+<span class="nc bnc" id="L959" title="All 2 branches missed.">                for (Row leftRow : matchingRows) {</span>
+<span class="nc" id="L960">                    Row joinedRow = combineRows(leftRow, rightRow);</span>
+<span class="nc" id="L961">                    result.add(joinedRow);</span>
+<span class="nc" id="L962">                }</span>
+            } else {
+                // No match found, add right row with nulls for left columns
+<span class="nc" id="L965">                Row nullLeftRow = createNullRow(leftColumns.size());</span>
+<span class="nc" id="L966">                Row joinedRow = combineRows(nullLeftRow, rightRow);</span>
+<span class="nc" id="L967">                result.add(joinedRow);</span>
+            }
+<span class="nc" id="L969">        }</span>
+<span class="nc" id="L970">    }</span>
+    
+    /**
+     * Execute FULL OUTER JOIN operation with optimization.
+     */
+    private void executeFullOuterJoinOptimized(List&lt;Row&gt; leftRows, List&lt;Row&gt; rightRows,
+                                              List&lt;Column&gt; leftColumns, List&lt;Column&gt; rightColumns,
+                                              Optional&lt;Expression&gt; onCondition, List&lt;Column&gt; combinedColumns,
+                                              List&lt;Row&gt; result, ExecutionContext context, JoinAlgorithm algorithm) throws SqlExecutionException {
+        
+<span class="pc bpc" id="L980" title="1 of 2 branches missed.">        switch (algorithm) {</span>
+            case HASH_JOIN:
+<span class="nc" id="L982">                executeHashFullOuterJoin(leftRows, rightRows, leftColumns, rightColumns, </span>
+                                       onCondition, combinedColumns, result, context);
+<span class="nc" id="L984">                break;</span>
+            case NESTED_LOOP:
+            default:
+<span class="fc" id="L987">                executeNestedLoopFullOuterJoin(leftRows, rightRows, leftColumns, rightColumns, </span>
+                                             onCondition, combinedColumns, result, context);
+                break;
+        }
+<span class="fc" id="L991">    }</span>
+    
+    /**
+     * Execute FULL OUTER JOIN using nested loop algorithm.
+     */
+    private void executeNestedLoopFullOuterJoin(List&lt;Row&gt; leftRows, List&lt;Row&gt; rightRows,
+                                               List&lt;Column&gt; leftColumns, List&lt;Column&gt; rightColumns,
+                                               Optional&lt;Expression&gt; onCondition, List&lt;Column&gt; combinedColumns,
+                                               List&lt;Row&gt; result, ExecutionContext context) throws SqlExecutionException {
+        
+<span class="fc" id="L1001">        Set&lt;Row&gt; matchedRightRows = new HashSet&lt;&gt;();</span>
+        
+        // First pass: find all matches and left outer join
+<span class="fc bfc" id="L1004" title="All 2 branches covered.">        for (Row leftRow : leftRows) {</span>
+<span class="fc" id="L1005">            boolean hasMatch = false;</span>
+            
+<span class="fc bfc" id="L1007" title="All 2 branches covered.">            for (Row rightRow : rightRows) {</span>
+<span class="fc bfc" id="L1008" title="All 2 branches covered.">                if (evaluateJoinCondition(leftRow, rightRow, leftColumns, rightColumns, </span>
+                                        onCondition, combinedColumns, context)) {
+<span class="fc" id="L1010">                    Row joinedRow = combineRows(leftRow, rightRow);</span>
+<span class="fc" id="L1011">                    result.add(joinedRow);</span>
+<span class="fc" id="L1012">                    matchedRightRows.add(rightRow);</span>
+<span class="fc" id="L1013">                    hasMatch = true;</span>
+                }
+<span class="fc" id="L1015">            }</span>
+            
+            // If no match found, add left row with nulls for right columns
+<span class="fc bfc" id="L1018" title="All 2 branches covered.">            if (!hasMatch) {</span>
+<span class="fc" id="L1019">                Row nullRightRow = createNullRow(rightColumns.size());</span>
+<span class="fc" id="L1020">                Row joinedRow = combineRows(leftRow, nullRightRow);</span>
+<span class="fc" id="L1021">                result.add(joinedRow);</span>
+            }
+<span class="fc" id="L1023">        }</span>
+        
+        // Second pass: add unmatched right rows
+<span class="fc bfc" id="L1026" title="All 2 branches covered.">        for (Row rightRow : rightRows) {</span>
+<span class="fc bfc" id="L1027" title="All 2 branches covered.">            if (!matchedRightRows.contains(rightRow)) {</span>
+<span class="fc" id="L1028">                Row nullLeftRow = createNullRow(leftColumns.size());</span>
+<span class="fc" id="L1029">                Row joinedRow = combineRows(nullLeftRow, rightRow);</span>
+<span class="fc" id="L1030">                result.add(joinedRow);</span>
+            }
+<span class="fc" id="L1032">        }</span>
+<span class="fc" id="L1033">    }</span>
+    
+    /**
+     * Execute FULL OUTER JOIN using hash join algorithm for equi-joins.
+     */
+    private void executeHashFullOuterJoin(List&lt;Row&gt; leftRows, List&lt;Row&gt; rightRows,
+                                        List&lt;Column&gt; leftColumns, List&lt;Column&gt; rightColumns,
+                                        Optional&lt;Expression&gt; onCondition, List&lt;Column&gt; combinedColumns,
+                                        List&lt;Row&gt; result, ExecutionContext context) throws SqlExecutionException {
+        
+<span class="nc bnc" id="L1043" title="All 2 branches missed.">        if (!onCondition.isPresent()) {</span>
+            // Fall back to nested loop for cross joins
+<span class="nc" id="L1045">            executeNestedLoopFullOuterJoin(leftRows, rightRows, leftColumns, rightColumns, </span>
+                                         onCondition, combinedColumns, result, context);
+<span class="nc" id="L1047">            return;</span>
+        }
+        
+        // Extract join keys from the equi-join condition
+<span class="nc" id="L1051">        JoinKeys joinKeys = extractJoinKeys(onCondition.get(), leftColumns, rightColumns);</span>
+<span class="nc bnc" id="L1052" title="All 2 branches missed.">        if (joinKeys == null) {</span>
+            // Fall back to nested loop for complex conditions
+<span class="nc" id="L1054">            executeNestedLoopFullOuterJoin(leftRows, rightRows, leftColumns, rightColumns, </span>
+                                         onCondition, combinedColumns, result, context);
+<span class="nc" id="L1056">            return;</span>
+        }
+        
+        // Build hash table from smaller table
+<span class="nc" id="L1060">        Map&lt;Object, List&lt;Row&gt;&gt; leftHashTable = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L1061" title="All 2 branches missed.">        for (Row leftRow : leftRows) {</span>
+<span class="nc" id="L1062">            Object key = leftRow.getData()[joinKeys.leftKeyIndex];</span>
+<span class="nc bnc" id="L1063" title="All 2 branches missed.">            if (key != null) {</span>
+<span class="nc" id="L1064">                leftHashTable.computeIfAbsent(key, k -&gt; new ArrayList&lt;&gt;()).add(leftRow);</span>
+            }
+<span class="nc" id="L1066">        }</span>
+        
+<span class="nc" id="L1068">        Set&lt;Object&gt; matchedKeys = new HashSet&lt;&gt;();</span>
+        
+        // Process right table: find matches and add unmatched rights
+<span class="nc bnc" id="L1071" title="All 2 branches missed.">        for (Row rightRow : rightRows) {</span>
+<span class="nc" id="L1072">            Object key = rightRow.getData()[joinKeys.rightKeyIndex];</span>
+<span class="nc bnc" id="L1073" title="All 2 branches missed.">            List&lt;Row&gt; matchingLeftRows = (key != null) ? leftHashTable.get(key) : null;</span>
+            
+<span class="nc bnc" id="L1075" title="All 4 branches missed.">            if (matchingLeftRows != null &amp;&amp; !matchingLeftRows.isEmpty()) {</span>
+                // Found matches
+<span class="nc" id="L1077">                matchedKeys.add(key);</span>
+<span class="nc bnc" id="L1078" title="All 2 branches missed.">                for (Row leftRow : matchingLeftRows) {</span>
+<span class="nc" id="L1079">                    Row joinedRow = combineRows(leftRow, rightRow);</span>
+<span class="nc" id="L1080">                    result.add(joinedRow);</span>
+<span class="nc" id="L1081">                }</span>
+            } else {
+                // No match found, add right row with nulls for left columns
+<span class="nc" id="L1084">                Row nullLeftRow = createNullRow(leftColumns.size());</span>
+<span class="nc" id="L1085">                Row joinedRow = combineRows(nullLeftRow, rightRow);</span>
+<span class="nc" id="L1086">                result.add(joinedRow);</span>
+            }
+<span class="nc" id="L1088">        }</span>
+        
+        // Add unmatched left rows
+<span class="nc bnc" id="L1091" title="All 2 branches missed.">        for (Row leftRow : leftRows) {</span>
+<span class="nc" id="L1092">            Object key = leftRow.getData()[joinKeys.leftKeyIndex];</span>
+<span class="nc bnc" id="L1093" title="All 4 branches missed.">            if (key == null || !matchedKeys.contains(key)) {</span>
+<span class="nc" id="L1094">                Row nullRightRow = createNullRow(rightColumns.size());</span>
+<span class="nc" id="L1095">                Row joinedRow = combineRows(leftRow, nullRightRow);</span>
+<span class="nc" id="L1096">                result.add(joinedRow);</span>
+            }
+<span class="nc" id="L1098">        }</span>
+<span class="nc" id="L1099">    }</span>
+    
+    /**
+     * Evaluate join condition between two rows.
+     */
+    private boolean evaluateJoinCondition(Row leftRow, Row rightRow, 
+                                        List&lt;Column&gt; leftColumns, List&lt;Column&gt; rightColumns,
+                                        Optional&lt;Expression&gt; onCondition, List&lt;Column&gt; combinedColumns,
+                                        ExecutionContext context) throws SqlExecutionException {
+<span class="pc bpc" id="L1108" title="1 of 2 branches missed.">        if (!onCondition.isPresent()) {</span>
+            // Cross join - always true
+<span class="nc" id="L1110">            return true;</span>
+        }
+        
+        // Create combined row for condition evaluation
+<span class="fc" id="L1114">        Row combinedRow = combineRows(leftRow, rightRow);</span>
+<span class="fc" id="L1115">        context.setCurrentRow(combinedRow);</span>
+<span class="fc" id="L1116">        context.setJoinedColumns(combinedColumns);</span>
+        
+<span class="fc" id="L1118">        Object result = expressionEvaluator.evaluate(onCondition.get(), context);</span>
+<span class="fc" id="L1119">        return Boolean.TRUE.equals(result);</span>
+    }
+    
+    /**
+     * Combine two rows into a single row.
+     */
+    private Row combineRows(Row leftRow, Row rightRow) {
+<span class="fc" id="L1126">        Object[] leftData = leftRow.getData();</span>
+<span class="fc" id="L1127">        Object[] rightData = rightRow.getData();</span>
+        
+<span class="fc" id="L1129">        Object[] combinedData = new Object[leftData.length + rightData.length];</span>
+<span class="fc" id="L1130">        System.arraycopy(leftData, 0, combinedData, 0, leftData.length);</span>
+<span class="fc" id="L1131">        System.arraycopy(rightData, 0, combinedData, leftData.length, rightData.length);</span>
+        
+<span class="fc" id="L1133">        return new Row(leftRow.getId(), combinedData);</span>
+    }
+    
+    /**
+     * Create a row with all null values for outer join.
+     */
+    private Row createNullRow(int columnCount) {
+<span class="fc" id="L1140">        Object[] nullData = new Object[columnCount];</span>
+<span class="fc" id="L1141">        Arrays.fill(nullData, null);</span>
+<span class="fc" id="L1142">        return new Row(0L, nullData);</span>
+    }
+
+    // Helper methods
+    private List&lt;Row&gt; applyOrderBy(List&lt;Row&gt; rows, OrderByClause orderBy, 
+                                  ExecutionContext context, List&lt;Column&gt; columns) {
+<span class="fc" id="L1148">        return rows.stream()</span>
+<span class="fc" id="L1149">            .sorted((row1, row2) -&gt; {</span>
+<span class="pc bpc" id="L1150" title="1 of 2 branches missed.">                for (OrderByClause.OrderItem item : orderBy.getOrderItems()) {</span>
+<span class="fc" id="L1151">                    context.setCurrentRow(row1);</span>
+<span class="fc" id="L1152">                    context.setJoinedColumns(columns);</span>
+<span class="fc" id="L1153">                    Object value1 = expressionEvaluator.evaluate(item.getExpression(), context);</span>
+                    
+<span class="fc" id="L1155">                    context.setCurrentRow(row2);</span>
+<span class="fc" id="L1156">                    context.setJoinedColumns(columns);</span>
+<span class="fc" id="L1157">                    Object value2 = expressionEvaluator.evaluate(item.getExpression(), context);</span>
+                    
+<span class="fc" id="L1159">                    int comparison = compareValues(value1, value2);</span>
+<span class="pc bpc" id="L1160" title="1 of 2 branches missed.">                    if (comparison != 0) {</span>
+<span class="pc bpc" id="L1161" title="1 of 2 branches missed.">                        return item.isAscending() ? comparison : -comparison;</span>
+                    }
+<span class="nc" id="L1163">                }</span>
+<span class="nc" id="L1164">                return 0;</span>
+            })
+<span class="fc" id="L1166">            .collect(Collectors.toList());</span>
+    }
+    
+    private int evaluateIntExpression(Expression expr, ExecutionContext context) {
+<span class="fc" id="L1170">        Object result = expressionEvaluator.evaluate(expr, context);</span>
+<span class="pc bpc" id="L1171" title="1 of 2 branches missed.">        if (result instanceof Number) {</span>
+<span class="fc" id="L1172">            return ((Number) result).intValue();</span>
+        }
+<span class="nc" id="L1174">        throw new IllegalArgumentException(&quot;Expression does not evaluate to a number: &quot; + result);</span>
+    }
+    
+    @SuppressWarnings(&quot;unchecked&quot;)
+    private int compareValues(Object value1, Object value2) {
+<span class="pc bpc" id="L1179" title="3 of 4 branches missed.">        if (value1 == null &amp;&amp; value2 == null) return 0;</span>
+<span class="pc bpc" id="L1180" title="1 of 2 branches missed.">        if (value1 == null) return -1;</span>
+<span class="pc bpc" id="L1181" title="1 of 2 branches missed.">        if (value2 == null) return 1;</span>
+        
+<span class="pc bpc" id="L1183" title="2 of 4 branches missed.">        if (value1 instanceof Comparable &amp;&amp; value2 instanceof Comparable) {</span>
+            try {
+<span class="fc" id="L1185">                return ((Comparable) value1).compareTo(value2);</span>
+<span class="nc" id="L1186">            } catch (ClassCastException e) {</span>
+                // Fall back to string comparison
+<span class="nc" id="L1188">                return value1.toString().compareTo(value2.toString());</span>
+            }
+        }
+        
+<span class="nc" id="L1192">        return value1.toString().compareTo(value2.toString());</span>
+    }
+    
+    /**
+     * Validate that all column references in an expression exist in the given columns.
+     */
+    private void validateColumnReferences(Expression expression, List&lt;Column&gt; columns) throws SqlExecutionException {
+<span class="fc bfc" id="L1199" title="All 2 branches covered.">        if (expression instanceof ColumnReference) {</span>
+<span class="fc" id="L1200">            ColumnReference colRef = (ColumnReference) expression;</span>
+<span class="fc" id="L1201">            String columnName = colRef.getColumnName().toLowerCase();</span>
+            
+<span class="fc" id="L1203">            boolean found = columns.stream()</span>
+<span class="fc" id="L1204">                .anyMatch(col -&gt; col.getName().toLowerCase().equals(columnName));</span>
+            
+<span class="fc bfc" id="L1206" title="All 2 branches covered.">            if (!found) {</span>
+<span class="fc" id="L1207">                throw new SqlExecutionException(&quot;Column not found: &quot; + columnName);</span>
+            }
+<span class="fc" id="L1209">        }</span>
+<span class="pc bpc" id="L1210" title="1 of 2 branches missed.">        else if (expression instanceof BinaryExpression) {</span>
+<span class="nc" id="L1211">            BinaryExpression binary = (BinaryExpression) expression;</span>
+<span class="nc" id="L1212">            validateColumnReferences(binary.getLeft(), columns);</span>
+<span class="nc" id="L1213">            validateColumnReferences(binary.getRight(), columns);</span>
+<span class="nc" id="L1214">        }</span>
+<span class="pc bpc" id="L1215" title="1 of 2 branches missed.">        else if (expression instanceof UnaryExpression) {</span>
+<span class="nc" id="L1216">            UnaryExpression unary = (UnaryExpression) expression;</span>
+<span class="nc" id="L1217">            validateColumnReferences(unary.getOperand(), columns);</span>
+<span class="nc" id="L1218">        }</span>
+<span class="pc bpc" id="L1219" title="1 of 2 branches missed.">        else if (expression instanceof FunctionCall) {</span>
+<span class="nc" id="L1220">            FunctionCall func = (FunctionCall) expression;</span>
+<span class="nc bnc" id="L1221" title="All 2 branches missed.">            for (Expression arg : func.getArguments()) {</span>
+<span class="nc" id="L1222">                validateColumnReferences(arg, columns);</span>
+<span class="nc" id="L1223">            }</span>
+        }
+        // LiteralExpression and other types don't contain column references
+<span class="fc" id="L1226">    }</span>
+    
+    // Unimplemented visitor methods for AST nodes that don't require direct execution
+<span class="nc" id="L1229">    @Override public SqlExecutionResult visitJoinableTable(JoinableTable node, ExecutionContext context) { return null; }</span>
+<span class="nc" id="L1230">    @Override public SqlExecutionResult visitLiteralExpression(LiteralExpression node, ExecutionContext context) { return null; }</span>
+<span class="nc" id="L1231">    @Override public SqlExecutionResult visitColumnReference(ColumnReference node, ExecutionContext context) { return null; }</span>
+<span class="nc" id="L1232">    @Override public SqlExecutionResult visitBinaryExpression(BinaryExpression node, ExecutionContext context) { return null; }</span>
+<span class="nc" id="L1233">    @Override public SqlExecutionResult visitUnaryExpression(UnaryExpression node, ExecutionContext context) { return null; }</span>
+<span class="nc" id="L1234">    @Override public SqlExecutionResult visitFunctionCall(FunctionCall node, ExecutionContext context) { return null; }</span>
+<span class="nc" id="L1235">    @Override public SqlExecutionResult visitCaseExpression(CaseExpression node, ExecutionContext context) { return null; }</span>
+<span class="nc" id="L1236">    @Override public SqlExecutionResult visitFromClause(FromClause node, ExecutionContext context) { return null; }</span>
+<span class="nc" id="L1237">    @Override public SqlExecutionResult visitWhereClause(WhereClause node, ExecutionContext context) { return null; }</span>
+<span class="nc" id="L1238">    @Override public SqlExecutionResult visitOrderByClause(OrderByClause node, ExecutionContext context) { return null; }</span>
+<span class="nc" id="L1239">    @Override public SqlExecutionResult visitGroupByClause(GroupByClause node, ExecutionContext context) { return null; }</span>
+<span class="nc" id="L1240">    @Override public SqlExecutionResult visitHavingClause(HavingClause node, ExecutionContext context) { return null; }</span>
+<span class="nc" id="L1241">    @Override public SqlExecutionResult visitLimitClause(LimitClause node, ExecutionContext context) { return null; }</span>
+<span class="nc" id="L1242">    @Override public SqlExecutionResult visitTableReference(TableReference node, ExecutionContext context) { return null; }</span>
+<span class="nc" id="L1243">    @Override public SqlExecutionResult visitJoinClause(JoinClause node, ExecutionContext context) { return null; }</span>
+<span class="nc" id="L1244">    @Override public SqlExecutionResult visitSelectItem(SelectItem node, ExecutionContext context) { return null; }</span>
+<span class="nc" id="L1245">    @Override public SqlExecutionResult visitDataType(DataTypeNode node, ExecutionContext context) { return null; }</span>
+<span class="nc" id="L1246">    @Override public SqlExecutionResult visitColumnDefinition(ColumnDefinition node, ExecutionContext context) { return null; }</span>
+<span class="nc" id="L1247">    @Override public SqlExecutionResult visitSubqueryExpression(SubqueryExpression node, ExecutionContext context) { return null; }</span>
+<span class="nc" id="L1248">    @Override public SqlExecutionResult visitExistsExpression(ExistsExpression node, ExecutionContext context) { return null; }</span>
+<span class="nc" id="L1249">    @Override public SqlExecutionResult visitInSubqueryExpression(InSubqueryExpression node, ExecutionContext context) { return null; }</span>
+<span class="nc" id="L1250">    @Override public SqlExecutionResult visitAggregateFunction(AggregateFunction node, ExecutionContext context) { return null; }</span>
+    
+    // Helper methods for aggregation
+    private boolean hasAggregateFunction(List&lt;SelectItem&gt; selectItems) {
+<span class="fc bfc" id="L1254" title="All 2 branches covered.">        for (SelectItem item : selectItems) {</span>
+<span class="fc bfc" id="L1255" title="All 2 branches covered.">            if (containsAggregateFunction(item.getExpression())) {</span>
+<span class="fc" id="L1256">                return true;</span>
+            }
+<span class="fc" id="L1258">        }</span>
+<span class="fc" id="L1259">        return false;</span>
+    }
+    
+    private boolean containsAggregateFunction(Expression expression) {
+<span class="fc bfc" id="L1263" title="All 2 branches covered.">        if (expression instanceof AggregateFunction) {</span>
+<span class="fc" id="L1264">            return true;</span>
+        }
+        // TODO: Recursively check nested expressions
+<span class="fc" id="L1267">        return false;</span>
+    }
+    
+    private static class AggregationResult {
+        final List&lt;Column&gt; columns;
+        final List&lt;Row&gt; rows;
+        
+<span class="fc" id="L1274">        AggregationResult(List&lt;Column&gt; columns, List&lt;Row&gt; rows) {</span>
+<span class="fc" id="L1275">            this.columns = columns;</span>
+<span class="fc" id="L1276">            this.rows = rows;</span>
+<span class="fc" id="L1277">        }</span>
+    }
+    
+    private AggregationResult performAggregation(SelectStatement selectStatement, List&lt;Row&gt; rows, 
+                                                List&lt;Column&gt; columns, ExecutionContext context) throws SqlExecutionException {
+        
+        // If there's a GROUP BY clause, group the rows
+<span class="fc bfc" id="L1284" title="All 2 branches covered.">        if (selectStatement.getGroupByClause().isPresent()) {</span>
+<span class="fc" id="L1285">            return performGroupByAggregation(selectStatement, rows, columns, context);</span>
+        } else {
+            // Simple aggregation without grouping - treat all rows as one group
+<span class="fc" id="L1288">            return performSimpleAggregation(selectStatement, rows, columns, context);</span>
+        }
+    }
+    
+    private AggregationResult performSimpleAggregation(SelectStatement selectStatement, List&lt;Row&gt; rows, 
+                                                      List&lt;Column&gt; columns, ExecutionContext context) throws SqlExecutionException {
+        
+        // Calculate aggregate values for all rows as a single group
+<span class="fc" id="L1296">        List&lt;Object&gt; aggregatedValues = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L1297">        List&lt;Column&gt; resultColumns = new ArrayList&lt;&gt;();</span>
+        
+<span class="fc bfc" id="L1299" title="All 2 branches covered.">        for (int i = 0; i &lt; selectStatement.getSelectItems().size(); i++) {</span>
+<span class="fc" id="L1300">            SelectItem item = selectStatement.getSelectItems().get(i);</span>
+<span class="fc" id="L1301">            String columnName = item.getAlias().orElse(&quot;column&quot; + i);</span>
+            
+<span class="pc bpc" id="L1303" title="1 of 2 branches missed.">            if (item.getExpression() instanceof AggregateFunction) {</span>
+<span class="fc" id="L1304">                AggregateFunction aggregateFunc = (AggregateFunction) item.getExpression();</span>
+<span class="fc" id="L1305">                Object aggregatedValue = calculateAggregateValue(aggregateFunc, rows, columns, context);</span>
+<span class="fc" id="L1306">                aggregatedValues.add(aggregatedValue);</span>
+<span class="fc" id="L1307">            } else {</span>
+                // Non-aggregate expression in aggregate query - use first row's value
+<span class="nc bnc" id="L1309" title="All 2 branches missed.">                if (!rows.isEmpty()) {</span>
+<span class="nc" id="L1310">                    context.setCurrentRow(rows.get(0));</span>
+<span class="nc" id="L1311">                    context.setJoinedColumns(columns);</span>
+<span class="nc" id="L1312">                    Object value = expressionEvaluator.evaluate(item.getExpression(), context);</span>
+<span class="nc" id="L1313">                    aggregatedValues.add(value);</span>
+<span class="nc" id="L1314">                } else {</span>
+<span class="nc" id="L1315">                    aggregatedValues.add(null);</span>
+                }
+            }
+            
+<span class="fc" id="L1319">            resultColumns.add(new Column.Builder()</span>
+<span class="fc" id="L1320">                .name(columnName)</span>
+<span class="fc" id="L1321">                .dataType(DataType.TEXT)</span>
+<span class="fc" id="L1322">                .build());</span>
+        }
+        
+<span class="fc" id="L1325">        Row resultRow = new Row(1L, aggregatedValues.toArray());</span>
+<span class="fc" id="L1326">        return new AggregationResult(resultColumns, List.of(resultRow));</span>
+    }
+    
+    private AggregationResult performGroupByAggregation(SelectStatement selectStatement, List&lt;Row&gt; rows, 
+                                                       List&lt;Column&gt; columns, ExecutionContext context) throws SqlExecutionException {
+        
+<span class="fc" id="L1332">        GroupByClause groupBy = selectStatement.getGroupByClause().get();</span>
+        
+        // Group rows by GROUP BY expressions
+<span class="fc" id="L1335">        Map&lt;String, List&lt;Row&gt;&gt; groups = new LinkedHashMap&lt;&gt;();</span>
+        
+<span class="fc bfc" id="L1337" title="All 2 branches covered.">        for (Row row : rows) {</span>
+<span class="fc" id="L1338">            context.setCurrentRow(row);</span>
+<span class="fc" id="L1339">            context.setJoinedColumns(columns);</span>
+            
+            // Calculate group key
+<span class="fc" id="L1342">            StringBuilder keyBuilder = new StringBuilder();</span>
+<span class="fc bfc" id="L1343" title="All 2 branches covered.">            for (int i = 0; i &lt; groupBy.getGroupingExpressions().size(); i++) {</span>
+<span class="fc" id="L1344">                Expression groupExpr = groupBy.getGroupingExpressions().get(i);</span>
+<span class="fc" id="L1345">                Object value = expressionEvaluator.evaluate(groupExpr, context);</span>
+<span class="pc bpc" id="L1346" title="1 of 2 branches missed.">                if (i &gt; 0) keyBuilder.append(&quot;|&quot;);</span>
+<span class="pc bpc" id="L1347" title="1 of 2 branches missed.">                keyBuilder.append(value != null ? value.toString() : &quot;NULL&quot;);</span>
+            }
+<span class="fc" id="L1349">            String groupKey = keyBuilder.toString();</span>
+            
+<span class="fc" id="L1351">            groups.computeIfAbsent(groupKey, k -&gt; new ArrayList&lt;&gt;()).add(row);</span>
+<span class="fc" id="L1352">        }</span>
+        
+        // Calculate aggregated results for each group
+<span class="fc" id="L1355">        List&lt;Row&gt; resultRows = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L1356">        List&lt;Column&gt; resultColumns = new ArrayList&lt;&gt;();</span>
+        
+        // Determine result columns
+<span class="fc bfc" id="L1359" title="All 2 branches covered.">        for (int i = 0; i &lt; selectStatement.getSelectItems().size(); i++) {</span>
+<span class="fc" id="L1360">            SelectItem item = selectStatement.getSelectItems().get(i);</span>
+<span class="fc" id="L1361">            String columnName = item.getAlias().orElse(&quot;column&quot; + i);</span>
+<span class="fc" id="L1362">            resultColumns.add(new Column.Builder()</span>
+<span class="fc" id="L1363">                .name(columnName)</span>
+<span class="fc" id="L1364">                .dataType(DataType.TEXT)</span>
+<span class="fc" id="L1365">                .build());</span>
+        }
+        
+        // Process each group
+<span class="fc" id="L1369">        long rowId = 1;</span>
+<span class="fc bfc" id="L1370" title="All 2 branches covered.">        for (Map.Entry&lt;String, List&lt;Row&gt;&gt; group : groups.entrySet()) {</span>
+<span class="fc" id="L1371">            List&lt;Row&gt; groupRows = group.getValue();</span>
+<span class="fc" id="L1372">            List&lt;Object&gt; aggregatedValues = new ArrayList&lt;&gt;();</span>
+            
+<span class="fc bfc" id="L1374" title="All 2 branches covered.">            for (SelectItem item : selectStatement.getSelectItems()) {</span>
+<span class="fc bfc" id="L1375" title="All 2 branches covered.">                if (item.getExpression() instanceof AggregateFunction) {</span>
+<span class="fc" id="L1376">                    AggregateFunction aggregateFunc = (AggregateFunction) item.getExpression();</span>
+<span class="fc" id="L1377">                    Object aggregatedValue = calculateAggregateValue(aggregateFunc, groupRows, columns, context);</span>
+<span class="fc" id="L1378">                    aggregatedValues.add(aggregatedValue);</span>
+<span class="fc" id="L1379">                } else {</span>
+                    // Non-aggregate expression in GROUP BY query - use first row's value
+<span class="pc bpc" id="L1381" title="1 of 2 branches missed.">                    if (!groupRows.isEmpty()) {</span>
+<span class="fc" id="L1382">                        context.setCurrentRow(groupRows.get(0));</span>
+<span class="fc" id="L1383">                        context.setJoinedColumns(columns);</span>
+<span class="fc" id="L1384">                        Object value = expressionEvaluator.evaluate(item.getExpression(), context);</span>
+<span class="fc" id="L1385">                        aggregatedValues.add(value);</span>
+<span class="fc" id="L1386">                    } else {</span>
+<span class="nc" id="L1387">                        aggregatedValues.add(null);</span>
+                    }
+                }
+<span class="fc" id="L1390">            }</span>
+            
+<span class="fc" id="L1392">            Row resultRow = new Row(rowId++, aggregatedValues.toArray());</span>
+<span class="fc" id="L1393">            resultRows.add(resultRow);</span>
+<span class="fc" id="L1394">        }</span>
+        
+<span class="fc" id="L1396">        return new AggregationResult(resultColumns, resultRows);</span>
+    }
+    
+    private Object calculateAggregateValue(AggregateFunction aggregateFunc, List&lt;Row&gt; rows, 
+                                          List&lt;Column&gt; columns, ExecutionContext context) {
+        
+<span class="pc bpc" id="L1402" title="2 of 7 branches missed.">        switch (aggregateFunc.getAggregateType()) {</span>
+            case COUNT:
+<span class="pc bpc" id="L1404" title="1 of 2 branches missed.">                if (aggregateFunc.isCountStar()) {</span>
+<span class="fc" id="L1405">                    return (long) rows.size();</span>
+                } else {
+                    // COUNT with expression - count non-null values
+<span class="nc" id="L1408">                    long count = 0;</span>
+<span class="nc bnc" id="L1409" title="All 2 branches missed.">                    for (Row row : rows) {</span>
+<span class="nc" id="L1410">                        context.setCurrentRow(row);</span>
+<span class="nc" id="L1411">                        context.setJoinedColumns(columns);</span>
+<span class="nc" id="L1412">                        Object value = expressionEvaluator.evaluate(aggregateFunc.getExpression(), context);</span>
+<span class="nc bnc" id="L1413" title="All 2 branches missed.">                        if (value != null) {</span>
+<span class="nc" id="L1414">                            count++;</span>
+                        }
+<span class="nc" id="L1416">                    }</span>
+<span class="nc" id="L1417">                    return count;</span>
+                }
+                
+            case COUNT_DISTINCT:
+                // COUNT DISTINCT - count unique non-null values
+<span class="nc" id="L1422">                Set&lt;Object&gt; uniqueValues = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L1423" title="All 2 branches missed.">                for (Row row : rows) {</span>
+<span class="nc" id="L1424">                    context.setCurrentRow(row);</span>
+<span class="nc" id="L1425">                    context.setJoinedColumns(columns);</span>
+<span class="nc" id="L1426">                    Object value = expressionEvaluator.evaluate(aggregateFunc.getExpression(), context);</span>
+<span class="nc bnc" id="L1427" title="All 2 branches missed.">                    if (value != null) {</span>
+<span class="nc" id="L1428">                        uniqueValues.add(value);</span>
+                    }
+<span class="nc" id="L1430">                }</span>
+<span class="nc" id="L1431">                return (long) uniqueValues.size();</span>
+                
+            case SUM:
+                // SUM - sum numeric values
+<span class="fc" id="L1435">                double sum = 0;</span>
+<span class="fc bfc" id="L1436" title="All 2 branches covered.">                for (Row row : rows) {</span>
+<span class="fc" id="L1437">                    context.setCurrentRow(row);</span>
+<span class="fc" id="L1438">                    context.setJoinedColumns(columns);</span>
+<span class="fc" id="L1439">                    Object value = expressionEvaluator.evaluate(aggregateFunc.getExpression(), context);</span>
+<span class="pc bpc" id="L1440" title="1 of 2 branches missed.">                    if (value instanceof Number) {</span>
+<span class="fc" id="L1441">                        sum += ((Number) value).doubleValue();</span>
+                    }
+<span class="fc" id="L1443">                }</span>
+<span class="fc" id="L1444">                return sum;</span>
+                
+            case AVG:
+                // AVG - average of numeric values
+<span class="fc" id="L1448">                double total = 0;</span>
+<span class="fc" id="L1449">                int count = 0;</span>
+<span class="fc bfc" id="L1450" title="All 2 branches covered.">                for (Row row : rows) {</span>
+<span class="fc" id="L1451">                    context.setCurrentRow(row);</span>
+<span class="fc" id="L1452">                    context.setJoinedColumns(columns);</span>
+<span class="fc" id="L1453">                    Object value = expressionEvaluator.evaluate(aggregateFunc.getExpression(), context);</span>
+<span class="pc bpc" id="L1454" title="1 of 2 branches missed.">                    if (value instanceof Number) {</span>
+<span class="fc" id="L1455">                        total += ((Number) value).doubleValue();</span>
+<span class="fc" id="L1456">                        count++;</span>
+                    }
+<span class="fc" id="L1458">                }</span>
+<span class="pc bpc" id="L1459" title="1 of 2 branches missed.">                return count &gt; 0 ? total / count : null;</span>
+                
+            case MIN:
+                // MIN - minimum value
+<span class="fc" id="L1463">                Object min = null;</span>
+<span class="fc bfc" id="L1464" title="All 2 branches covered.">                for (Row row : rows) {</span>
+<span class="fc" id="L1465">                    context.setCurrentRow(row);</span>
+<span class="fc" id="L1466">                    context.setJoinedColumns(columns);</span>
+<span class="fc" id="L1467">                    Object value = expressionEvaluator.evaluate(aggregateFunc.getExpression(), context);</span>
+<span class="pc bpc" id="L1468" title="1 of 2 branches missed.">                    if (value != null) {</span>
+<span class="pc bpc" id="L1469" title="1 of 4 branches missed.">                        if (min == null || compareObjects(value, min) &lt; 0) {</span>
+<span class="fc" id="L1470">                            min = value;</span>
+                        }
+                    }
+<span class="fc" id="L1473">                }</span>
+<span class="fc" id="L1474">                return min;</span>
+                
+            case MAX:
+                // MAX - maximum value
+<span class="fc" id="L1478">                Object max = null;</span>
+<span class="fc bfc" id="L1479" title="All 2 branches covered.">                for (Row row : rows) {</span>
+<span class="fc" id="L1480">                    context.setCurrentRow(row);</span>
+<span class="fc" id="L1481">                    context.setJoinedColumns(columns);</span>
+<span class="fc" id="L1482">                    Object value = expressionEvaluator.evaluate(aggregateFunc.getExpression(), context);</span>
+<span class="pc bpc" id="L1483" title="1 of 2 branches missed.">                    if (value != null) {</span>
+<span class="pc bpc" id="L1484" title="1 of 4 branches missed.">                        if (max == null || compareObjects(value, max) &gt; 0) {</span>
+<span class="fc" id="L1485">                            max = value;</span>
+                        }
+                    }
+<span class="fc" id="L1488">                }</span>
+<span class="fc" id="L1489">                return max;</span>
+                
+            default:
+<span class="nc" id="L1492">                throw new IllegalArgumentException(&quot;Unsupported aggregate function: &quot; + aggregateFunc.getAggregateType());</span>
+        }
+    }
+    
+    @SuppressWarnings(&quot;unchecked&quot;)
+    private int compareObjects(Object a, Object b) {
+<span class="pc bpc" id="L1498" title="2 of 4 branches missed.">        if (a instanceof Comparable &amp;&amp; b instanceof Comparable) {</span>
+            try {
+<span class="fc" id="L1500">                return ((Comparable) a).compareTo(b);</span>
+<span class="nc" id="L1501">            } catch (ClassCastException e) {</span>
+<span class="nc" id="L1502">                return a.toString().compareTo(b.toString());</span>
+            }
+        }
+<span class="nc" id="L1505">        return a.toString().compareTo(b.toString());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

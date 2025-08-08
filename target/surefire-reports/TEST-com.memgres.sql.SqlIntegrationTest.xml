@@ -1,0 +1,712 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="com.memgres.sql.SqlIntegrationTest" time="0.068" tests="8" errors="0" skipped="0" failures="0">
+  <properties>
+    <property name="java.specification.version" value="24"/>
+    <property name="sun.jnu.encoding" value="UTF-8"/>
+    <property name="java.class.path" value="/Users/sachingupta/CognisiveLabs/memgres/target/test-classes:/Users/sachingupta/CognisiveLabs/memgres/target/classes:/Users/sachingupta/.m2/repository/org/antlr/antlr4-runtime/4.13.1/antlr4-runtime-4.13.1.jar:/Users/sachingupta/.m2/repository/com/fasterxml/jackson/core/jackson-core/2.16.1/jackson-core-2.16.1.jar:/Users/sachingupta/.m2/repository/com/fasterxml/jackson/core/jackson-databind/2.16.1/jackson-databind-2.16.1.jar:/Users/sachingupta/.m2/repository/com/fasterxml/jackson/core/jackson-annotations/2.16.1/jackson-annotations-2.16.1.jar:/Users/sachingupta/.m2/repository/org/slf4j/slf4j-api/2.0.9/slf4j-api-2.0.9.jar:/Users/sachingupta/.m2/repository/ch/qos/logback/logback-classic/1.4.14/logback-classic-1.4.14.jar:/Users/sachingupta/.m2/repository/ch/qos/logback/logback-core/1.4.14/logback-core-1.4.14.jar:/Users/sachingupta/.m2/repository/com/github/ben-manes/caffeine/caffeine/3.1.8/caffeine-3.1.8.jar:/Users/sachingupta/.m2/repository/org/checkerframework/checker-qual/3.37.0/checker-qual-3.37.0.jar:/Users/sachingupta/.m2/repository/com/google/errorprone/error_prone_annotations/2.21.1/error_prone_annotations-2.21.1.jar:/Users/sachingupta/.m2/repository/org/junit/jupiter/junit-jupiter/5.10.1/junit-jupiter-5.10.1.jar:/Users/sachingupta/.m2/repository/org/junit/jupiter/junit-jupiter-api/5.10.1/junit-jupiter-api-5.10.1.jar:/Users/sachingupta/.m2/repository/org/opentest4j/opentest4j/1.3.0/opentest4j-1.3.0.jar:/Users/sachingupta/.m2/repository/org/junit/platform/junit-platform-commons/1.10.1/junit-platform-commons-1.10.1.jar:/Users/sachingupta/.m2/repository/org/apiguardian/apiguardian-api/1.1.2/apiguardian-api-1.1.2.jar:/Users/sachingupta/.m2/repository/org/junit/jupiter/junit-jupiter-params/5.10.1/junit-jupiter-params-5.10.1.jar:/Users/sachingupta/.m2/repository/org/junit/jupiter/junit-jupiter-engine/5.10.1/junit-jupiter-engine-5.10.1.jar:/Users/sachingupta/.m2/repository/org/junit/platform/junit-platform-engine/1.10.1/junit-platform-engine-1.10.1.jar:/Users/sachingupta/.m2/repository/org/testng/testng/7.8.0/testng-7.8.0.jar:/Users/sachingupta/.m2/repository/com/beust/jcommander/1.82/jcommander-1.82.jar:/Users/sachingupta/.m2/repository/org/webjars/jquery/3.6.1/jquery-3.6.1.jar:/Users/sachingupta/.m2/repository/org/mockito/mockito-core/5.8.0/mockito-core-5.8.0.jar:/Users/sachingupta/.m2/repository/net/bytebuddy/byte-buddy/1.14.10/byte-buddy-1.14.10.jar:/Users/sachingupta/.m2/repository/net/bytebuddy/byte-buddy-agent/1.14.10/byte-buddy-agent-1.14.10.jar:/Users/sachingupta/.m2/repository/org/objenesis/objenesis/3.3/objenesis-3.3.jar:/Users/sachingupta/.m2/repository/org/testcontainers/postgresql/1.19.3/postgresql-1.19.3.jar:/Users/sachingupta/.m2/repository/org/testcontainers/jdbc/1.19.3/jdbc-1.19.3.jar:/Users/sachingupta/.m2/repository/org/testcontainers/database-commons/1.19.3/database-commons-1.19.3.jar:/Users/sachingupta/.m2/repository/org/testcontainers/junit-jupiter/1.19.3/junit-jupiter-1.19.3.jar:/Users/sachingupta/.m2/repository/org/testcontainers/testcontainers/1.19.3/testcontainers-1.19.3.jar:/Users/sachingupta/.m2/repository/junit/junit/4.13.2/junit-4.13.2.jar:/Users/sachingupta/.m2/repository/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar:/Users/sachingupta/.m2/repository/org/apache/commons/commons-compress/1.24.0/commons-compress-1.24.0.jar:/Users/sachingupta/.m2/repository/org/rnorth/duct-tape/duct-tape/1.0.8/duct-tape-1.0.8.jar:/Users/sachingupta/.m2/repository/org/jetbrains/annotations/17.0.0/annotations-17.0.0.jar:/Users/sachingupta/.m2/repository/com/github/docker-java/docker-java-api/3.3.4/docker-java-api-3.3.4.jar:/Users/sachingupta/.m2/repository/com/github/docker-java/docker-java-transport-zerodep/3.3.4/docker-java-transport-zerodep-3.3.4.jar:/Users/sachingupta/.m2/repository/com/github/docker-java/docker-java-transport/3.3.4/docker-java-transport-3.3.4.jar:/Users/sachingupta/.m2/repository/net/java/dev/jna/jna/5.13.0/jna-5.13.0.jar:"/>
+    <property name="java.vm.vendor" value="Homebrew"/>
+    <property name="sun.arch.data.model" value="64"/>
+    <property name="java.vendor.url" value="https://github.com/Homebrew/homebrew-core/issues"/>
+    <property name="user.timezone" value="Europe/London"/>
+    <property name="os.name" value="Mac OS X"/>
+    <property name="java.vm.specification.version" value="24"/>
+    <property name="sun.java.launcher" value="SUN_STANDARD"/>
+    <property name="user.country" value="GB"/>
+    <property name="sun.boot.library.path" value="/opt/homebrew/Cellar/openjdk/24.0.1/libexec/openjdk.jdk/Contents/Home/lib"/>
+    <property name="sun.java.command" value="/Users/sachingupta/CognisiveLabs/memgres/target/surefire/surefirebooter-20250808132922739_3.jar /Users/sachingupta/CognisiveLabs/memgres/target/surefire 2025-08-08T13-29-22_635-jvmRun1 surefire-20250808132922739_1tmp surefire_0-20250808132922739_2tmp"/>
+    <property name="http.nonProxyHosts" value="local|*.local|169.254/16|*.169.254/16"/>
+    <property name="jdk.debug" value="release"/>
+    <property name="surefire.test.class.path" value="/Users/sachingupta/CognisiveLabs/memgres/target/test-classes:/Users/sachingupta/CognisiveLabs/memgres/target/classes:/Users/sachingupta/.m2/repository/org/antlr/antlr4-runtime/4.13.1/antlr4-runtime-4.13.1.jar:/Users/sachingupta/.m2/repository/com/fasterxml/jackson/core/jackson-core/2.16.1/jackson-core-2.16.1.jar:/Users/sachingupta/.m2/repository/com/fasterxml/jackson/core/jackson-databind/2.16.1/jackson-databind-2.16.1.jar:/Users/sachingupta/.m2/repository/com/fasterxml/jackson/core/jackson-annotations/2.16.1/jackson-annotations-2.16.1.jar:/Users/sachingupta/.m2/repository/org/slf4j/slf4j-api/2.0.9/slf4j-api-2.0.9.jar:/Users/sachingupta/.m2/repository/ch/qos/logback/logback-classic/1.4.14/logback-classic-1.4.14.jar:/Users/sachingupta/.m2/repository/ch/qos/logback/logback-core/1.4.14/logback-core-1.4.14.jar:/Users/sachingupta/.m2/repository/com/github/ben-manes/caffeine/caffeine/3.1.8/caffeine-3.1.8.jar:/Users/sachingupta/.m2/repository/org/checkerframework/checker-qual/3.37.0/checker-qual-3.37.0.jar:/Users/sachingupta/.m2/repository/com/google/errorprone/error_prone_annotations/2.21.1/error_prone_annotations-2.21.1.jar:/Users/sachingupta/.m2/repository/org/junit/jupiter/junit-jupiter/5.10.1/junit-jupiter-5.10.1.jar:/Users/sachingupta/.m2/repository/org/junit/jupiter/junit-jupiter-api/5.10.1/junit-jupiter-api-5.10.1.jar:/Users/sachingupta/.m2/repository/org/opentest4j/opentest4j/1.3.0/opentest4j-1.3.0.jar:/Users/sachingupta/.m2/repository/org/junit/platform/junit-platform-commons/1.10.1/junit-platform-commons-1.10.1.jar:/Users/sachingupta/.m2/repository/org/apiguardian/apiguardian-api/1.1.2/apiguardian-api-1.1.2.jar:/Users/sachingupta/.m2/repository/org/junit/jupiter/junit-jupiter-params/5.10.1/junit-jupiter-params-5.10.1.jar:/Users/sachingupta/.m2/repository/org/junit/jupiter/junit-jupiter-engine/5.10.1/junit-jupiter-engine-5.10.1.jar:/Users/sachingupta/.m2/repository/org/junit/platform/junit-platform-engine/1.10.1/junit-platform-engine-1.10.1.jar:/Users/sachingupta/.m2/repository/org/testng/testng/7.8.0/testng-7.8.0.jar:/Users/sachingupta/.m2/repository/com/beust/jcommander/1.82/jcommander-1.82.jar:/Users/sachingupta/.m2/repository/org/webjars/jquery/3.6.1/jquery-3.6.1.jar:/Users/sachingupta/.m2/repository/org/mockito/mockito-core/5.8.0/mockito-core-5.8.0.jar:/Users/sachingupta/.m2/repository/net/bytebuddy/byte-buddy/1.14.10/byte-buddy-1.14.10.jar:/Users/sachingupta/.m2/repository/net/bytebuddy/byte-buddy-agent/1.14.10/byte-buddy-agent-1.14.10.jar:/Users/sachingupta/.m2/repository/org/objenesis/objenesis/3.3/objenesis-3.3.jar:/Users/sachingupta/.m2/repository/org/testcontainers/postgresql/1.19.3/postgresql-1.19.3.jar:/Users/sachingupta/.m2/repository/org/testcontainers/jdbc/1.19.3/jdbc-1.19.3.jar:/Users/sachingupta/.m2/repository/org/testcontainers/database-commons/1.19.3/database-commons-1.19.3.jar:/Users/sachingupta/.m2/repository/org/testcontainers/junit-jupiter/1.19.3/junit-jupiter-1.19.3.jar:/Users/sachingupta/.m2/repository/org/testcontainers/testcontainers/1.19.3/testcontainers-1.19.3.jar:/Users/sachingupta/.m2/repository/junit/junit/4.13.2/junit-4.13.2.jar:/Users/sachingupta/.m2/repository/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar:/Users/sachingupta/.m2/repository/org/apache/commons/commons-compress/1.24.0/commons-compress-1.24.0.jar:/Users/sachingupta/.m2/repository/org/rnorth/duct-tape/duct-tape/1.0.8/duct-tape-1.0.8.jar:/Users/sachingupta/.m2/repository/org/jetbrains/annotations/17.0.0/annotations-17.0.0.jar:/Users/sachingupta/.m2/repository/com/github/docker-java/docker-java-api/3.3.4/docker-java-api-3.3.4.jar:/Users/sachingupta/.m2/repository/com/github/docker-java/docker-java-transport-zerodep/3.3.4/docker-java-transport-zerodep-3.3.4.jar:/Users/sachingupta/.m2/repository/com/github/docker-java/docker-java-transport/3.3.4/docker-java-transport-3.3.4.jar:/Users/sachingupta/.m2/repository/net/java/dev/jna/jna/5.13.0/jna-5.13.0.jar:"/>
+    <property name="sun.cpu.endian" value="little"/>
+    <property name="user.home" value="/Users/sachingupta"/>
+    <property name="user.language" value="en"/>
+    <property name="java.specification.vendor" value="Oracle Corporation"/>
+    <property name="java.version.date" value="2025-04-15"/>
+    <property name="java.home" value="/opt/homebrew/Cellar/openjdk/24.0.1/libexec/openjdk.jdk/Contents/Home"/>
+    <property name="file.separator" value="/"/>
+    <property name="basedir" value="/Users/sachingupta/CognisiveLabs/memgres"/>
+    <property name="java.vm.compressedOopsMode" value="Zero based"/>
+    <property name="line.separator" value="&#10;"/>
+    <property name="java.vm.specification.vendor" value="Oracle Corporation"/>
+    <property name="java.specification.name" value="Java Platform API Specification"/>
+    <property name="apple.awt.application.name" value="ForkedBooter"/>
+    <property name="surefire.real.class.path" value="/Users/sachingupta/CognisiveLabs/memgres/target/surefire/surefirebooter-20250808132922739_3.jar"/>
+    <property name="sun.management.compiler" value="HotSpot 64-Bit Tiered Compilers"/>
+    <property name="ftp.nonProxyHosts" value="local|*.local|169.254/16|*.169.254/16"/>
+    <property name="java.runtime.version" value="24.0.1"/>
+    <property name="user.name" value="sachingupta"/>
+    <property name="stdout.encoding" value="UTF-8"/>
+    <property name="path.separator" value=":"/>
+    <property name="os.version" value="15.5"/>
+    <property name="java.runtime.name" value="OpenJDK Runtime Environment"/>
+    <property name="file.encoding" value="UTF-8"/>
+    <property name="java.vm.name" value="OpenJDK 64-Bit Server VM"/>
+    <property name="java.vendor.version" value="Homebrew"/>
+    <property name="localRepository" value="/Users/sachingupta/.m2/repository"/>
+    <property name="java.vendor.url.bug" value="https://github.com/Homebrew/homebrew-core/issues"/>
+    <property name="java.io.tmpdir" value="/var/folders/yd/g5ftnqb52k1g83p_zq4qwpkh0000gn/T/"/>
+    <property name="java.version" value="24.0.1"/>
+    <property name="user.dir" value="/Users/sachingupta/CognisiveLabs/memgres"/>
+    <property name="os.arch" value="aarch64"/>
+    <property name="java.vm.specification.name" value="Java Virtual Machine Specification"/>
+    <property name="native.encoding" value="UTF-8"/>
+    <property name="java.library.path" value="/Users/sachingupta/Library/Java/Extensions:/Library/Java/Extensions:/Network/Library/Java/Extensions:/System/Library/Java/Extensions:/usr/lib/java:."/>
+    <property name="java.vm.info" value="mixed mode, sharing"/>
+    <property name="stderr.encoding" value="UTF-8"/>
+    <property name="java.vendor" value="Homebrew"/>
+    <property name="java.vm.version" value="24.0.1"/>
+    <property name="sun.io.unicode.encoding" value="UnicodeBig"/>
+    <property name="socksNonProxyHosts" value="local|*.local|169.254/16|*.169.254/16"/>
+    <property name="java.class.version" value="68.0"/>
+  </properties>
+  <testcase name="testJoinErrorHandling" classname="com.memgres.sql.SqlIntegrationTest" time="0.007">
+    <system-out><![CDATA[13:29:25.256 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager initialized
+13:29:25.256 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine created
+13:29:25.256 [main] DEBUG com.memgres.storage.Schema -- Created schema: public
+13:29:25.256 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine initialized successfully
+13:29:25.256 [main] INFO com.memgres.sql.SqlIntegrationTest -- Test setup complete - engine and SQL execution engine initialized
+13:29:25.256 [main] INFO com.memgres.sql.SqlIntegrationTest -- Starting JOIN error handling test
+13:29:25.257 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 1 with isolation level READ COMMITTED
+13:29:25.257 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 1 with isolation level READ COMMITTED
+13:29:25.257 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 1
+13:29:25.257 [main] DEBUG com.memgres.storage.Table -- Created table: test_table with 2 columns
+13:29:25.257 [main] DEBUG com.memgres.storage.Schema -- Created table test_table in schema public
+13:29:25.257 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- CREATE TABLE executed: test_table created
+13:29:25.257 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 1 committed successfully
+13:29:25.257 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 1
+13:29:25.257 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: CREATE TABLE test_table (id INTEGER, name VARCHAR)
+13:29:25.257 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 1)
+13:29:25.263 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 2 with isolation level READ COMMITTED
+13:29:25.263 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 2 with isolation level READ COMMITTED
+13:29:25.263 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 2
+13:29:25.263 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 2 rolled back: Explicit rollback
+13:29:25.263 [main] DEBUG com.memgres.transaction.TransactionManager -- Rolled back transaction 2
+13:29:25.263 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 2)
+13:29:25.263 [main] INFO com.memgres.sql.SqlIntegrationTest -- JOIN error handling test passed - expected errors were caught
+13:29:25.263 [main] INFO com.memgres.transaction.TransactionManager -- Shutting down transaction manager with 0 active transactions
+13:29:25.263 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager shutdown complete
+13:29:25.263 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine shutdown successfully
+13:29:25.263 [main] INFO com.memgres.sql.SqlIntegrationTest -- Test teardown complete - engine shutdown
+]]></system-out>
+  </testcase>
+  <testcase name="testCompleteWorkflow" classname="com.memgres.sql.SqlIntegrationTest" time="0.01">
+    <system-out><![CDATA[13:29:25.263 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager initialized
+13:29:25.263 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine created
+13:29:25.263 [main] DEBUG com.memgres.storage.Schema -- Created schema: public
+13:29:25.263 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine initialized successfully
+13:29:25.263 [main] INFO com.memgres.sql.SqlIntegrationTest -- Test setup complete - engine and SQL execution engine initialized
+13:29:25.264 [main] INFO com.memgres.sql.SqlIntegrationTest -- Starting complete SQL workflow test
+13:29:25.264 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 1 with isolation level READ COMMITTED
+13:29:25.264 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 1 with isolation level READ COMMITTED
+13:29:25.264 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 1
+13:29:25.264 [main] DEBUG com.memgres.storage.Table -- Created table: users with 4 columns
+13:29:25.264 [main] DEBUG com.memgres.storage.Schema -- Created table users in schema public
+13:29:25.264 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- CREATE TABLE executed: users created
+13:29:25.264 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 1 committed successfully
+13:29:25.264 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 1
+13:29:25.264 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: CREATE TABLE users (id UUID, name VARCHAR, age INTEGER, active BOOLEAN)
+13:29:25.264 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 1)
+13:29:25.264 [main] INFO com.memgres.sql.SqlIntegrationTest -- CREATE TABLE executed successfully: Table users created successfully
+13:29:25.265 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 2 with isolation level READ COMMITTED
+13:29:25.265 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 2 with isolation level READ COMMITTED
+13:29:25.265 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 2
+13:29:25.265 [main] DEBUG com.memgres.storage.Table -- Inserted row 1 into table users
+13:29:25.265 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- INSERT executed: 1 rows inserted into users
+13:29:25.265 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 2 committed successfully
+13:29:25.265 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 2
+13:29:25.265 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: INSERT INTO users VALUES (gen_random_uuid(), 'John Doe', 30, true)
+13:29:25.265 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 2)
+13:29:25.265 [main] INFO com.memgres.sql.SqlIntegrationTest -- First INSERT executed successfully: 1 rows affected
+13:29:25.265 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 3 with isolation level READ COMMITTED
+13:29:25.265 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 3 with isolation level READ COMMITTED
+13:29:25.265 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 3
+13:29:25.265 [main] DEBUG com.memgres.storage.Table -- Inserted row 2 into table users
+13:29:25.265 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- INSERT executed: 1 rows inserted into users
+13:29:25.265 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 3 committed successfully
+13:29:25.265 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 3
+13:29:25.265 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: INSERT INTO users VALUES (gen_random_uuid(), 'Jane Smith', 25, true)
+13:29:25.265 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 3)
+13:29:25.265 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 4 with isolation level READ COMMITTED
+13:29:25.265 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 4 with isolation level READ COMMITTED
+13:29:25.265 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 4
+13:29:25.265 [main] DEBUG com.memgres.storage.Table -- Inserted row 3 into table users
+13:29:25.265 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- INSERT executed: 1 rows inserted into users
+13:29:25.265 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 4 committed successfully
+13:29:25.265 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 4
+13:29:25.265 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: INSERT INTO users VALUES (gen_random_uuid(), 'Bob Wilson', 35, false)
+13:29:25.265 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 4)
+13:29:25.265 [main] INFO com.memgres.sql.SqlIntegrationTest -- Additional INSERT statements executed successfully
+13:29:25.265 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 5 with isolation level READ COMMITTED
+13:29:25.265 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 5 with isolation level READ COMMITTED
+13:29:25.265 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 5
+13:29:25.265 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- SELECT executed: 3 rows returned
+13:29:25.265 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 5 committed successfully
+13:29:25.265 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 5
+13:29:25.265 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: SELECT * FROM users
+13:29:25.265 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 5)
+13:29:25.265 [main] INFO com.memgres.sql.SqlIntegrationTest -- SELECT * executed successfully: 3 rows returned
+13:29:25.266 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 6 with isolation level READ COMMITTED
+13:29:25.266 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 6 with isolation level READ COMMITTED
+13:29:25.266 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 6
+13:29:25.266 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- SELECT executed: 2 rows returned
+13:29:25.266 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 6 committed successfully
+13:29:25.266 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 6
+13:29:25.266 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: SELECT name, age FROM users WHERE age > 28
+13:29:25.266 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 6)
+13:29:25.266 [main] INFO com.memgres.sql.SqlIntegrationTest -- SELECT with WHERE executed successfully: 2 rows returned
+13:29:25.268 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 7 with isolation level READ COMMITTED
+13:29:25.268 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 7 with isolation level READ COMMITTED
+13:29:25.268 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 7
+13:29:25.270 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- SELECT executed: 3 rows returned
+13:29:25.270 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 7 committed successfully
+13:29:25.270 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 7
+13:29:25.270 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: SELECT name, age FROM users ORDER BY age DESC
+13:29:25.270 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 7)
+13:29:25.270 [main] INFO com.memgres.sql.SqlIntegrationTest -- SELECT with ORDER BY executed successfully: rows properly ordered
+13:29:25.271 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 8 with isolation level READ COMMITTED
+13:29:25.271 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 8 with isolation level READ COMMITTED
+13:29:25.271 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 8
+13:29:25.271 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- SELECT executed: 2 rows returned
+13:29:25.271 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 8 committed successfully
+13:29:25.271 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 8
+13:29:25.271 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: SELECT name FROM users LIMIT 2
+13:29:25.271 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 8)
+13:29:25.271 [main] INFO com.memgres.sql.SqlIntegrationTest -- SELECT with LIMIT executed successfully: 2 rows returned
+13:29:25.272 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 9 with isolation level READ COMMITTED
+13:29:25.272 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 9 with isolation level READ COMMITTED
+13:29:25.272 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 9
+13:29:25.272 [main] DEBUG com.memgres.storage.Table -- Updated row 1 in table users
+13:29:25.272 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- UPDATE executed: 1 rows updated in users
+13:29:25.272 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 9 committed successfully
+13:29:25.272 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 9
+13:29:25.272 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: UPDATE users SET age = 31 WHERE name = 'John Doe'
+13:29:25.272 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 9)
+13:29:25.272 [main] INFO com.memgres.sql.SqlIntegrationTest -- UPDATE executed successfully: 1 rows affected
+13:29:25.272 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 10 with isolation level READ COMMITTED
+13:29:25.272 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 10 with isolation level READ COMMITTED
+13:29:25.272 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 10
+13:29:25.272 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- SELECT executed: 1 rows returned
+13:29:25.272 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 10 committed successfully
+13:29:25.272 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 10
+13:29:25.272 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: SELECT age FROM users WHERE name = 'John Doe'
+13:29:25.272 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 10)
+13:29:25.272 [main] INFO com.memgres.sql.SqlIntegrationTest -- UPDATE verification successful: age updated to 31
+13:29:25.273 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 11 with isolation level READ COMMITTED
+13:29:25.273 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 11 with isolation level READ COMMITTED
+13:29:25.273 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 11
+13:29:25.273 [main] DEBUG com.memgres.storage.Table -- Deleted row 3 from table users
+13:29:25.273 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- DELETE executed: 1 rows deleted from users
+13:29:25.273 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 11 committed successfully
+13:29:25.273 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 11
+13:29:25.273 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: DELETE FROM users WHERE active = false
+13:29:25.273 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 11)
+13:29:25.273 [main] INFO com.memgres.sql.SqlIntegrationTest -- DELETE executed successfully: 1 rows affected
+13:29:25.273 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 12 with isolation level READ COMMITTED
+13:29:25.273 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 12 with isolation level READ COMMITTED
+13:29:25.273 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 12
+13:29:25.273 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- SELECT executed: 2 rows returned
+13:29:25.273 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 12 committed successfully
+13:29:25.273 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 12
+13:29:25.273 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: SELECT * FROM users
+13:29:25.273 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 12)
+13:29:25.273 [main] INFO com.memgres.sql.SqlIntegrationTest -- DELETE verification successful: 2 rows remaining
+13:29:25.273 [main] INFO com.memgres.sql.SqlIntegrationTest -- Complete SQL workflow test passed successfully!
+13:29:25.273 [main] INFO com.memgres.transaction.TransactionManager -- Shutting down transaction manager with 0 active transactions
+13:29:25.273 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager shutdown complete
+13:29:25.273 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine shutdown successfully
+13:29:25.273 [main] INFO com.memgres.sql.SqlIntegrationTest -- Test teardown complete - engine shutdown
+]]></system-out>
+  </testcase>
+  <testcase name="testComplexQueries" classname="com.memgres.sql.SqlIntegrationTest" time="0.004">
+    <system-out><![CDATA[13:29:25.273 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager initialized
+13:29:25.273 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine created
+13:29:25.273 [main] DEBUG com.memgres.storage.Schema -- Created schema: public
+13:29:25.273 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine initialized successfully
+13:29:25.273 [main] INFO com.memgres.sql.SqlIntegrationTest -- Test setup complete - engine and SQL execution engine initialized
+13:29:25.273 [main] INFO com.memgres.sql.SqlIntegrationTest -- Starting complex queries test
+13:29:25.274 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 1 with isolation level READ COMMITTED
+13:29:25.274 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 1 with isolation level READ COMMITTED
+13:29:25.274 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 1
+13:29:25.274 [main] DEBUG com.memgres.storage.Table -- Created table: products with 4 columns
+13:29:25.274 [main] DEBUG com.memgres.storage.Schema -- Created table products in schema public
+13:29:25.274 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- CREATE TABLE executed: products created
+13:29:25.274 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 1 committed successfully
+13:29:25.274 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 1
+13:29:25.274 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: CREATE TABLE products (id UUID, name VARCHAR, price INTEGER, category VARCHAR)
+13:29:25.274 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 1)
+13:29:25.274 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 2 with isolation level READ COMMITTED
+13:29:25.274 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 2 with isolation level READ COMMITTED
+13:29:25.274 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 2
+13:29:25.274 [main] DEBUG com.memgres.storage.Table -- Inserted row 1 into table products
+13:29:25.274 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- INSERT executed: 1 rows inserted into products
+13:29:25.274 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 2 committed successfully
+13:29:25.274 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 2
+13:29:25.274 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: INSERT INTO products VALUES (gen_random_uuid(), 'Laptop', 1200, 'Electronics')
+13:29:25.274 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 2)
+13:29:25.275 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 3 with isolation level READ COMMITTED
+13:29:25.275 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 3 with isolation level READ COMMITTED
+13:29:25.275 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 3
+13:29:25.275 [main] DEBUG com.memgres.storage.Table -- Inserted row 2 into table products
+13:29:25.275 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- INSERT executed: 1 rows inserted into products
+13:29:25.275 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 3 committed successfully
+13:29:25.275 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 3
+13:29:25.275 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: INSERT INTO products VALUES (gen_random_uuid(), 'Mouse', 25, 'Electronics')
+13:29:25.275 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 3)
+13:29:25.276 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 4 with isolation level READ COMMITTED
+13:29:25.276 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 4 with isolation level READ COMMITTED
+13:29:25.276 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 4
+13:29:25.276 [main] DEBUG com.memgres.storage.Table -- Inserted row 3 into table products
+13:29:25.276 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- INSERT executed: 1 rows inserted into products
+13:29:25.276 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 4 committed successfully
+13:29:25.276 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 4
+13:29:25.276 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: INSERT INTO products VALUES (gen_random_uuid(), 'Book', 15, 'Education')
+13:29:25.276 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 4)
+13:29:25.276 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 5 with isolation level READ COMMITTED
+13:29:25.276 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 5 with isolation level READ COMMITTED
+13:29:25.276 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 5
+13:29:25.276 [main] DEBUG com.memgres.storage.Table -- Inserted row 4 into table products
+13:29:25.276 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- INSERT executed: 1 rows inserted into products
+13:29:25.276 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 5 committed successfully
+13:29:25.276 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 5
+13:29:25.276 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: INSERT INTO products VALUES (gen_random_uuid(), 'Pen', 2, 'Office')
+13:29:25.276 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 5)
+13:29:25.276 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 6 with isolation level READ COMMITTED
+13:29:25.276 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 6 with isolation level READ COMMITTED
+13:29:25.276 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 6
+13:29:25.277 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- SELECT executed: 2 rows returned
+13:29:25.277 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 6 committed successfully
+13:29:25.277 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 6
+13:29:25.277 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: SELECT name, price FROM products WHERE price > 10 ORDER BY price DESC LIMIT 2
+13:29:25.277 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 6)
+13:29:25.277 [main] INFO com.memgres.sql.SqlIntegrationTest -- Complex queries test passed successfully
+13:29:25.277 [main] INFO com.memgres.transaction.TransactionManager -- Shutting down transaction manager with 0 active transactions
+13:29:25.277 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager shutdown complete
+13:29:25.277 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine shutdown successfully
+13:29:25.277 [main] INFO com.memgres.sql.SqlIntegrationTest -- Test teardown complete - engine shutdown
+]]></system-out>
+  </testcase>
+  <testcase name="testUuidGeneration" classname="com.memgres.sql.SqlIntegrationTest" time="0.001">
+    <system-out><![CDATA[13:29:25.277 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager initialized
+13:29:25.277 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine created
+13:29:25.277 [main] DEBUG com.memgres.storage.Schema -- Created schema: public
+13:29:25.277 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine initialized successfully
+13:29:25.277 [main] INFO com.memgres.sql.SqlIntegrationTest -- Test setup complete - engine and SQL execution engine initialized
+13:29:25.277 [main] INFO com.memgres.sql.SqlIntegrationTest -- Starting UUID generation test
+13:29:25.277 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 1 with isolation level READ COMMITTED
+13:29:25.277 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 1 with isolation level READ COMMITTED
+13:29:25.277 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 1
+13:29:25.277 [main] DEBUG com.memgres.storage.Table -- Created table: uuid_test with 2 columns
+13:29:25.277 [main] DEBUG com.memgres.storage.Schema -- Created table uuid_test in schema public
+13:29:25.277 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- CREATE TABLE executed: uuid_test created
+13:29:25.277 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 1 committed successfully
+13:29:25.277 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 1
+13:29:25.277 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: CREATE TABLE uuid_test (id UUID, name VARCHAR)
+13:29:25.277 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 1)
+13:29:25.277 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 2 with isolation level READ COMMITTED
+13:29:25.277 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 2 with isolation level READ COMMITTED
+13:29:25.277 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 2
+13:29:25.277 [main] DEBUG com.memgres.storage.Table -- Inserted row 1 into table uuid_test
+13:29:25.277 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- INSERT executed: 1 rows inserted into uuid_test
+13:29:25.277 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 2 committed successfully
+13:29:25.277 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 2
+13:29:25.277 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: INSERT INTO uuid_test VALUES (gen_random_uuid(), 'Test Entry')
+13:29:25.277 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 2)
+13:29:25.277 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 3 with isolation level READ COMMITTED
+13:29:25.278 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 3 with isolation level READ COMMITTED
+13:29:25.278 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 3
+13:29:25.278 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- SELECT executed: 1 rows returned
+13:29:25.278 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 3 committed successfully
+13:29:25.278 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 3
+13:29:25.278 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: SELECT id, name FROM uuid_test
+13:29:25.278 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 3)
+13:29:25.278 [main] INFO com.memgres.sql.SqlIntegrationTest -- UUID generation test passed: generated UUID = b9a79352-576f-4f28-b12c-8bde6239682d
+13:29:25.278 [main] INFO com.memgres.transaction.TransactionManager -- Shutting down transaction manager with 0 active transactions
+13:29:25.278 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager shutdown complete
+13:29:25.278 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine shutdown successfully
+13:29:25.278 [main] INFO com.memgres.sql.SqlIntegrationTest -- Test teardown complete - engine shutdown
+]]></system-out>
+  </testcase>
+  <testcase name="testJoinOptimization" classname="com.memgres.sql.SqlIntegrationTest" time="0.016">
+    <system-out><![CDATA[13:29:25.280 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager initialized
+13:29:25.280 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine created
+13:29:25.280 [main] DEBUG com.memgres.storage.Schema -- Created schema: public
+13:29:25.280 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine initialized successfully
+13:29:25.280 [main] INFO com.memgres.sql.SqlIntegrationTest -- Test setup complete - engine and SQL execution engine initialized
+13:29:25.280 [main] INFO com.memgres.sql.SqlIntegrationTest -- Starting JOIN optimization test
+13:29:25.280 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 1 with isolation level READ COMMITTED
+13:29:25.281 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 1 with isolation level READ COMMITTED
+13:29:25.281 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 1
+13:29:25.281 [main] DEBUG com.memgres.storage.Table -- Created table: large_orders with 3 columns
+13:29:25.281 [main] DEBUG com.memgres.storage.Schema -- Created table large_orders in schema public
+13:29:25.281 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- CREATE TABLE executed: large_orders created
+13:29:25.281 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 1 committed successfully
+13:29:25.281 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 1
+13:29:25.281 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: CREATE TABLE large_orders (id INTEGER, customer_id INTEGER, amount INTEGER)
+13:29:25.281 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 1)
+13:29:25.281 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 2 with isolation level READ COMMITTED
+13:29:25.281 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 2 with isolation level READ COMMITTED
+13:29:25.281 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 2
+13:29:25.281 [main] DEBUG com.memgres.storage.Table -- Created table: large_customers with 3 columns
+13:29:25.281 [main] DEBUG com.memgres.storage.Schema -- Created table large_customers in schema public
+13:29:25.281 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- CREATE TABLE executed: large_customers created
+13:29:25.281 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 2 committed successfully
+13:29:25.281 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 2
+13:29:25.281 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: CREATE TABLE large_customers (id INTEGER, name VARCHAR, city VARCHAR)
+13:29:25.281 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 2)
+13:29:25.287 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 3 with isolation level READ COMMITTED
+13:29:25.287 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 3 with isolation level READ COMMITTED
+13:29:25.287 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 3
+13:29:25.287 [main] DEBUG com.memgres.storage.Table -- Inserted row 1 into table large_orders
+13:29:25.287 [main] DEBUG com.memgres.storage.Table -- Inserted row 2 into table large_orders
+13:29:25.287 [main] DEBUG com.memgres.storage.Table -- Inserted row 3 into table large_orders
+13:29:25.287 [main] DEBUG com.memgres.storage.Table -- Inserted row 4 into table large_orders
+13:29:25.287 [main] DEBUG com.memgres.storage.Table -- Inserted row 5 into table large_orders
+13:29:25.287 [main] DEBUG com.memgres.storage.Table -- Inserted row 6 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 7 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 8 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 9 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 10 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 11 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 12 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 13 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 14 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 15 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 16 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 17 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 18 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 19 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 20 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 21 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 22 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 23 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 24 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 25 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 26 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 27 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 28 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 29 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 30 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 31 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 32 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 33 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 34 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 35 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 36 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 37 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 38 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 39 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 40 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 41 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 42 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 43 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 44 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 45 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 46 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 47 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 48 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 49 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 50 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 51 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 52 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 53 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 54 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 55 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 56 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 57 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 58 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 59 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 60 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 61 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 62 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 63 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 64 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 65 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 66 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 67 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 68 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 69 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.storage.Table -- Inserted row 70 into table large_orders
+13:29:25.288 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- INSERT executed: 70 rows inserted into large_orders
+13:29:25.288 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 3 committed successfully
+13:29:25.288 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 3
+13:29:25.288 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: INSERT INTO large_orders VALUES (1, 2, 100), (2, 3, 200), (3, 4, 300), (4, 5, 400), (5, 1, 500), (6, 2, 600), (7, 3, 700), (8, 4, 800), (9, 5, 900), (10, 1, 1000), (11, 2, 1100), (12, 3, 1200), (13, 4, 1300), (14, 5, 1400), (15, 1, 1500), (16, 2, 1600), (17, 3, 1700), (18, 4, 1800), (19, 5, 1900), (20, 1, 2000), (21, 2, 2100), (22, 3, 2200), (23, 4, 2300), (24, 5, 2400), (25, 1, 2500), (26, 2, 2600), (27, 3, 2700), (28, 4, 2800), (29, 5, 2900), (30, 1, 3000), (31, 2, 3100), (32, 3, 3200), (33, 4, 3300), (34, 5, 3400), (35, 1, 3500), (36, 2, 3600), (37, 3, 3700), (38, 4, 3800), (39, 5, 3900), (40, 1, 4000), (41, 2, 4100), (42, 3, 4200), (43, 4, 4300), (44, 5, 4400), (45, 1, 4500), (46, 2, 4600), (47, 3, 4700), (48, 4, 4800), (49, 5, 4900), (50, 1, 5000), (51, 2, 5100), (52, 3, 5200), (53, 4, 5300), (54, 5, 5400), (55, 1, 5500), (56, 2, 5600), (57, 3, 5700), (58, 4, 5800), (59, 5, 5900), (60, 1, 6000), (61, 2, 6100), (62, 3, 6200), (63, 4, 6300), (64, 5, 6400), (65, 1, 6500), (66, 2, 6600), (67, 3, 6700), (68, 4, 6800), (69, 5, 6900), (70, 1, 7000)
+13:29:25.288 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 3)
+13:29:25.289 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 4 with isolation level READ COMMITTED
+13:29:25.289 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 4 with isolation level READ COMMITTED
+13:29:25.289 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 4
+13:29:25.289 [main] DEBUG com.memgres.storage.Table -- Inserted row 1 into table large_customers
+13:29:25.289 [main] DEBUG com.memgres.storage.Table -- Inserted row 2 into table large_customers
+13:29:25.289 [main] DEBUG com.memgres.storage.Table -- Inserted row 3 into table large_customers
+13:29:25.289 [main] DEBUG com.memgres.storage.Table -- Inserted row 4 into table large_customers
+13:29:25.289 [main] DEBUG com.memgres.storage.Table -- Inserted row 5 into table large_customers
+13:29:25.289 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- INSERT executed: 5 rows inserted into large_customers
+13:29:25.289 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 4 committed successfully
+13:29:25.289 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 4
+13:29:25.289 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: INSERT INTO large_customers VALUES (1, 'Customer1', 'City1'), (2, 'Customer2', 'City2'), (3, 'Customer3', 'City3'), (4, 'Customer4', 'City4'), (5, 'Customer5', 'City5')
+13:29:25.289 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 4)
+13:29:25.289 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 5 with isolation level READ COMMITTED
+13:29:25.289 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 5 with isolation level READ COMMITTED
+13:29:25.290 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 5
+13:29:25.290 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- Using NESTED_LOOP algorithm for INNER join between 70 and 5 rows
+13:29:25.294 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- SELECT executed: 70 rows returned
+13:29:25.294 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 5 committed successfully
+13:29:25.294 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 5
+13:29:25.294 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: SELECT * FROM large_orders INNER JOIN large_customers ON large_orders.customer_id = large_customers.id
+13:29:25.294 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 5)
+13:29:25.294 [main] INFO com.memgres.sql.SqlIntegrationTest -- Hash JOIN optimization test passed - processed 70 rows with optimized algorithm
+13:29:25.294 [main] INFO com.memgres.sql.SqlIntegrationTest -- JOIN optimization tests completed successfully
+13:29:25.294 [main] INFO com.memgres.transaction.TransactionManager -- Shutting down transaction manager with 0 active transactions
+13:29:25.294 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager shutdown complete
+13:29:25.294 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine shutdown successfully
+13:29:25.294 [main] INFO com.memgres.sql.SqlIntegrationTest -- Test teardown complete - engine shutdown
+]]></system-out>
+  </testcase>
+  <testcase name="testErrorHandling" classname="com.memgres.sql.SqlIntegrationTest" time="0.012">
+    <system-out><![CDATA[13:29:25.295 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager initialized
+13:29:25.295 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine created
+13:29:25.295 [main] DEBUG com.memgres.storage.Schema -- Created schema: public
+13:29:25.295 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine initialized successfully
+13:29:25.295 [main] INFO com.memgres.sql.SqlIntegrationTest -- Test setup complete - engine and SQL execution engine initialized
+13:29:25.295 [main] INFO com.memgres.sql.SqlIntegrationTest -- Starting error handling test
+13:29:25.295 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 1 with isolation level READ COMMITTED
+13:29:25.295 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 1 with isolation level READ COMMITTED
+13:29:25.295 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 1
+13:29:25.295 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 1 rolled back: Explicit rollback
+13:29:25.295 [main] DEBUG com.memgres.transaction.TransactionManager -- Rolled back transaction 1
+13:29:25.295 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 1)
+13:29:25.302 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 2 with isolation level READ COMMITTED
+13:29:25.302 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 2 with isolation level READ COMMITTED
+13:29:25.302 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 2
+13:29:25.302 [main] DEBUG com.memgres.storage.Table -- Created table: error_test with 2 columns
+13:29:25.302 [main] DEBUG com.memgres.storage.Schema -- Created table error_test in schema public
+13:29:25.302 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- CREATE TABLE executed: error_test created
+13:29:25.302 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 2 committed successfully
+13:29:25.302 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 2
+13:29:25.302 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: CREATE TABLE error_test (id INTEGER, name VARCHAR)
+13:29:25.302 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 2)
+13:29:25.303 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 3 with isolation level READ COMMITTED
+13:29:25.303 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 3 with isolation level READ COMMITTED
+13:29:25.303 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 3
+13:29:25.304 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 3 rolled back: Explicit rollback
+13:29:25.304 [main] DEBUG com.memgres.transaction.TransactionManager -- Rolled back transaction 3
+13:29:25.304 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 3)
+13:29:25.305 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 4 with isolation level READ COMMITTED
+13:29:25.305 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 4 with isolation level READ COMMITTED
+13:29:25.305 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 4
+13:29:25.305 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 4 rolled back: Explicit rollback
+13:29:25.305 [main] DEBUG com.memgres.transaction.TransactionManager -- Rolled back transaction 4
+13:29:25.305 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 4)
+13:29:25.305 [main] INFO com.memgres.sql.SqlIntegrationTest -- Error handling test passed successfully - all expected errors were caught
+13:29:25.305 [main] INFO com.memgres.transaction.TransactionManager -- Shutting down transaction manager with 0 active transactions
+13:29:25.306 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager shutdown complete
+13:29:25.306 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine shutdown successfully
+13:29:25.306 [main] INFO com.memgres.sql.SqlIntegrationTest -- Test teardown complete - engine shutdown
+]]></system-out>
+  </testcase>
+  <testcase name="testJoinOperations" classname="com.memgres.sql.SqlIntegrationTest" time="0.011">
+    <system-out><![CDATA[13:29:25.308 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager initialized
+13:29:25.308 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine created
+13:29:25.308 [main] DEBUG com.memgres.storage.Schema -- Created schema: public
+13:29:25.308 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine initialized successfully
+13:29:25.308 [main] INFO com.memgres.sql.SqlIntegrationTest -- Test setup complete - engine and SQL execution engine initialized
+13:29:25.308 [main] INFO com.memgres.sql.SqlIntegrationTest -- Starting JOIN operations test
+13:29:25.308 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 1 with isolation level READ COMMITTED
+13:29:25.308 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 1 with isolation level READ COMMITTED
+13:29:25.308 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 1
+13:29:25.308 [main] DEBUG com.memgres.storage.Table -- Created table: users with 3 columns
+13:29:25.308 [main] DEBUG com.memgres.storage.Schema -- Created table users in schema public
+13:29:25.308 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- CREATE TABLE executed: users created
+13:29:25.308 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 1 committed successfully
+13:29:25.308 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 1
+13:29:25.308 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: CREATE TABLE users (id INTEGER, name VARCHAR, department_id INTEGER)
+13:29:25.308 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 1)
+13:29:25.309 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 2 with isolation level READ COMMITTED
+13:29:25.309 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 2 with isolation level READ COMMITTED
+13:29:25.309 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 2
+13:29:25.309 [main] DEBUG com.memgres.storage.Table -- Created table: departments with 3 columns
+13:29:25.309 [main] DEBUG com.memgres.storage.Schema -- Created table departments in schema public
+13:29:25.309 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- CREATE TABLE executed: departments created
+13:29:25.309 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 2 committed successfully
+13:29:25.309 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 2
+13:29:25.309 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: CREATE TABLE departments (id INTEGER, name VARCHAR, manager VARCHAR)
+13:29:25.309 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 2)
+13:29:25.309 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 3 with isolation level READ COMMITTED
+13:29:25.309 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 3 with isolation level READ COMMITTED
+13:29:25.309 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 3
+13:29:25.310 [main] DEBUG com.memgres.storage.Table -- Inserted row 1 into table users
+13:29:25.310 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- INSERT executed: 1 rows inserted into users
+13:29:25.310 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 3 committed successfully
+13:29:25.310 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 3
+13:29:25.310 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: INSERT INTO users VALUES (1, 'Alice', 1)
+13:29:25.310 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 3)
+13:29:25.310 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 4 with isolation level READ COMMITTED
+13:29:25.310 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 4 with isolation level READ COMMITTED
+13:29:25.310 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 4
+13:29:25.310 [main] DEBUG com.memgres.storage.Table -- Inserted row 2 into table users
+13:29:25.310 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- INSERT executed: 1 rows inserted into users
+13:29:25.310 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 4 committed successfully
+13:29:25.310 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 4
+13:29:25.310 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: INSERT INTO users VALUES (2, 'Bob', 2)
+13:29:25.310 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 4)
+13:29:25.310 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 5 with isolation level READ COMMITTED
+13:29:25.310 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 5 with isolation level READ COMMITTED
+13:29:25.310 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 5
+13:29:25.310 [main] DEBUG com.memgres.storage.Table -- Inserted row 3 into table users
+13:29:25.310 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- INSERT executed: 1 rows inserted into users
+13:29:25.310 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 5 committed successfully
+13:29:25.310 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 5
+13:29:25.310 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: INSERT INTO users VALUES (3, 'Charlie', 1)
+13:29:25.311 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 5)
+13:29:25.311 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 6 with isolation level READ COMMITTED
+13:29:25.311 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 6 with isolation level READ COMMITTED
+13:29:25.311 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 6
+13:29:25.311 [main] DEBUG com.memgres.storage.Table -- Inserted row 4 into table users
+13:29:25.311 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- INSERT executed: 1 rows inserted into users
+13:29:25.311 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 6 committed successfully
+13:29:25.311 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 6
+13:29:25.311 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: INSERT INTO users VALUES (4, 'David', 3)
+13:29:25.311 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 6)
+13:29:25.311 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 7 with isolation level READ COMMITTED
+13:29:25.311 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 7 with isolation level READ COMMITTED
+13:29:25.311 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 7
+13:29:25.311 [main] DEBUG com.memgres.storage.Table -- Inserted row 5 into table users
+13:29:25.311 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- INSERT executed: 1 rows inserted into users
+13:29:25.311 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 7 committed successfully
+13:29:25.311 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 7
+13:29:25.311 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: INSERT INTO users VALUES (5, 'Eve', 999)
+13:29:25.311 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 7)
+13:29:25.311 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 8 with isolation level READ COMMITTED
+13:29:25.311 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 8 with isolation level READ COMMITTED
+13:29:25.311 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 8
+13:29:25.311 [main] DEBUG com.memgres.storage.Table -- Inserted row 1 into table departments
+13:29:25.311 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- INSERT executed: 1 rows inserted into departments
+13:29:25.311 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 8 committed successfully
+13:29:25.311 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 8
+13:29:25.311 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: INSERT INTO departments VALUES (1, 'Engineering', 'John')
+13:29:25.311 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 8)
+13:29:25.311 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 9 with isolation level READ COMMITTED
+13:29:25.311 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 9 with isolation level READ COMMITTED
+13:29:25.311 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 9
+13:29:25.311 [main] DEBUG com.memgres.storage.Table -- Inserted row 2 into table departments
+13:29:25.311 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- INSERT executed: 1 rows inserted into departments
+13:29:25.311 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 9 committed successfully
+13:29:25.311 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 9
+13:29:25.311 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: INSERT INTO departments VALUES (2, 'Marketing', 'Jane')
+13:29:25.311 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 9)
+13:29:25.312 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 10 with isolation level READ COMMITTED
+13:29:25.312 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 10 with isolation level READ COMMITTED
+13:29:25.312 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 10
+13:29:25.312 [main] DEBUG com.memgres.storage.Table -- Inserted row 3 into table departments
+13:29:25.312 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- INSERT executed: 1 rows inserted into departments
+13:29:25.312 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 10 committed successfully
+13:29:25.312 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 10
+13:29:25.312 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: INSERT INTO departments VALUES (4, 'Finance', 'Mike')
+13:29:25.312 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 10)
+13:29:25.312 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 11 with isolation level READ COMMITTED
+13:29:25.312 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 11 with isolation level READ COMMITTED
+13:29:25.312 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 11
+13:29:25.312 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- Using NESTED_LOOP algorithm for INNER join between 5 and 3 rows
+13:29:25.313 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- SELECT executed: 3 rows returned
+13:29:25.313 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 11 committed successfully
+13:29:25.313 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 11
+13:29:25.313 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: SELECT * FROM users INNER JOIN departments ON users.department_id = departments.id
+13:29:25.313 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 11)
+13:29:25.313 [main] INFO com.memgres.sql.SqlIntegrationTest -- INNER JOIN test passed - found 3 matching rows
+13:29:25.313 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 12 with isolation level READ COMMITTED
+13:29:25.313 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 12 with isolation level READ COMMITTED
+13:29:25.313 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 12
+13:29:25.313 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- Using NESTED_LOOP algorithm for LEFT join between 5 and 3 rows
+13:29:25.314 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- SELECT executed: 5 rows returned
+13:29:25.314 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 12 committed successfully
+13:29:25.314 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 12
+13:29:25.314 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: SELECT * FROM users LEFT JOIN departments ON users.department_id = departments.id
+13:29:25.314 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 12)
+13:29:25.314 [main] INFO com.memgres.sql.SqlIntegrationTest -- LEFT JOIN test passed - found 5 rows
+13:29:25.315 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 13 with isolation level READ COMMITTED
+13:29:25.315 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 13 with isolation level READ COMMITTED
+13:29:25.315 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 13
+13:29:25.315 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- Using NESTED_LOOP algorithm for RIGHT join between 5 and 3 rows
+13:29:25.315 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- SELECT executed: 4 rows returned
+13:29:25.315 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 13 committed successfully
+13:29:25.315 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 13
+13:29:25.315 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: SELECT * FROM users RIGHT JOIN departments ON users.department_id = departments.id
+13:29:25.315 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 13)
+13:29:25.315 [main] INFO com.memgres.sql.SqlIntegrationTest -- RIGHT JOIN test passed - found 4 rows
+13:29:25.316 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 14 with isolation level READ COMMITTED
+13:29:25.316 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 14 with isolation level READ COMMITTED
+13:29:25.316 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 14
+13:29:25.316 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- Using NESTED_LOOP algorithm for FULL_OUTER join between 5 and 3 rows
+13:29:25.316 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- SELECT executed: 6 rows returned
+13:29:25.316 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 14 committed successfully
+13:29:25.316 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 14
+13:29:25.316 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: SELECT * FROM users FULL OUTER JOIN departments ON users.department_id = departments.id
+13:29:25.316 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 14)
+13:29:25.316 [main] INFO com.memgres.sql.SqlIntegrationTest -- FULL OUTER JOIN test passed - found 6 rows
+13:29:25.316 [main] INFO com.memgres.sql.SqlIntegrationTest -- Skipping WHERE clause test - qualified column names feature pending
+13:29:25.317 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 15 with isolation level READ COMMITTED
+13:29:25.317 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 15 with isolation level READ COMMITTED
+13:29:25.317 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 15
+13:29:25.317 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- Using NESTED_LOOP algorithm for INNER join between 5 and 3 rows
+13:29:25.317 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- SELECT executed: 3 rows returned
+13:29:25.317 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 15 committed successfully
+13:29:25.317 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 15
+13:29:25.317 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: SELECT * FROM users INNER JOIN departments ON users.department_id = departments.id
+13:29:25.317 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 15)
+13:29:25.317 [main] INFO com.memgres.sql.SqlIntegrationTest -- Basic JOIN test passed - found 3 joined rows
+13:29:25.317 [main] INFO com.memgres.sql.SqlIntegrationTest -- All JOIN operations tests passed successfully
+13:29:25.318 [main] INFO com.memgres.transaction.TransactionManager -- Shutting down transaction manager with 0 active transactions
+13:29:25.318 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager shutdown complete
+13:29:25.318 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine shutdown successfully
+13:29:25.318 [main] INFO com.memgres.sql.SqlIntegrationTest -- Test teardown complete - engine shutdown
+]]></system-out>
+  </testcase>
+  <testcase name="testTransactionIsolation" classname="com.memgres.sql.SqlIntegrationTest" time="0.004">
+    <system-out><![CDATA[13:29:25.320 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager initialized
+13:29:25.320 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine created
+13:29:25.320 [main] DEBUG com.memgres.storage.Schema -- Created schema: public
+13:29:25.320 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine initialized successfully
+13:29:25.320 [main] INFO com.memgres.sql.SqlIntegrationTest -- Test setup complete - engine and SQL execution engine initialized
+13:29:25.320 [main] INFO com.memgres.sql.SqlIntegrationTest -- Starting transaction isolation test
+13:29:25.321 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 1 with isolation level READ COMMITTED
+13:29:25.321 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 1 with isolation level READ COMMITTED
+13:29:25.321 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 1
+13:29:25.321 [main] DEBUG com.memgres.storage.Table -- Created table: isolation_test with 2 columns
+13:29:25.321 [main] DEBUG com.memgres.storage.Schema -- Created table isolation_test in schema public
+13:29:25.321 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- CREATE TABLE executed: isolation_test created
+13:29:25.321 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 1 committed successfully
+13:29:25.321 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 1
+13:29:25.321 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: CREATE TABLE isolation_test (id INTEGER, value VARCHAR)
+13:29:25.321 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 1)
+13:29:25.322 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 2 with isolation level READ UNCOMMITTED
+13:29:25.322 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 2 with isolation level READ UNCOMMITTED
+13:29:25.322 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 2
+13:29:25.322 [main] DEBUG com.memgres.storage.Table -- Inserted row 1 into table isolation_test
+13:29:25.322 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- INSERT executed: 1 rows inserted into isolation_test
+13:29:25.322 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 2 committed successfully
+13:29:25.322 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 2
+13:29:25.322 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: INSERT INTO isolation_test VALUES (1, 'test')
+13:29:25.322 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 2)
+13:29:25.322 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 3 with isolation level READ COMMITTED
+13:29:25.322 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 3 with isolation level READ COMMITTED
+13:29:25.322 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 3
+13:29:25.322 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- SELECT executed: 1 rows returned
+13:29:25.322 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 3 committed successfully
+13:29:25.322 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 3
+13:29:25.322 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: SELECT * FROM isolation_test
+13:29:25.322 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 3)
+13:29:25.322 [main] DEBUG com.memgres.transaction.Transaction -- Created transaction 4 with isolation level SERIALIZABLE
+13:29:25.322 [main] DEBUG com.memgres.transaction.TransactionManager -- Started transaction 4 with isolation level SERIALIZABLE
+13:29:25.322 [main] DEBUG com.memgres.transaction.TransactionContext -- Set transaction context for thread main to transaction 4
+13:29:25.323 [main] DEBUG com.memgres.sql.execution.StatementExecutor -- SELECT executed: 1 rows returned
+13:29:25.323 [main] DEBUG com.memgres.transaction.Transaction -- Transaction 4 committed successfully
+13:29:25.323 [main] DEBUG com.memgres.transaction.TransactionManager -- Committed transaction 4
+13:29:25.323 [main] DEBUG com.memgres.sql.execution.SqlExecutionEngine -- Successfully executed SQL: SELECT * FROM isolation_test
+13:29:25.323 [main] DEBUG com.memgres.transaction.TransactionContext -- Cleared transaction context for thread main (was transaction 4)
+13:29:25.323 [main] INFO com.memgres.sql.SqlIntegrationTest -- Transaction isolation test passed successfully
+13:29:25.323 [main] INFO com.memgres.transaction.TransactionManager -- Shutting down transaction manager with 0 active transactions
+13:29:25.323 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager shutdown complete
+13:29:25.323 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine shutdown successfully
+13:29:25.323 [main] INFO com.memgres.sql.SqlIntegrationTest -- Test teardown complete - engine shutdown
+]]></system-out>
+  </testcase>
+</testsuite>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataTypeNode.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">MemGres Core</a> &gt; <a href="index.source.html" class="el_package">com.memgres.sql.ast.statement</a> &gt; <span class="el_source">DataTypeNode.java</span></div><h1>DataTypeNode.java</h1><pre class="source lang-java linenums">package com.memgres.sql.ast.statement;
+
+import com.memgres.sql.ast.AstNode;
+import com.memgres.sql.ast.AstVisitor;
+import com.memgres.types.DataType;
+
+import java.util.Optional;
+
+/**
+ * Represents a data type in SQL DDL (e.g., VARCHAR(50), INTEGER, UUID).
+ */
+public class DataTypeNode extends AstNode {
+    
+    private final DataType dataType;
+    private final Optional&lt;Integer&gt; length;
+    private final Optional&lt;Integer&gt; precision;
+    
+<span class="fc" id="L18">    public DataTypeNode(DataType dataType) {</span>
+<span class="fc" id="L19">        this.dataType = dataType;</span>
+<span class="fc" id="L20">        this.length = Optional.empty();</span>
+<span class="fc" id="L21">        this.precision = Optional.empty();</span>
+<span class="fc" id="L22">    }</span>
+    
+<span class="nc" id="L24">    public DataTypeNode(DataType dataType, int length) {</span>
+<span class="nc" id="L25">        this.dataType = dataType;</span>
+<span class="nc" id="L26">        this.length = Optional.of(length);</span>
+<span class="nc" id="L27">        this.precision = Optional.empty();</span>
+<span class="nc" id="L28">    }</span>
+    
+<span class="nc" id="L30">    public DataTypeNode(DataType dataType, int length, int precision) {</span>
+<span class="nc" id="L31">        this.dataType = dataType;</span>
+<span class="nc" id="L32">        this.length = Optional.of(length);</span>
+<span class="nc" id="L33">        this.precision = Optional.of(precision);</span>
+<span class="nc" id="L34">    }</span>
+    
+    public DataType getDataType() {
+<span class="fc" id="L37">        return dataType;</span>
+    }
+    
+    public Optional&lt;Integer&gt; getLength() {
+<span class="nc" id="L41">        return length;</span>
+    }
+    
+    public Optional&lt;Integer&gt; getPrecision() {
+<span class="nc" id="L45">        return precision;</span>
+    }
+    
+    @Override
+    public &lt;T, C&gt; T accept(AstVisitor&lt;T, C&gt; visitor, C context) throws Exception {
+<span class="nc" id="L50">        return visitor.visitDataType(this, context);</span>
+    }
+    
+    @Override
+    public String toString() {
+<span class="nc" id="L55">        StringBuilder sb = new StringBuilder(dataType.toString());</span>
+<span class="nc bnc" id="L56" title="All 2 branches missed.">        if (length.isPresent()) {</span>
+<span class="nc" id="L57">            sb.append(&quot;(&quot;).append(length.get());</span>
+<span class="nc bnc" id="L58" title="All 2 branches missed.">            if (precision.isPresent()) {</span>
+<span class="nc" id="L59">                sb.append(&quot;,&quot;).append(precision.get());</span>
+            }
+<span class="nc" id="L61">            sb.append(&quot;)&quot;);</span>
+        }
+<span class="nc" id="L63">        return sb.toString();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

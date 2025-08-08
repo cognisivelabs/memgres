@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SqlExecutionResult.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">MemGres Core</a> &gt; <a href="index.source.html" class="el_package">com.memgres.sql.execution</a> &gt; <span class="el_source">SqlExecutionResult.java</span></div><h1>SqlExecutionResult.java</h1><pre class="source lang-java linenums">package com.memgres.sql.execution;
+
+import com.memgres.types.Column;
+import com.memgres.types.Row;
+
+import java.util.Collections;
+import java.util.List;
+
+/**
+ * Represents the result of executing a SQL statement.
+ */
+public class SqlExecutionResult {
+    
+<span class="fc" id="L14">    public enum ResultType {</span>
+<span class="fc" id="L15">        SELECT,    // Query that returns rows</span>
+<span class="fc" id="L16">        INSERT,    // INSERT statement - returns affected rows count</span>
+<span class="fc" id="L17">        UPDATE,    // UPDATE statement - returns affected rows count  </span>
+<span class="fc" id="L18">        DELETE,    // DELETE statement - returns affected rows count</span>
+<span class="fc" id="L19">        DDL,       // CREATE/DROP statement - returns success/failure</span>
+<span class="fc" id="L20">        EMPTY      // No result</span>
+    }
+    
+    private final ResultType type;
+    private final List&lt;Column&gt; columns;
+    private final List&lt;Row&gt; rows;
+    private final int affectedRows;
+    private final boolean success;
+    private final String message;
+    
+    // Constructor for SELECT results
+<span class="fc" id="L31">    public SqlExecutionResult(List&lt;Column&gt; columns, List&lt;Row&gt; rows) {</span>
+<span class="fc" id="L32">        this.type = ResultType.SELECT;</span>
+<span class="fc" id="L33">        this.columns = columns;</span>
+<span class="fc" id="L34">        this.rows = rows;</span>
+<span class="fc" id="L35">        this.affectedRows = rows.size();</span>
+<span class="fc" id="L36">        this.success = true;</span>
+<span class="fc" id="L37">        this.message = &quot;SELECT completed successfully&quot;;</span>
+<span class="fc" id="L38">    }</span>
+    
+    // Constructor for INSERT/UPDATE/DELETE results
+<span class="fc" id="L41">    public SqlExecutionResult(ResultType type, int affectedRows) {</span>
+<span class="pc bpc" id="L42" title="2 of 4 branches missed.">        if (type == ResultType.SELECT || type == ResultType.DDL) {</span>
+<span class="nc" id="L43">            throw new IllegalArgumentException(&quot;Use appropriate constructor for &quot; + type);</span>
+        }
+<span class="fc" id="L45">        this.type = type;</span>
+<span class="fc" id="L46">        this.columns = Collections.emptyList();</span>
+<span class="fc" id="L47">        this.rows = Collections.emptyList();</span>
+<span class="fc" id="L48">        this.affectedRows = affectedRows;</span>
+<span class="fc" id="L49">        this.success = true;</span>
+<span class="fc" id="L50">        this.message = type + &quot; completed successfully&quot;;</span>
+<span class="fc" id="L51">    }</span>
+    
+    // Constructor for DDL results
+<span class="fc" id="L54">    public SqlExecutionResult(ResultType type, boolean success, String message) {</span>
+<span class="pc bpc" id="L55" title="1 of 2 branches missed.">        if (type != ResultType.DDL) {</span>
+<span class="nc" id="L56">            throw new IllegalArgumentException(&quot;Use this constructor only for DDL operations&quot;);</span>
+        }
+<span class="fc" id="L58">        this.type = type;</span>
+<span class="fc" id="L59">        this.columns = Collections.emptyList();</span>
+<span class="fc" id="L60">        this.rows = Collections.emptyList();</span>
+<span class="fc" id="L61">        this.affectedRows = 0;</span>
+<span class="fc" id="L62">        this.success = success;</span>
+<span class="fc" id="L63">        this.message = message;</span>
+<span class="fc" id="L64">    }</span>
+    
+    // Constructor for empty results
+<span class="nc" id="L67">    private SqlExecutionResult() {</span>
+<span class="nc" id="L68">        this.type = ResultType.EMPTY;</span>
+<span class="nc" id="L69">        this.columns = Collections.emptyList();</span>
+<span class="nc" id="L70">        this.rows = Collections.emptyList();</span>
+<span class="nc" id="L71">        this.affectedRows = 0;</span>
+<span class="nc" id="L72">        this.success = true;</span>
+<span class="nc" id="L73">        this.message = &quot;No operation performed&quot;;</span>
+<span class="nc" id="L74">    }</span>
+    
+    public static SqlExecutionResult empty() {
+<span class="nc" id="L77">        return new SqlExecutionResult();</span>
+    }
+    
+    public ResultType getType() {
+<span class="fc" id="L81">        return type;</span>
+    }
+    
+    public List&lt;Column&gt; getColumns() {
+<span class="fc" id="L85">        return columns;</span>
+    }
+    
+    public List&lt;Row&gt; getRows() {
+<span class="fc" id="L89">        return rows;</span>
+    }
+    
+    public int getAffectedRows() {
+<span class="fc" id="L93">        return affectedRows;</span>
+    }
+    
+    public boolean isSuccess() {
+<span class="fc" id="L97">        return success;</span>
+    }
+    
+    public String getMessage() {
+<span class="fc" id="L101">        return message;</span>
+    }
+    
+    @Override
+    public String toString() {
+<span class="nc bnc" id="L106" title="All 5 branches missed.">        switch (type) {</span>
+            case SELECT:
+<span class="nc" id="L108">                return String.format(&quot;SELECT: %d rows returned&quot;, rows.size());</span>
+            case INSERT:
+            case UPDATE:
+            case DELETE:
+<span class="nc" id="L112">                return String.format(&quot;%s: %d rows affected&quot;, type, affectedRows);</span>
+            case DDL:
+<span class="nc bnc" id="L114" title="All 2 branches missed.">                return String.format(&quot;DDL: %s - %s&quot;, success ? &quot;SUCCESS&quot; : &quot;FAILED&quot;, message);</span>
+            case EMPTY:
+<span class="nc" id="L116">                return &quot;EMPTY RESULT&quot;;</span>
+            default:
+<span class="nc" id="L118">                return &quot;UNKNOWN RESULT&quot;;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

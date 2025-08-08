@@ -1,0 +1,452 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataType.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">MemGres Core</a> &gt; <a href="index.source.html" class="el_package">com.memgres.types</a> &gt; <span class="el_source">DataType.java</span></div><h1>DataType.java</h1><pre class="source lang-java linenums">package com.memgres.types;
+
+import com.memgres.types.jsonb.JsonbValue;
+
+import java.math.BigDecimal;
+import java.time.*;
+import java.util.UUID;
+
+/**
+ * Enumeration of supported data types in MemGres.
+ * Each data type defines validation logic for values.
+ */
+<span class="fc" id="L13">public enum DataType {</span>
+    
+    // Numeric types
+<span class="fc" id="L16">    SMALLINT(&quot;smallint&quot;) {</span>
+        @Override
+        public boolean isValidValue(Object value) {
+<span class="nc bnc" id="L19" title="All 2 branches missed.">            if (value instanceof Short) return true;</span>
+<span class="nc bnc" id="L20" title="All 2 branches missed.">            if (value instanceof Integer) {</span>
+<span class="nc" id="L21">                int intValue = (Integer) value;</span>
+<span class="nc bnc" id="L22" title="All 4 branches missed.">                return intValue &gt;= Short.MIN_VALUE &amp;&amp; intValue &lt;= Short.MAX_VALUE;</span>
+            }
+<span class="nc" id="L24">            return false;</span>
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+<span class="nc bnc" id="L29" title="All 2 branches missed.">            if (value instanceof Number) {</span>
+<span class="nc" id="L30">                return ((Number) value).shortValue();</span>
+            }
+<span class="nc bnc" id="L32" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L33">                return Short.parseShort((String) value);</span>
+            }
+<span class="nc" id="L35">            return value;</span>
+        }
+    },
+    
+<span class="fc" id="L39">    INTEGER(&quot;integer&quot;) {</span>
+        @Override
+        public boolean isValidValue(Object value) {
+<span class="pc bpc" id="L42" title="5 of 6 branches missed.">            return value instanceof Integer || value instanceof Short || value instanceof Byte;</span>
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+<span class="pc bpc" id="L47" title="1 of 2 branches missed.">            if (value instanceof Number) {</span>
+<span class="fc" id="L48">                return ((Number) value).intValue();</span>
+            }
+<span class="nc bnc" id="L50" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L51">                return Integer.parseInt((String) value);</span>
+            }
+<span class="nc" id="L53">            return value;</span>
+        }
+    },
+    
+<span class="fc" id="L57">    BIGINT(&quot;bigint&quot;) {</span>
+        @Override
+        public boolean isValidValue(Object value) {
+<span class="nc bnc" id="L60" title="All 8 branches missed.">            return value instanceof Long || value instanceof Integer || </span>
+                   value instanceof Short || value instanceof Byte;
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+<span class="nc bnc" id="L66" title="All 2 branches missed.">            if (value instanceof Number) {</span>
+<span class="nc" id="L67">                return ((Number) value).longValue();</span>
+            }
+<span class="nc bnc" id="L69" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L70">                return Long.parseLong((String) value);</span>
+            }
+<span class="nc" id="L72">            return value;</span>
+        }
+    },
+    
+<span class="fc" id="L76">    DECIMAL(&quot;decimal&quot;) {</span>
+        @Override
+        public boolean isValidValue(Object value) {
+<span class="nc bnc" id="L79" title="All 4 branches missed.">            return value instanceof BigDecimal || value instanceof Number;</span>
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+<span class="nc bnc" id="L84" title="All 2 branches missed.">            if (value instanceof BigDecimal) {</span>
+<span class="nc" id="L85">                return value;</span>
+            }
+<span class="nc bnc" id="L87" title="All 2 branches missed.">            if (value instanceof Number) {</span>
+<span class="nc" id="L88">                return BigDecimal.valueOf(((Number) value).doubleValue());</span>
+            }
+<span class="nc bnc" id="L90" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L91">                return new BigDecimal((String) value);</span>
+            }
+<span class="nc" id="L93">            return value;</span>
+        }
+    },
+    
+<span class="fc" id="L97">    REAL(&quot;real&quot;) {</span>
+        @Override
+        public boolean isValidValue(Object value) {
+<span class="nc bnc" id="L100" title="All 4 branches missed.">            return value instanceof Float || value instanceof Number;</span>
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+<span class="nc bnc" id="L105" title="All 2 branches missed.">            if (value instanceof Number) {</span>
+<span class="nc" id="L106">                return ((Number) value).floatValue();</span>
+            }
+<span class="nc bnc" id="L108" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L109">                return Float.parseFloat((String) value);</span>
+            }
+<span class="nc" id="L111">            return value;</span>
+        }
+    },
+    
+<span class="fc" id="L115">    DOUBLE_PRECISION(&quot;double precision&quot;) {</span>
+        @Override
+        public boolean isValidValue(Object value) {
+<span class="nc bnc" id="L118" title="All 4 branches missed.">            return value instanceof Double || value instanceof Number;</span>
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+<span class="nc bnc" id="L123" title="All 2 branches missed.">            if (value instanceof Number) {</span>
+<span class="nc" id="L124">                return ((Number) value).doubleValue();</span>
+            }
+<span class="nc bnc" id="L126" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L127">                return Double.parseDouble((String) value);</span>
+            }
+<span class="nc" id="L129">            return value;</span>
+        }
+    },
+    
+    // String types
+<span class="fc" id="L134">    VARCHAR(&quot;varchar&quot;) {</span>
+        @Override
+        public boolean isValidValue(Object value) {
+<span class="pc bpc" id="L137" title="3 of 4 branches missed.">            return value instanceof String || value instanceof Character;</span>
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+<span class="pc bpc" id="L142" title="1 of 2 branches missed.">            if (value instanceof Character) {</span>
+<span class="nc" id="L143">                return value.toString();</span>
+            }
+<span class="pc bpc" id="L145" title="1 of 2 branches missed.">            return value != null ? value.toString() : null;</span>
+        }
+    },
+    
+<span class="fc" id="L149">    TEXT(&quot;text&quot;) {</span>
+        @Override
+        public boolean isValidValue(Object value) {
+<span class="nc bnc" id="L152" title="All 4 branches missed.">            return value instanceof String || value instanceof Character;</span>
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+<span class="nc bnc" id="L157" title="All 2 branches missed.">            if (value instanceof Character) {</span>
+<span class="nc" id="L158">                return value.toString();</span>
+            }
+<span class="nc bnc" id="L160" title="All 2 branches missed.">            return value != null ? value.toString() : null;</span>
+        }
+    },
+    
+<span class="fc" id="L164">    CHAR(&quot;char&quot;) {</span>
+        @Override
+        public boolean isValidValue(Object value) {
+<span class="nc bnc" id="L167" title="All 4 branches missed.">            return value instanceof Character || </span>
+<span class="nc bnc" id="L168" title="All 2 branches missed.">                   (value instanceof String &amp;&amp; ((String) value).length() == 1);</span>
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+<span class="nc bnc" id="L173" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L174">                String str = (String) value;</span>
+<span class="nc bnc" id="L175" title="All 2 branches missed.">                return str.isEmpty() ? ' ' : str.charAt(0);</span>
+            }
+<span class="nc" id="L177">            return value;</span>
+        }
+    },
+    
+    // Boolean type
+<span class="fc" id="L182">    BOOLEAN(&quot;boolean&quot;) {</span>
+        @Override
+        public boolean isValidValue(Object value) {
+<span class="fc" id="L185">            return value instanceof Boolean;</span>
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+<span class="pc bpc" id="L190" title="1 of 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L191">                String str = ((String) value).toLowerCase();</span>
+<span class="nc bnc" id="L192" title="All 6 branches missed.">                return &quot;true&quot;.equals(str) || &quot;t&quot;.equals(str) || &quot;1&quot;.equals(str) ||</span>
+<span class="nc bnc" id="L193" title="All 6 branches missed.">                       &quot;yes&quot;.equals(str) || &quot;y&quot;.equals(str) || &quot;on&quot;.equals(str);</span>
+            }
+<span class="pc bpc" id="L195" title="1 of 2 branches missed.">            if (value instanceof Number) {</span>
+<span class="nc bnc" id="L196" title="All 2 branches missed.">                return ((Number) value).intValue() != 0;</span>
+            }
+<span class="fc" id="L198">            return value;</span>
+        }
+    },
+    
+    // Date/Time types
+<span class="fc" id="L203">    DATE(&quot;date&quot;) {</span>
+        @Override
+        public boolean isValidValue(Object value) {
+<span class="nc bnc" id="L206" title="All 4 branches missed.">            return value instanceof LocalDate || value instanceof java.sql.Date;</span>
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+<span class="nc bnc" id="L211" title="All 2 branches missed.">            if (value instanceof java.sql.Date) {</span>
+<span class="nc" id="L212">                return ((java.sql.Date) value).toLocalDate();</span>
+            }
+<span class="nc bnc" id="L214" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L215">                return LocalDate.parse((String) value);</span>
+            }
+<span class="nc" id="L217">            return value;</span>
+        }
+    },
+    
+<span class="fc" id="L221">    TIME(&quot;time&quot;) {</span>
+        @Override
+        public boolean isValidValue(Object value) {
+<span class="nc bnc" id="L224" title="All 4 branches missed.">            return value instanceof LocalTime || value instanceof java.sql.Time;</span>
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+<span class="nc bnc" id="L229" title="All 2 branches missed.">            if (value instanceof java.sql.Time) {</span>
+<span class="nc" id="L230">                return ((java.sql.Time) value).toLocalTime();</span>
+            }
+<span class="nc bnc" id="L232" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L233">                return LocalTime.parse((String) value);</span>
+            }
+<span class="nc" id="L235">            return value;</span>
+        }
+    },
+    
+<span class="fc" id="L239">    TIMESTAMP(&quot;timestamp&quot;) {</span>
+        @Override
+        public boolean isValidValue(Object value) {
+<span class="nc bnc" id="L242" title="All 4 branches missed.">            return value instanceof LocalDateTime || value instanceof java.sql.Timestamp;</span>
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+<span class="nc bnc" id="L247" title="All 2 branches missed.">            if (value instanceof java.sql.Timestamp) {</span>
+<span class="nc" id="L248">                return ((java.sql.Timestamp) value).toLocalDateTime();</span>
+            }
+<span class="nc bnc" id="L250" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L251">                return LocalDateTime.parse((String) value);</span>
+            }
+<span class="nc" id="L253">            return value;</span>
+        }
+    },
+    
+<span class="fc" id="L257">    TIMESTAMPTZ(&quot;timestamptz&quot;) {</span>
+        @Override
+        public boolean isValidValue(Object value) {
+<span class="nc bnc" id="L260" title="All 8 branches missed.">            return value instanceof ZonedDateTime || value instanceof OffsetDateTime ||</span>
+                   value instanceof Instant || value instanceof java.sql.Timestamp;
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+<span class="nc bnc" id="L266" title="All 2 branches missed.">            if (value instanceof java.sql.Timestamp) {</span>
+<span class="nc" id="L267">                return ((java.sql.Timestamp) value).toInstant().atZone(ZoneOffset.UTC);</span>
+            }
+<span class="nc bnc" id="L269" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L270">                return ZonedDateTime.parse((String) value);</span>
+            }
+<span class="nc" id="L272">            return value;</span>
+        }
+    },
+    
+    // UUID type
+<span class="fc" id="L277">    UUID(&quot;uuid&quot;) {</span>
+        @Override
+        public boolean isValidValue(Object value) {
+<span class="fc" id="L280">            return value instanceof java.util.UUID;</span>
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+<span class="fc bfc" id="L285" title="All 2 branches covered.">            if (value instanceof String) {</span>
+<span class="fc" id="L286">                return java.util.UUID.fromString((String) value);</span>
+            }
+<span class="fc" id="L288">            return value;</span>
+        }
+        
+        /**
+         * Generate a random UUID (equivalent to PostgreSQL's gen_random_uuid()).
+         * @return a new random UUID
+         */
+        public java.util.UUID genRandomUuid() {
+<span class="nc" id="L296">            return com.memgres.functions.UuidFunctions.genRandomUuid();</span>
+        }
+        
+        /**
+         * Generate a UUID version 1 (time-based).
+         * @return a new time-based UUID
+         */
+        public java.util.UUID uuidGenerateV1() {
+<span class="nc" id="L304">            return com.memgres.functions.UuidFunctions.uuidGenerateV1();</span>
+        }
+        
+        /**
+         * Generate a UUID version 4 (random).
+         * @return a new random UUID
+         */
+        public java.util.UUID uuidGenerateV4() {
+<span class="nc" id="L312">            return com.memgres.functions.UuidFunctions.uuidGenerateV4();</span>
+        }
+    },
+    
+    // JSONB type
+<span class="fc" id="L317">    JSONB(&quot;jsonb&quot;) {</span>
+        @Override
+        public boolean isValidValue(Object value) {
+<span class="nc bnc" id="L320" title="All 8 branches missed.">            return value instanceof JsonbValue || value instanceof String ||</span>
+                   value instanceof java.util.Map || value instanceof java.util.List;
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+<span class="nc bnc" id="L326" title="All 2 branches missed.">            if (value instanceof JsonbValue) {</span>
+<span class="nc" id="L327">                return value;</span>
+            }
+<span class="nc" id="L329">            return JsonbValue.from(value);</span>
+        }
+    },
+    
+    // Binary types
+<span class="fc" id="L334">    BYTEA(&quot;bytea&quot;) {</span>
+        @Override
+        public boolean isValidValue(Object value) {
+<span class="nc" id="L337">            return value instanceof byte[];</span>
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+<span class="nc bnc" id="L342" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L343">                return ((String) value).getBytes();</span>
+            }
+<span class="nc" id="L345">            return value;</span>
+        }
+    };
+    
+    private final String sqlName;
+    
+<span class="fc" id="L351">    DataType(String sqlName) {</span>
+<span class="fc" id="L352">        this.sqlName = sqlName;</span>
+<span class="fc" id="L353">    }</span>
+    
+    /**
+     * Get the SQL name of this data type
+     * @return the SQL name
+     */
+    public String getSqlName() {
+<span class="nc" id="L360">        return sqlName;</span>
+    }
+    
+    /**
+     * Check if a value is valid for this data type
+     * @param value the value to check
+     * @return true if the value is valid
+     */
+    public abstract boolean isValidValue(Object value);
+    
+    /**
+     * Convert a value to the appropriate type for this data type
+     * @param value the value to convert
+     * @return the converted value
+     * @throws IllegalArgumentException if the value cannot be converted
+     */
+    public abstract Object convertValue(Object value);
+    
+    /**
+     * Get a data type by its SQL name
+     * @param sqlName the SQL name (case-insensitive)
+     * @return the matching data type or null if not found
+     */
+    public static DataType fromSqlName(String sqlName) {
+<span class="nc bnc" id="L384" title="All 2 branches missed.">        if (sqlName == null) {</span>
+<span class="nc" id="L385">            return null;</span>
+        }
+        
+<span class="nc" id="L388">        String normalized = sqlName.toLowerCase().trim();</span>
+<span class="nc bnc" id="L389" title="All 2 branches missed.">        for (DataType dataType : values()) {</span>
+<span class="nc bnc" id="L390" title="All 2 branches missed.">            if (dataType.sqlName.equals(normalized)) {</span>
+<span class="nc" id="L391">                return dataType;</span>
+            }
+        }
+        
+        // Handle aliases
+<span class="nc bnc" id="L396" title="All 9 branches missed.">        switch (normalized) {</span>
+            case &quot;int&quot;: case &quot;int4&quot;:
+<span class="nc" id="L398">                return INTEGER;</span>
+            case &quot;int2&quot;:
+<span class="nc" id="L400">                return SMALLINT;</span>
+            case &quot;int8&quot;:
+<span class="nc" id="L402">                return BIGINT;</span>
+            case &quot;float4&quot;:
+<span class="nc" id="L404">                return REAL;</span>
+            case &quot;float8&quot;:
+<span class="nc" id="L406">                return DOUBLE_PRECISION;</span>
+            case &quot;numeric&quot;:
+<span class="nc" id="L408">                return DECIMAL;</span>
+            case &quot;string&quot;:
+<span class="nc" id="L410">                return VARCHAR;</span>
+            case &quot;bool&quot;:
+<span class="nc" id="L412">                return BOOLEAN;</span>
+            default:
+<span class="nc" id="L414">                return null;</span>
+        }
+    }
+    
+    @Override
+    public String toString() {
+<span class="nc" id="L420">        return sqlName;</span>
+    }
+    
+    /**
+     * Utility methods for UUID generation that can be used statically
+     */
+<span class="nc" id="L426">    public static class UuidGenerator {</span>
+        /**
+         * Generate a random UUID (equivalent to PostgreSQL's gen_random_uuid()).
+         * @return a new random UUID
+         */
+        public static java.util.UUID genRandomUuid() {
+<span class="fc" id="L432">            return com.memgres.functions.UuidFunctions.genRandomUuid();</span>
+        }
+        
+        /**
+         * Generate a UUID version 1 (time-based).
+         * @return a new time-based UUID
+         */
+        public static java.util.UUID uuidGenerateV1() {
+<span class="fc" id="L440">            return com.memgres.functions.UuidFunctions.uuidGenerateV1();</span>
+        }
+        
+        /**
+         * Generate a UUID version 4 (random).
+         * @return a new random UUID
+         */
+        public static java.util.UUID uuidGenerateV4() {
+<span class="fc" id="L448">            return com.memgres.functions.UuidFunctions.uuidGenerateV4();</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

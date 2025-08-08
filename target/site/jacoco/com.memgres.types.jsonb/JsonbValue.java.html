@@ -1,0 +1,431 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JsonbValue.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">MemGres Core</a> &gt; <a href="index.source.html" class="el_package">com.memgres.types.jsonb</a> &gt; <span class="el_source">JsonbValue.java</span></div><h1>JsonbValue.java</h1><pre class="source lang-java linenums">package com.memgres.types.jsonb;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.*;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.util.*;
+
+/**
+ * Represents a JSONB value with PostgreSQL-compatible operations.
+ * This class provides binary JSON storage and supports PostgreSQL JSONB operators.
+ */
+public class JsonbValue {
+<span class="nc" id="L17">    private static final ObjectMapper objectMapper = new ObjectMapper();</span>
+    
+    private final JsonNode jsonNode;
+    private final byte[] binaryData;
+    
+<span class="nc" id="L22">    private JsonbValue(JsonNode jsonNode) {</span>
+<span class="nc" id="L23">        this.jsonNode = jsonNode;</span>
+<span class="nc" id="L24">        this.binaryData = serializeToBytes(jsonNode);</span>
+<span class="nc" id="L25">    }</span>
+    
+    /**
+     * Create a JsonbValue from a JSON string
+     * @param jsonString the JSON string
+     * @return a new JsonbValue
+     * @throws IllegalArgumentException if the JSON string is invalid
+     */
+    public static JsonbValue fromString(String jsonString) {
+<span class="nc bnc" id="L34" title="All 2 branches missed.">        if (jsonString == null) {</span>
+<span class="nc" id="L35">            return new JsonbValue(NullNode.getInstance());</span>
+        }
+        
+        try {
+<span class="nc" id="L39">            JsonNode node = objectMapper.readTree(jsonString);</span>
+<span class="nc" id="L40">            return new JsonbValue(node);</span>
+<span class="nc" id="L41">        } catch (JsonProcessingException e) {</span>
+<span class="nc" id="L42">            throw new IllegalArgumentException(&quot;Invalid JSON string: &quot; + jsonString, e);</span>
+        }
+    }
+    
+    /**
+     * Create a JsonbValue from an object
+     * @param object the object to convert
+     * @return a new JsonbValue
+     */
+    public static JsonbValue from(Object object) {
+<span class="nc bnc" id="L52" title="All 2 branches missed.">        if (object == null) {</span>
+<span class="nc" id="L53">            return new JsonbValue(NullNode.getInstance());</span>
+        }
+        
+<span class="nc bnc" id="L56" title="All 2 branches missed.">        if (object instanceof JsonbValue) {</span>
+<span class="nc" id="L57">            return (JsonbValue) object;</span>
+        }
+        
+<span class="nc" id="L60">        JsonNode node = objectMapper.valueToTree(object);</span>
+<span class="nc" id="L61">        return new JsonbValue(node);</span>
+    }
+    
+    /**
+     * Create a JsonbValue from a Map
+     * @param map the map to convert
+     * @return a new JsonbValue
+     */
+    public static JsonbValue fromMap(Map&lt;String, Object&gt; map) {
+<span class="nc bnc" id="L70" title="All 2 branches missed.">        if (map == null) {</span>
+<span class="nc" id="L71">            return new JsonbValue(NullNode.getInstance());</span>
+        }
+        
+<span class="nc" id="L74">        ObjectNode objectNode = objectMapper.createObjectNode();</span>
+<span class="nc bnc" id="L75" title="All 2 branches missed.">        for (Map.Entry&lt;String, Object&gt; entry : map.entrySet()) {</span>
+<span class="nc" id="L76">            JsonNode valueNode = objectMapper.valueToTree(entry.getValue());</span>
+<span class="nc" id="L77">            objectNode.set(entry.getKey(), valueNode);</span>
+<span class="nc" id="L78">        }</span>
+        
+<span class="nc" id="L80">        return new JsonbValue(objectNode);</span>
+    }
+    
+    /**
+     * Create a JsonbValue from a List
+     * @param list the list to convert
+     * @return a new JsonbValue
+     */
+    public static JsonbValue fromList(List&lt;Object&gt; list) {
+<span class="nc bnc" id="L89" title="All 2 branches missed.">        if (list == null) {</span>
+<span class="nc" id="L90">            return new JsonbValue(NullNode.getInstance());</span>
+        }
+        
+<span class="nc" id="L93">        ArrayNode arrayNode = objectMapper.createArrayNode();</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">        for (Object item : list) {</span>
+<span class="nc" id="L95">            JsonNode itemNode = objectMapper.valueToTree(item);</span>
+<span class="nc" id="L96">            arrayNode.add(itemNode);</span>
+<span class="nc" id="L97">        }</span>
+        
+<span class="nc" id="L99">        return new JsonbValue(arrayNode);</span>
+    }
+    
+    /**
+     * Get the JSON node
+     * @return the underlying JsonNode
+     */
+    public JsonNode getJsonNode() {
+<span class="nc" id="L107">        return jsonNode;</span>
+    }
+    
+    /**
+     * Get the binary representation
+     * @return the binary data
+     */
+    public byte[] getBinaryData() {
+<span class="nc" id="L115">        return binaryData.clone();</span>
+    }
+    
+    /**
+     * Convert to JSON string
+     * @return the JSON string representation
+     */
+    public String toJsonString() {
+        try {
+<span class="nc" id="L124">            return objectMapper.writeValueAsString(jsonNode);</span>
+<span class="nc" id="L125">        } catch (JsonProcessingException e) {</span>
+<span class="nc" id="L126">            throw new RuntimeException(&quot;Failed to serialize JSON&quot;, e);</span>
+        }
+    }
+    
+    /**
+     * Check if this JSONB value is null
+     * @return true if null
+     */
+    public boolean isNull() {
+<span class="nc" id="L135">        return jsonNode.isNull();</span>
+    }
+    
+    /**
+     * Check if this JSONB value is an object
+     * @return true if object
+     */
+    public boolean isObject() {
+<span class="nc" id="L143">        return jsonNode.isObject();</span>
+    }
+    
+    /**
+     * Check if this JSONB value is an array
+     * @return true if array
+     */
+    public boolean isArray() {
+<span class="nc" id="L151">        return jsonNode.isArray();</span>
+    }
+    
+    /**
+     * Check if this JSONB value is a string
+     * @return true if string
+     */
+    public boolean isString() {
+<span class="nc" id="L159">        return jsonNode.isTextual();</span>
+    }
+    
+    /**
+     * Check if this JSONB value is a number
+     * @return true if number
+     */
+    public boolean isNumber() {
+<span class="nc" id="L167">        return jsonNode.isNumber();</span>
+    }
+    
+    /**
+     * Check if this JSONB value is a boolean
+     * @return true if boolean
+     */
+    public boolean isBoolean() {
+<span class="nc" id="L175">        return jsonNode.isBoolean();</span>
+    }
+    
+    // PostgreSQL JSONB Operators Implementation
+    
+    /**
+     * Implements the @&gt; operator (contains)
+     * @param other the value to check for containment
+     * @return true if this contains the other value
+     */
+    public boolean contains(JsonbValue other) {
+<span class="nc" id="L186">        return containsValue(this.jsonNode, other.jsonNode);</span>
+    }
+    
+    /**
+     * Implements the &lt;@ operator (contained by)
+     * @param other the value to check if this is contained by
+     * @return true if this is contained by the other value
+     */
+    public boolean containedBy(JsonbValue other) {
+<span class="nc" id="L195">        return other.contains(this);</span>
+    }
+    
+    /**
+     * Implements the ? operator (key exists)
+     * @param key the key to check
+     * @return true if the key exists (for objects) or value exists (for arrays)
+     */
+    public boolean hasKey(String key) {
+<span class="nc bnc" id="L204" title="All 2 branches missed.">        if (jsonNode.isObject()) {</span>
+<span class="nc" id="L205">            return jsonNode.has(key);</span>
+<span class="nc bnc" id="L206" title="All 2 branches missed.">        } else if (jsonNode.isArray()) {</span>
+<span class="nc bnc" id="L207" title="All 2 branches missed.">            for (JsonNode element : jsonNode) {</span>
+<span class="nc bnc" id="L208" title="All 4 branches missed.">                if (element.isTextual() &amp;&amp; element.textValue().equals(key)) {</span>
+<span class="nc" id="L209">                    return true;</span>
+                }
+<span class="nc" id="L211">            }</span>
+        }
+<span class="nc" id="L213">        return false;</span>
+    }
+    
+    /**
+     * Implements the ?| operator (any key exists)
+     * @param keys the keys to check
+     * @return true if any of the keys exist
+     */
+    public boolean hasAnyKey(String... keys) {
+<span class="nc bnc" id="L222" title="All 2 branches missed.">        for (String key : keys) {</span>
+<span class="nc bnc" id="L223" title="All 2 branches missed.">            if (hasKey(key)) {</span>
+<span class="nc" id="L224">                return true;</span>
+            }
+        }
+<span class="nc" id="L227">        return false;</span>
+    }
+    
+    /**
+     * Implements the ?&amp; operator (all keys exist)
+     * @param keys the keys to check
+     * @return true if all of the keys exist
+     */
+    public boolean hasAllKeys(String... keys) {
+<span class="nc bnc" id="L236" title="All 2 branches missed.">        for (String key : keys) {</span>
+<span class="nc bnc" id="L237" title="All 2 branches missed.">            if (!hasKey(key)) {</span>
+<span class="nc" id="L238">                return false;</span>
+            }
+        }
+<span class="nc" id="L241">        return true;</span>
+    }
+    
+    /**
+     * Implements the -&gt; operator (get JSON object field)
+     * @param key the key to get
+     * @return the value at the key, or null if not found
+     */
+    public JsonbValue getField(String key) {
+<span class="nc bnc" id="L250" title="All 2 branches missed.">        if (!jsonNode.isObject()) {</span>
+<span class="nc" id="L251">            return new JsonbValue(NullNode.getInstance());</span>
+        }
+        
+<span class="nc" id="L254">        JsonNode fieldNode = jsonNode.get(key);</span>
+<span class="nc bnc" id="L255" title="All 2 branches missed.">        return fieldNode != null ? new JsonbValue(fieldNode) : new JsonbValue(NullNode.getInstance());</span>
+    }
+    
+    /**
+     * Implements the -&gt; operator for array index (get JSON array element)
+     * @param index the array index
+     * @return the value at the index, or null if not found
+     */
+    public JsonbValue getElement(int index) {
+<span class="nc bnc" id="L264" title="All 2 branches missed.">        if (!jsonNode.isArray()) {</span>
+<span class="nc" id="L265">            return new JsonbValue(NullNode.getInstance());</span>
+        }
+        
+<span class="nc" id="L268">        JsonNode elementNode = jsonNode.get(index);</span>
+<span class="nc bnc" id="L269" title="All 2 branches missed.">        return elementNode != null ? new JsonbValue(elementNode) : new JsonbValue(NullNode.getInstance());</span>
+    }
+    
+    /**
+     * Implements the -&gt;&gt; operator (get JSON object field as text)
+     * @param key the key to get
+     * @return the text value at the key, or null if not found
+     */
+    public String getFieldAsText(String key) {
+<span class="nc" id="L278">        JsonbValue field = getField(key);</span>
+<span class="nc bnc" id="L279" title="All 2 branches missed.">        return field.isNull() ? null : field.asText();</span>
+    }
+    
+    /**
+     * Implements the -&gt;&gt; operator for array index (get JSON array element as text)
+     * @param index the array index
+     * @return the text value at the index, or null if not found
+     */
+    public String getElementAsText(int index) {
+<span class="nc" id="L288">        JsonbValue element = getElement(index);</span>
+<span class="nc bnc" id="L289" title="All 2 branches missed.">        return element.isNull() ? null : element.asText();</span>
+    }
+    
+    /**
+     * Implements the #&gt; operator (get JSON object at path)
+     * @param path the path as an array of keys/indices
+     * @return the value at the path, or null if not found
+     */
+    public JsonbValue getPath(String... path) {
+<span class="nc" id="L298">        JsonNode current = jsonNode;</span>
+        
+<span class="nc bnc" id="L300" title="All 2 branches missed.">        for (String pathElement : path) {</span>
+<span class="nc bnc" id="L301" title="All 2 branches missed.">            if (current.isObject()) {</span>
+<span class="nc" id="L302">                current = current.get(pathElement);</span>
+<span class="nc bnc" id="L303" title="All 2 branches missed.">            } else if (current.isArray()) {</span>
+                try {
+<span class="nc" id="L305">                    int index = Integer.parseInt(pathElement);</span>
+<span class="nc" id="L306">                    current = current.get(index);</span>
+<span class="nc" id="L307">                } catch (NumberFormatException e) {</span>
+<span class="nc" id="L308">                    return new JsonbValue(NullNode.getInstance());</span>
+<span class="nc" id="L309">                }</span>
+            } else {
+<span class="nc" id="L311">                return new JsonbValue(NullNode.getInstance());</span>
+            }
+            
+<span class="nc bnc" id="L314" title="All 2 branches missed.">            if (current == null) {</span>
+<span class="nc" id="L315">                return new JsonbValue(NullNode.getInstance());</span>
+            }
+        }
+        
+<span class="nc" id="L319">        return new JsonbValue(current);</span>
+    }
+    
+    /**
+     * Implements the #&gt;&gt; operator (get JSON object at path as text)
+     * @param path the path as an array of keys/indices
+     * @return the text value at the path, or null if not found
+     */
+    public String getPathAsText(String... path) {
+<span class="nc" id="L328">        JsonbValue pathValue = getPath(path);</span>
+<span class="nc bnc" id="L329" title="All 2 branches missed.">        return pathValue.isNull() ? null : pathValue.asText();</span>
+    }
+    
+    /**
+     * Convert to text value
+     * @return the text representation
+     */
+    public String asText() {
+<span class="nc bnc" id="L337" title="All 2 branches missed.">        if (jsonNode.isTextual()) {</span>
+<span class="nc" id="L338">            return jsonNode.textValue();</span>
+<span class="nc bnc" id="L339" title="All 2 branches missed.">        } else if (jsonNode.isNull()) {</span>
+<span class="nc" id="L340">            return null;</span>
+        } else {
+<span class="nc" id="L342">            return jsonNode.toString();</span>
+        }
+    }
+    
+    /**
+     * Get size (number of top-level elements)
+     * @return the size
+     */
+    public int size() {
+<span class="nc bnc" id="L351" title="All 2 branches missed.">        if (jsonNode.isObject()) {</span>
+<span class="nc" id="L352">            return jsonNode.size();</span>
+<span class="nc bnc" id="L353" title="All 2 branches missed.">        } else if (jsonNode.isArray()) {</span>
+<span class="nc" id="L354">            return jsonNode.size();</span>
+        } else {
+<span class="nc bnc" id="L356" title="All 2 branches missed.">            return jsonNode.isNull() ? 0 : 1;</span>
+        }
+    }
+    
+    private static boolean containsValue(JsonNode container, JsonNode contained) {
+<span class="nc bnc" id="L361" title="All 2 branches missed.">        if (container.equals(contained)) {</span>
+<span class="nc" id="L362">            return true;</span>
+        }
+        
+<span class="nc bnc" id="L365" title="All 4 branches missed.">        if (container.isObject() &amp;&amp; contained.isObject()) {</span>
+<span class="nc" id="L366">            Iterator&lt;Map.Entry&lt;String, JsonNode&gt;&gt; fields = contained.fields();</span>
+<span class="nc bnc" id="L367" title="All 2 branches missed.">            while (fields.hasNext()) {</span>
+<span class="nc" id="L368">                Map.Entry&lt;String, JsonNode&gt; field = fields.next();</span>
+<span class="nc" id="L369">                JsonNode containerField = container.get(field.getKey());</span>
+<span class="nc bnc" id="L370" title="All 4 branches missed.">                if (containerField == null || !containsValue(containerField, field.getValue())) {</span>
+<span class="nc" id="L371">                    return false;</span>
+                }
+<span class="nc" id="L373">            }</span>
+<span class="nc" id="L374">            return true;</span>
+        }
+        
+<span class="nc bnc" id="L377" title="All 4 branches missed.">        if (container.isArray() &amp;&amp; contained.isArray()) {</span>
+<span class="nc bnc" id="L378" title="All 2 branches missed.">            for (JsonNode containedElement : contained) {</span>
+<span class="nc" id="L379">                boolean found = false;</span>
+<span class="nc bnc" id="L380" title="All 2 branches missed.">                for (JsonNode containerElement : container) {</span>
+<span class="nc bnc" id="L381" title="All 2 branches missed.">                    if (containsValue(containerElement, containedElement)) {</span>
+<span class="nc" id="L382">                        found = true;</span>
+<span class="nc" id="L383">                        break;</span>
+                    }
+<span class="nc" id="L385">                }</span>
+<span class="nc bnc" id="L386" title="All 2 branches missed.">                if (!found) {</span>
+<span class="nc" id="L387">                    return false;</span>
+                }
+<span class="nc" id="L389">            }</span>
+<span class="nc" id="L390">            return true;</span>
+        }
+        
+<span class="nc bnc" id="L393" title="All 2 branches missed.">        if (container.isArray()) {</span>
+<span class="nc bnc" id="L394" title="All 2 branches missed.">            for (JsonNode element : container) {</span>
+<span class="nc bnc" id="L395" title="All 2 branches missed.">                if (containsValue(element, contained)) {</span>
+<span class="nc" id="L396">                    return true;</span>
+                }
+<span class="nc" id="L398">            }</span>
+        }
+        
+<span class="nc" id="L401">        return false;</span>
+    }
+    
+    private static byte[] serializeToBytes(JsonNode node) {
+        try {
+<span class="nc" id="L406">            return objectMapper.writeValueAsBytes(node);</span>
+<span class="nc" id="L407">        } catch (JsonProcessingException e) {</span>
+<span class="nc" id="L408">            throw new RuntimeException(&quot;Failed to serialize JSON to bytes&quot;, e);</span>
+        }
+    }
+    
+    @Override
+    public boolean equals(Object o) {
+<span class="nc bnc" id="L414" title="All 2 branches missed.">        if (this == o) return true;</span>
+<span class="nc bnc" id="L415" title="All 4 branches missed.">        if (o == null || getClass() != o.getClass()) return false;</span>
+        
+<span class="nc" id="L417">        JsonbValue that = (JsonbValue) o;</span>
+<span class="nc" id="L418">        return Objects.equals(jsonNode, that.jsonNode);</span>
+    }
+    
+    @Override
+    public int hashCode() {
+<span class="nc" id="L423">        return Objects.hash(jsonNode);</span>
+    }
+    
+    @Override
+    public String toString() {
+<span class="nc" id="L428">        return toJsonString();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

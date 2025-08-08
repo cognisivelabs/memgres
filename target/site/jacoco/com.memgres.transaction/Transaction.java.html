@@ -1,0 +1,344 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Transaction.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">MemGres Core</a> &gt; <a href="index.source.html" class="el_package">com.memgres.transaction</a> &gt; <span class="el_source">Transaction.java</span></div><h1>Transaction.java</h1><pre class="source lang-java linenums">package com.memgres.transaction;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.time.LocalDateTime;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+/**
+ * Represents a database transaction with ACID properties.
+ * This is a simplified implementation that will be enhanced with full MVCC support.
+ */
+public class Transaction {
+<span class="fc" id="L17">    private static final Logger logger = LoggerFactory.getLogger(Transaction.class);</span>
+    
+    private final long id;
+    private final TransactionIsolationLevel isolationLevel;
+    private final TransactionManager manager;
+    private final LocalDateTime startTime;
+    private final ConcurrentMap&lt;String, Object&gt; attributes;
+    private final ReadWriteLock transactionLock;
+    
+    private volatile TransactionState state;
+    private volatile LocalDateTime commitTime;
+    private volatile LocalDateTime rollbackTime;
+    private volatile String rollbackReason;
+    
+    /**
+     * Transaction states
+     */
+<span class="fc" id="L34">    public enum TransactionState {</span>
+<span class="fc" id="L35">        ACTIVE,</span>
+<span class="fc" id="L36">        COMMITTED,</span>
+<span class="fc" id="L37">        ROLLED_BACK</span>
+    }
+    
+<span class="fc" id="L40">    Transaction(long id, TransactionIsolationLevel isolationLevel, TransactionManager manager) {</span>
+<span class="fc" id="L41">        this.id = id;</span>
+<span class="fc" id="L42">        this.isolationLevel = isolationLevel;</span>
+<span class="fc" id="L43">        this.manager = manager;</span>
+<span class="fc" id="L44">        this.startTime = LocalDateTime.now();</span>
+<span class="fc" id="L45">        this.attributes = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="fc" id="L46">        this.transactionLock = new ReentrantReadWriteLock();</span>
+<span class="fc" id="L47">        this.state = TransactionState.ACTIVE;</span>
+        
+<span class="fc" id="L49">        logger.debug(&quot;Created transaction {} with isolation level {}&quot;, id, isolationLevel);</span>
+<span class="fc" id="L50">    }</span>
+    
+    /**
+     * Get the transaction ID
+     * @return the unique transaction identifier
+     */
+    public long getId() {
+<span class="fc" id="L57">        return id;</span>
+    }
+    
+    /**
+     * Get the isolation level
+     * @return the transaction isolation level
+     */
+    public TransactionIsolationLevel getIsolationLevel() {
+<span class="nc" id="L65">        return isolationLevel;</span>
+    }
+    
+    /**
+     * Get the transaction manager
+     * @return the transaction manager
+     */
+    public TransactionManager getManager() {
+<span class="nc" id="L73">        return manager;</span>
+    }
+    
+    /**
+     * Get the start time
+     * @return when the transaction was started
+     */
+    public LocalDateTime getStartTime() {
+<span class="nc" id="L81">        return startTime;</span>
+    }
+    
+    /**
+     * Get the current state
+     * @return the transaction state
+     */
+    public TransactionState getState() {
+<span class="nc" id="L89">        transactionLock.readLock().lock();</span>
+        try {
+<span class="nc" id="L91">            return state;</span>
+        } finally {
+<span class="nc" id="L93">            transactionLock.readLock().unlock();</span>
+        }
+    }
+    
+    /**
+     * Get the commit time
+     * @return when the transaction was committed, or null if not committed
+     */
+    public LocalDateTime getCommitTime() {
+<span class="nc" id="L102">        transactionLock.readLock().lock();</span>
+        try {
+<span class="nc" id="L104">            return commitTime;</span>
+        } finally {
+<span class="nc" id="L106">            transactionLock.readLock().unlock();</span>
+        }
+    }
+    
+    /**
+     * Get the rollback time
+     * @return when the transaction was rolled back, or null if not rolled back
+     */
+    public LocalDateTime getRollbackTime() {
+<span class="nc" id="L115">        transactionLock.readLock().lock();</span>
+        try {
+<span class="nc" id="L117">            return rollbackTime;</span>
+        } finally {
+<span class="nc" id="L119">            transactionLock.readLock().unlock();</span>
+        }
+    }
+    
+    /**
+     * Get the rollback reason
+     * @return the reason for rollback, or null if not rolled back
+     */
+    public String getRollbackReason() {
+<span class="nc" id="L128">        transactionLock.readLock().lock();</span>
+        try {
+<span class="nc" id="L130">            return rollbackReason;</span>
+        } finally {
+<span class="nc" id="L132">            transactionLock.readLock().unlock();</span>
+        }
+    }
+    
+    /**
+     * Check if the transaction is active
+     * @return true if the transaction is active
+     */
+    public boolean isActive() {
+<span class="nc bnc" id="L141" title="All 2 branches missed.">        return getState() == TransactionState.ACTIVE;</span>
+    }
+    
+    /**
+     * Check if the transaction is committed
+     * @return true if the transaction is committed
+     */
+    public boolean isCommitted() {
+<span class="nc bnc" id="L149" title="All 2 branches missed.">        return getState() == TransactionState.COMMITTED;</span>
+    }
+    
+    /**
+     * Check if the transaction is rolled back
+     * @return true if the transaction is rolled back
+     */
+    public boolean isRolledBack() {
+<span class="nc bnc" id="L157" title="All 2 branches missed.">        return getState() == TransactionState.ROLLED_BACK;</span>
+    }
+    
+    /**
+     * Check if the transaction is completed (committed or rolled back)
+     * @return true if the transaction is completed
+     */
+    public boolean isCompleted() {
+<span class="nc" id="L165">        TransactionState currentState = getState();</span>
+<span class="nc bnc" id="L166" title="All 4 branches missed.">        return currentState == TransactionState.COMMITTED || currentState == TransactionState.ROLLED_BACK;</span>
+    }
+    
+    /**
+     * Commit the transaction
+     * This method is called by the TransactionManager
+     */
+    void commit() {
+<span class="fc" id="L174">        transactionLock.writeLock().lock();</span>
+        try {
+<span class="pc bpc" id="L176" title="1 of 2 branches missed.">            if (state != TransactionState.ACTIVE) {</span>
+<span class="nc" id="L177">                throw new IllegalStateException(&quot;Transaction is not active: &quot; + state);</span>
+            }
+            
+            // Perform commit operations here
+            // This is where we would:
+            // 1. Validate serialization constraints (for SERIALIZABLE isolation)
+            // 2. Make changes visible to other transactions
+            // 3. Release locks
+            // 4. Clean up transaction resources
+            
+<span class="fc" id="L187">            state = TransactionState.COMMITTED;</span>
+<span class="fc" id="L188">            commitTime = LocalDateTime.now();</span>
+            
+<span class="fc" id="L190">            logger.debug(&quot;Transaction {} committed successfully&quot;, id);</span>
+        } finally {
+<span class="fc" id="L192">            transactionLock.writeLock().unlock();</span>
+        }
+<span class="fc" id="L194">    }</span>
+    
+    /**
+     * Roll back the transaction
+     * This method is called by the TransactionManager
+     */
+    void rollback() {
+<span class="fc" id="L201">        rollback(&quot;Explicit rollback&quot;);</span>
+<span class="fc" id="L202">    }</span>
+    
+    /**
+     * Roll back the transaction with a reason
+     * This method is called by the TransactionManager
+     */
+    void rollback(String reason) {
+<span class="fc" id="L209">        transactionLock.writeLock().lock();</span>
+        try {
+<span class="pc bpc" id="L211" title="1 of 2 branches missed.">            if (state == TransactionState.ROLLED_BACK) {</span>
+<span class="nc" id="L212">                logger.warn(&quot;Transaction {} already rolled back&quot;, id);</span>
+<span class="nc" id="L213">                return;</span>
+            }
+            
+<span class="pc bpc" id="L216" title="1 of 2 branches missed.">            if (state == TransactionState.COMMITTED) {</span>
+<span class="nc" id="L217">                throw new IllegalStateException(&quot;Cannot rollback committed transaction&quot;);</span>
+            }
+            
+            // Perform rollback operations here
+            // This is where we would:
+            // 1. Undo all changes made by this transaction
+            // 2. Release locks
+            // 3. Clean up transaction resources
+            // 4. Invalidate any cached data
+            
+<span class="fc" id="L227">            state = TransactionState.ROLLED_BACK;</span>
+<span class="fc" id="L228">            rollbackTime = LocalDateTime.now();</span>
+<span class="fc" id="L229">            rollbackReason = reason;</span>
+            
+<span class="fc" id="L231">            logger.debug(&quot;Transaction {} rolled back: {}&quot;, id, reason);</span>
+        } finally {
+<span class="fc" id="L233">            transactionLock.writeLock().unlock();</span>
+        }
+<span class="fc" id="L235">    }</span>
+    
+    /**
+     * Set a transaction attribute
+     * @param key the attribute key
+     * @param value the attribute value
+     */
+    public void setAttribute(String key, Object value) {
+<span class="nc bnc" id="L243" title="All 2 branches missed.">        if (key == null) {</span>
+<span class="nc" id="L244">            throw new IllegalArgumentException(&quot;Attribute key cannot be null&quot;);</span>
+        }
+        
+<span class="nc" id="L247">        attributes.put(key, value);</span>
+<span class="nc" id="L248">    }</span>
+    
+    /**
+     * Get a transaction attribute
+     * @param key the attribute key
+     * @return the attribute value or null if not found
+     */
+    public Object getAttribute(String key) {
+<span class="nc bnc" id="L256" title="All 2 branches missed.">        if (key == null) {</span>
+<span class="nc" id="L257">            return null;</span>
+        }
+        
+<span class="nc" id="L260">        return attributes.get(key);</span>
+    }
+    
+    /**
+     * Get a transaction attribute with type casting
+     * @param key the attribute key
+     * @param type the expected type
+     * @param &lt;T&gt; the type parameter
+     * @return the attribute value cast to the specified type, or null if not found
+     * @throws ClassCastException if the attribute cannot be cast to the specified type
+     */
+    @SuppressWarnings(&quot;unchecked&quot;)
+    public &lt;T&gt; T getAttribute(String key, Class&lt;T&gt; type) {
+<span class="nc" id="L273">        Object value = getAttribute(key);</span>
+<span class="nc bnc" id="L274" title="All 2 branches missed.">        if (value == null) {</span>
+<span class="nc" id="L275">            return null;</span>
+        }
+        
+<span class="nc bnc" id="L278" title="All 2 branches missed.">        if (type.isInstance(value)) {</span>
+<span class="nc" id="L279">            return (T) value;</span>
+        } else {
+<span class="nc" id="L281">            throw new ClassCastException(&quot;Attribute &quot; + key + &quot; is not of type &quot; + type.getName());</span>
+        }
+    }
+    
+    /**
+     * Remove a transaction attribute
+     * @param key the attribute key
+     * @return the previous value or null if not found
+     */
+    public Object removeAttribute(String key) {
+<span class="nc bnc" id="L291" title="All 2 branches missed.">        if (key == null) {</span>
+<span class="nc" id="L292">            return null;</span>
+        }
+        
+<span class="nc" id="L295">        return attributes.remove(key);</span>
+    }
+    
+    /**
+     * Check if a transaction attribute exists
+     * @param key the attribute key
+     * @return true if the attribute exists
+     */
+    public boolean hasAttribute(String key) {
+<span class="nc bnc" id="L304" title="All 4 branches missed.">        return key != null &amp;&amp; attributes.containsKey(key);</span>
+    }
+    
+    /**
+     * Get the transaction duration
+     * @return the duration since the transaction started, in milliseconds
+     */
+    public long getDurationMillis() {
+<span class="nc bnc" id="L312" title="All 2 branches missed.">        LocalDateTime endTime = commitTime != null ? commitTime : </span>
+<span class="nc bnc" id="L313" title="All 2 branches missed.">                               rollbackTime != null ? rollbackTime : </span>
+<span class="nc" id="L314">                               LocalDateTime.now();</span>
+        
+<span class="nc" id="L316">        return java.time.Duration.between(startTime, endTime).toMillis();</span>
+    }
+    
+    @Override
+    public boolean equals(Object o) {
+<span class="nc bnc" id="L321" title="All 2 branches missed.">        if (this == o) return true;</span>
+<span class="nc bnc" id="L322" title="All 4 branches missed.">        if (o == null || getClass() != o.getClass()) return false;</span>
+        
+<span class="nc" id="L324">        Transaction that = (Transaction) o;</span>
+<span class="nc bnc" id="L325" title="All 2 branches missed.">        return id == that.id;</span>
+    }
+    
+    @Override
+    public int hashCode() {
+<span class="nc" id="L330">        return Long.hashCode(id);</span>
+    }
+    
+    @Override
+    public String toString() {
+<span class="nc" id="L335">        return &quot;Transaction{&quot; +</span>
+                &quot;id=&quot; + id +
+                &quot;, isolationLevel=&quot; + isolationLevel +
+<span class="nc" id="L338">                &quot;, state=&quot; + getState() +</span>
+                &quot;, startTime=&quot; + startTime +
+<span class="nc" id="L340">                &quot;, durationMs=&quot; + getDurationMillis() +</span>
+                '}';
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

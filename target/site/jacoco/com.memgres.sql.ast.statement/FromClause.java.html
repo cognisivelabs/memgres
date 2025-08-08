@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FromClause.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">MemGres Core</a> &gt; <a href="index.source.html" class="el_package">com.memgres.sql.ast.statement</a> &gt; <span class="el_source">FromClause.java</span></div><h1>FromClause.java</h1><pre class="source lang-java linenums">package com.memgres.sql.ast.statement;
+
+import com.memgres.sql.ast.AstNode;
+import com.memgres.sql.ast.AstVisitor;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Represents a FROM clause in a SELECT statement.
+ * Can contain multiple joinable tables (for comma-separated tables) or a single joinable table with joins.
+ */
+public class FromClause extends AstNode {
+    
+    private final List&lt;JoinableTable&gt; joinableTables;
+    
+<span class="fc" id="L17">    public FromClause(List&lt;JoinableTable&gt; joinableTables) {</span>
+<span class="fc" id="L18">        this.joinableTables = joinableTables;</span>
+<span class="fc" id="L19">    }</span>
+    
+    /**
+     * Constructor for backward compatibility with simple table references.
+     */
+<span class="nc" id="L24">    public FromClause(List&lt;TableReference&gt; tableReferences, boolean isLegacyConstructor) {</span>
+<span class="nc" id="L25">        this.joinableTables = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L26" title="All 2 branches missed.">        for (TableReference tableRef : tableReferences) {</span>
+<span class="nc" id="L27">            this.joinableTables.add(new JoinableTable(tableRef));</span>
+<span class="nc" id="L28">        }</span>
+<span class="nc" id="L29">    }</span>
+    
+    public List&lt;JoinableTable&gt; getJoinableTables() {
+<span class="fc" id="L32">        return joinableTables;</span>
+    }
+    
+    /**
+     * Legacy method for backward compatibility.
+     * Returns all table references from all joinable tables.
+     */
+    @Deprecated
+    public List&lt;TableReference&gt; getTableReferences() {
+<span class="nc" id="L41">        List&lt;TableReference&gt; allTables = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L42" title="All 2 branches missed.">        for (JoinableTable joinable : joinableTables) {</span>
+<span class="nc" id="L43">            allTables.addAll(joinable.getAllTableReferences());</span>
+<span class="nc" id="L44">        }</span>
+<span class="nc" id="L45">        return allTables;</span>
+    }
+    
+    @Override
+    public &lt;T, C&gt; T accept(AstVisitor&lt;T, C&gt; visitor, C context) throws Exception {
+<span class="nc" id="L50">        return visitor.visitFromClause(this, context);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

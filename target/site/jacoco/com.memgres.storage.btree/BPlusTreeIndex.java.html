@@ -1,0 +1,424 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BPlusTreeIndex.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">MemGres Core</a> &gt; <a href="index.source.html" class="el_package">com.memgres.storage.btree</a> &gt; <span class="el_source">BPlusTreeIndex.java</span></div><h1>BPlusTreeIndex.java</h1><pre class="source lang-java linenums">package com.memgres.storage.btree;
+
+import com.memgres.storage.Table;
+import com.memgres.types.Column;
+import com.memgres.types.Row;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.*;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+/**
+ * B+ Tree-based index implementation that provides a drop-in replacement
+ * for the basic ConcurrentSkipListMap-based Index class.
+ * Offers better performance for range queries and large datasets.
+ */
+public class BPlusTreeIndex {
+<span class="fc" id="L19">    private static final Logger logger = LoggerFactory.getLogger(BPlusTreeIndex.class);</span>
+    
+    private final String name;
+    private final Column indexedColumn;
+    private final Table table;
+    private final int columnIndex;
+    private final BPlusTree&lt;Comparable, Long&gt; btree;
+    private final ReadWriteLock indexLock;
+    
+    /**
+     * Creates a new B+ tree index
+     * @param name the index name
+     * @param indexedColumn the column to index
+     * @param table the table this index belongs to
+     */
+    public BPlusTreeIndex(String name, Column indexedColumn, Table table) {
+<span class="fc" id="L35">        this(name, indexedColumn, table, 64); // Default B+ tree order</span>
+<span class="fc" id="L36">    }</span>
+    
+    /**
+     * Creates a new B+ tree index with specified order
+     * @param name the index name
+     * @param indexedColumn the column to index
+     * @param table the table this index belongs to
+     * @param order the B+ tree order (branching factor)
+     */
+<span class="fc" id="L45">    public BPlusTreeIndex(String name, Column indexedColumn, Table table, int order) {</span>
+<span class="fc bfc" id="L46" title="All 4 branches covered.">        if (name == null || name.trim().isEmpty()) {</span>
+<span class="fc" id="L47">            throw new IllegalArgumentException(&quot;Index name cannot be null or empty&quot;);</span>
+        }
+<span class="fc bfc" id="L49" title="All 2 branches covered.">        if (indexedColumn == null) {</span>
+<span class="fc" id="L50">            throw new IllegalArgumentException(&quot;Indexed column cannot be null&quot;);</span>
+        }
+<span class="fc bfc" id="L52" title="All 2 branches covered.">        if (table == null) {</span>
+<span class="fc" id="L53">            throw new IllegalArgumentException(&quot;Table cannot be null&quot;);</span>
+        }
+<span class="fc bfc" id="L55" title="All 2 branches covered.">        if (order &lt; 3) {</span>
+<span class="fc" id="L56">            throw new IllegalArgumentException(&quot;B+ tree order must be at least 3&quot;);</span>
+        }
+        
+<span class="fc" id="L59">        this.name = name.toLowerCase();</span>
+<span class="fc" id="L60">        this.indexedColumn = indexedColumn;</span>
+<span class="fc" id="L61">        this.table = table;</span>
+<span class="fc" id="L62">        this.btree = new BPlusTree&lt;&gt;(order);</span>
+<span class="fc" id="L63">        this.indexLock = new ReentrantReadWriteLock();</span>
+        
+        // Find column index in table
+<span class="fc" id="L66">        List&lt;Column&gt; columns = table.getColumns();</span>
+<span class="fc" id="L67">        int foundIndex = -1;</span>
+<span class="fc bfc" id="L68" title="All 2 branches covered.">        for (int i = 0; i &lt; columns.size(); i++) {</span>
+<span class="fc bfc" id="L69" title="All 2 branches covered.">            if (columns.get(i).equals(indexedColumn)) {</span>
+<span class="fc" id="L70">                foundIndex = i;</span>
+<span class="fc" id="L71">                break;</span>
+            }
+        }
+        
+<span class="fc bfc" id="L75" title="All 2 branches covered.">        if (foundIndex == -1) {</span>
+<span class="fc" id="L76">            throw new IllegalArgumentException(&quot;Column not found in table: &quot; + indexedColumn.getName());</span>
+        }
+        
+<span class="fc" id="L79">        this.columnIndex = foundIndex;</span>
+        
+        // Build initial index from existing table data
+<span class="fc" id="L82">        buildInitialIndex();</span>
+        
+<span class="fc" id="L84">        logger.debug(&quot;Created B+ tree index {} on column {} for table {} with order {}&quot;, </span>
+<span class="fc" id="L85">                    name, indexedColumn.getName(), table.getName(), order);</span>
+<span class="fc" id="L86">    }</span>
+    
+    /**
+     * Get the index name
+     * @return the index name
+     */
+    public String getName() {
+<span class="fc" id="L93">        return name;</span>
+    }
+    
+    /**
+     * Get the indexed column
+     * @return the indexed column
+     */
+    public Column getIndexedColumn() {
+<span class="fc" id="L101">        return indexedColumn;</span>
+    }
+    
+    /**
+     * Get the table this index belongs to
+     * @return the table
+     */
+    public Table getTable() {
+<span class="fc" id="L109">        return table;</span>
+    }
+    
+    /**
+     * Get the underlying B+ tree
+     * @return the B+ tree
+     */
+    public BPlusTree&lt;Comparable, Long&gt; getBTree() {
+<span class="fc" id="L117">        return btree;</span>
+    }
+    
+    /**
+     * Insert a row into the index
+     * @param row the row to insert
+     */
+    public void insert(Row row) {
+<span class="fc" id="L125">        Object value = row.getValue(columnIndex);</span>
+<span class="fc bfc" id="L126" title="All 2 branches covered.">        if (value == null) {</span>
+<span class="fc" id="L127">            return; // Don't index null values</span>
+        }
+        
+<span class="pc bpc" id="L130" title="1 of 2 branches missed.">        if (!(value instanceof Comparable)) {</span>
+<span class="nc" id="L131">            logger.warn(&quot;Cannot index non-comparable value: {} for column {}&quot;, </span>
+<span class="nc" id="L132">                       value, indexedColumn.getName());</span>
+<span class="nc" id="L133">            return;</span>
+        }
+        
+        @SuppressWarnings(&quot;unchecked&quot;)
+<span class="fc" id="L137">        Comparable comparableValue = (Comparable) value;</span>
+        
+<span class="fc" id="L139">        indexLock.writeLock().lock();</span>
+        try {
+<span class="fc" id="L141">            btree.insert(comparableValue, row.getId());</span>
+<span class="fc" id="L142">            logger.trace(&quot;Inserted row {} with value {} into B+ tree index {}&quot;, </span>
+<span class="fc" id="L143">                        row.getId(), value, name);</span>
+        } finally {
+<span class="fc" id="L145">            indexLock.writeLock().unlock();</span>
+        }
+<span class="fc" id="L147">    }</span>
+    
+    /**
+     * Update a row in the index
+     * @param oldRow the old row data
+     * @param newRow the new row data
+     */
+    public void update(Row oldRow, Row newRow) {
+<span class="fc" id="L155">        delete(oldRow);</span>
+<span class="fc" id="L156">        insert(newRow);</span>
+<span class="fc" id="L157">    }</span>
+    
+    /**
+     * Delete a row from the index
+     * @param row the row to delete
+     */
+    public void delete(Row row) {
+<span class="fc" id="L164">        Object value = row.getValue(columnIndex);</span>
+<span class="fc bfc" id="L165" title="All 2 branches covered.">        if (value == null) {</span>
+<span class="fc" id="L166">            return; // Null values are not indexed</span>
+        }
+        
+<span class="pc bpc" id="L169" title="1 of 2 branches missed.">        if (!(value instanceof Comparable)) {</span>
+<span class="nc" id="L170">            return; // Non-comparable values are not indexed</span>
+        }
+        
+        @SuppressWarnings(&quot;unchecked&quot;)
+<span class="fc" id="L174">        Comparable comparableValue = (Comparable) value;</span>
+        
+<span class="fc" id="L176">        indexLock.writeLock().lock();</span>
+        try {
+<span class="fc" id="L178">            boolean removed = btree.remove(comparableValue, row.getId());</span>
+<span class="pc bpc" id="L179" title="1 of 2 branches missed.">            if (removed) {</span>
+<span class="fc" id="L180">                logger.trace(&quot;Deleted row {} with value {} from B+ tree index {}&quot;, </span>
+<span class="fc" id="L181">                           row.getId(), value, name);</span>
+            }
+        } finally {
+<span class="fc" id="L184">            indexLock.writeLock().unlock();</span>
+        }
+<span class="fc" id="L186">    }</span>
+    
+    /**
+     * Find rows with the exact value
+     * @param value the value to search for
+     * @return set of row IDs matching the value
+     */
+    public Set&lt;Long&gt; findEqual(Object value) {
+<span class="pc bpc" id="L194" title="1 of 4 branches missed.">        if (value == null || !(value instanceof Comparable)) {</span>
+<span class="fc" id="L195">            return Collections.emptySet();</span>
+        }
+        
+        @SuppressWarnings(&quot;unchecked&quot;)
+<span class="fc" id="L199">        Comparable comparableValue = (Comparable) value;</span>
+        
+<span class="fc" id="L201">        indexLock.readLock().lock();</span>
+        try {
+<span class="fc" id="L203">            return btree.find(comparableValue);</span>
+        } finally {
+<span class="fc" id="L205">            indexLock.readLock().unlock();</span>
+        }
+    }
+    
+    /**
+     * Find rows with values in the specified range (inclusive)
+     * @param minValue the minimum value (inclusive)
+     * @param maxValue the maximum value (inclusive)
+     * @return set of row IDs in the range
+     */
+    public Set&lt;Long&gt; findRange(Object minValue, Object maxValue) {
+<span class="pc bpc" id="L216" title="4 of 8 branches missed.">        if (minValue == null || maxValue == null || </span>
+            !(minValue instanceof Comparable) || !(maxValue instanceof Comparable)) {
+<span class="nc" id="L218">            return Collections.emptySet();</span>
+        }
+        
+        @SuppressWarnings(&quot;unchecked&quot;)
+<span class="fc" id="L222">        Comparable&lt;Object&gt; minComparable = (Comparable&lt;Object&gt;) minValue;</span>
+        @SuppressWarnings(&quot;unchecked&quot;)
+<span class="fc" id="L224">        Comparable&lt;Object&gt; maxComparable = (Comparable&lt;Object&gt;) maxValue;</span>
+        
+<span class="fc" id="L226">        indexLock.readLock().lock();</span>
+        try {
+<span class="fc" id="L228">            return btree.findRange(minComparable, maxComparable);</span>
+        } finally {
+<span class="fc" id="L230">            indexLock.readLock().unlock();</span>
+        }
+    }
+    
+    /**
+     * Find rows with values less than the specified value
+     * @param value the upper bound (exclusive)
+     * @return set of row IDs less than the value
+     */
+    public Set&lt;Long&gt; findLessThan(Object value) {
+<span class="pc bpc" id="L240" title="2 of 4 branches missed.">        if (value == null || !(value instanceof Comparable)) {</span>
+<span class="nc" id="L241">            return Collections.emptySet();</span>
+        }
+        
+        @SuppressWarnings(&quot;unchecked&quot;)
+<span class="fc" id="L245">        Comparable comparableValue = (Comparable) value;</span>
+        
+<span class="fc" id="L247">        indexLock.readLock().lock();</span>
+        try {
+<span class="fc" id="L249">            return btree.findLessThan(comparableValue);</span>
+        } finally {
+<span class="fc" id="L251">            indexLock.readLock().unlock();</span>
+        }
+    }
+    
+    /**
+     * Find rows with values greater than the specified value
+     * @param value the lower bound (exclusive)
+     * @return set of row IDs greater than the value
+     */
+    public Set&lt;Long&gt; findGreaterThan(Object value) {
+<span class="pc bpc" id="L261" title="2 of 4 branches missed.">        if (value == null || !(value instanceof Comparable)) {</span>
+<span class="nc" id="L262">            return Collections.emptySet();</span>
+        }
+        
+        @SuppressWarnings(&quot;unchecked&quot;)
+<span class="fc" id="L266">        Comparable comparableValue = (Comparable) value;</span>
+        
+<span class="fc" id="L268">        indexLock.readLock().lock();</span>
+        try {
+<span class="fc" id="L270">            return btree.findGreaterThan(comparableValue);</span>
+        } finally {
+<span class="fc" id="L272">            indexLock.readLock().unlock();</span>
+        }
+    }
+    
+    /**
+     * Find rows with values less than or equal to the specified value
+     * @param value the upper bound (inclusive)
+     * @return set of row IDs less than or equal to the value
+     */
+    public Set&lt;Long&gt; findLessThanOrEqual(Object value) {
+<span class="pc bpc" id="L282" title="2 of 4 branches missed.">        if (value == null || !(value instanceof Comparable)) {</span>
+<span class="nc" id="L283">            return Collections.emptySet();</span>
+        }
+        
+<span class="fc" id="L286">        Set&lt;Long&gt; result = new HashSet&lt;&gt;();</span>
+<span class="fc" id="L287">        result.addAll(findLessThan(value));</span>
+<span class="fc" id="L288">        result.addAll(findEqual(value));</span>
+<span class="fc" id="L289">        return result;</span>
+    }
+    
+    /**
+     * Find rows with values greater than or equal to the specified value
+     * @param value the lower bound (inclusive)
+     * @return set of row IDs greater than or equal to the value
+     */
+    public Set&lt;Long&gt; findGreaterThanOrEqual(Object value) {
+<span class="pc bpc" id="L298" title="2 of 4 branches missed.">        if (value == null || !(value instanceof Comparable)) {</span>
+<span class="nc" id="L299">            return Collections.emptySet();</span>
+        }
+        
+<span class="fc" id="L302">        Set&lt;Long&gt; result = new HashSet&lt;&gt;();</span>
+<span class="fc" id="L303">        result.addAll(findGreaterThan(value));</span>
+<span class="fc" id="L304">        result.addAll(findEqual(value));</span>
+<span class="fc" id="L305">        return result;</span>
+    }
+    
+    /**
+     * Get the total number of indexed entries (distinct values)
+     * @return the number of distinct values in the index
+     */
+    public int getEntryCount() {
+<span class="fc" id="L313">        indexLock.readLock().lock();</span>
+        try {
+<span class="fc" id="L315">            return btree.getAllKeys().size();</span>
+        } finally {
+<span class="fc" id="L317">            indexLock.readLock().unlock();</span>
+        }
+    }
+    
+    /**
+     * Get the total number of indexed row references
+     * @return the total number of row references in the index
+     */
+    public long getTotalRowCount() {
+<span class="fc" id="L326">        indexLock.readLock().lock();</span>
+        try {
+<span class="fc" id="L328">            return btree.totalValues();</span>
+        } finally {
+<span class="fc" id="L330">            indexLock.readLock().unlock();</span>
+        }
+    }
+    
+    /**
+     * Get all keys in the index in sorted order
+     * @return list of all keys
+     */
+    public List&lt;Comparable&gt; getAllKeys() {
+<span class="fc" id="L339">        indexLock.readLock().lock();</span>
+        try {
+<span class="fc" id="L341">            return btree.getAllKeys();</span>
+        } finally {
+<span class="fc" id="L343">            indexLock.readLock().unlock();</span>
+        }
+    }
+    
+    /**
+     * Clear all entries from the index
+     */
+    public void clear() {
+<span class="fc" id="L351">        indexLock.writeLock().lock();</span>
+        try {
+<span class="fc" id="L353">            btree.clear();</span>
+<span class="fc" id="L354">            logger.debug(&quot;Cleared B+ tree index {}&quot;, name);</span>
+        } finally {
+<span class="fc" id="L356">            indexLock.writeLock().unlock();</span>
+        }
+<span class="fc" id="L358">    }</span>
+    
+    /**
+     * Get detailed statistics about the index
+     * @return map of statistics including B+ tree metrics
+     */
+    public Map&lt;String, Object&gt; getStatistics() {
+<span class="fc" id="L365">        indexLock.readLock().lock();</span>
+        try {
+<span class="fc" id="L367">            Map&lt;String, Object&gt; stats = new HashMap&lt;&gt;(btree.getStatistics());</span>
+<span class="fc" id="L368">            stats.put(&quot;name&quot;, name);</span>
+<span class="fc" id="L369">            stats.put(&quot;columnName&quot;, indexedColumn.getName());</span>
+<span class="fc" id="L370">            stats.put(&quot;tableName&quot;, table.getName());</span>
+<span class="fc" id="L371">            stats.put(&quot;columnIndex&quot;, columnIndex);</span>
+<span class="fc" id="L372">            stats.put(&quot;type&quot;, &quot;BPlusTreeIndex&quot;);</span>
+<span class="fc" id="L373">            return stats;</span>
+        } finally {
+<span class="fc" id="L375">            indexLock.readLock().unlock();</span>
+        }
+    }
+    
+    /**
+     * Rebuild the entire index from scratch
+     */
+    public void rebuild() {
+<span class="fc" id="L383">        indexLock.writeLock().lock();</span>
+        try {
+<span class="fc" id="L385">            logger.debug(&quot;Rebuilding B+ tree index {}&quot;, name);</span>
+<span class="fc" id="L386">            btree.clear();</span>
+<span class="fc" id="L387">            buildInitialIndex();</span>
+<span class="fc" id="L388">            logger.debug(&quot;Rebuilt B+ tree index {} with {} entries and {} total row references&quot;, </span>
+<span class="fc" id="L389">                        name, getEntryCount(), getTotalRowCount());</span>
+        } finally {
+<span class="fc" id="L391">            indexLock.writeLock().unlock();</span>
+        }
+<span class="fc" id="L393">    }</span>
+    
+    private void buildInitialIndex() {
+<span class="fc" id="L396">        logger.debug(&quot;Building initial B+ tree index for {} on column {}&quot;, name, indexedColumn.getName());</span>
+        
+<span class="fc" id="L398">        List&lt;Row&gt; allRows = table.getAllRows();</span>
+<span class="fc bfc" id="L399" title="All 2 branches covered.">        for (Row row : allRows) {</span>
+<span class="fc" id="L400">            insert(row);</span>
+<span class="fc" id="L401">        }</span>
+        
+<span class="fc" id="L403">        logger.debug(&quot;Initial B+ tree index built with {} entries and {} total row references&quot;, </span>
+<span class="fc" id="L404">                    getEntryCount(), getTotalRowCount());</span>
+<span class="fc" id="L405">    }</span>
+    
+    @Override
+    public String toString() {
+<span class="fc" id="L409">        indexLock.readLock().lock();</span>
+        try {
+<span class="fc" id="L411">            return &quot;BPlusTreeIndex{&quot; +</span>
+                   &quot;name='&quot; + name + '\'' +
+<span class="fc" id="L413">                   &quot;, column='&quot; + indexedColumn.getName() + '\'' +</span>
+<span class="fc" id="L414">                   &quot;, table='&quot; + table.getName() + '\'' +</span>
+<span class="fc" id="L415">                   &quot;, entries=&quot; + getEntryCount() +</span>
+<span class="fc" id="L416">                   &quot;, totalRows=&quot; + getTotalRowCount() +</span>
+<span class="fc" id="L417">                   &quot;, btreeStats=&quot; + btree.toString() +</span>
+                   '}';
+        } finally {
+<span class="fc" id="L420">            indexLock.readLock().unlock();</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

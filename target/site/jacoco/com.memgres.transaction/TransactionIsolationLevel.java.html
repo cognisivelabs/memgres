@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TransactionIsolationLevel.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">MemGres Core</a> &gt; <a href="index.source.html" class="el_package">com.memgres.transaction</a> &gt; <span class="el_source">TransactionIsolationLevel.java</span></div><h1>TransactionIsolationLevel.java</h1><pre class="source lang-java linenums">package com.memgres.transaction;
+
+/**
+ * Enumeration of transaction isolation levels supported by MemGres.
+ * Based on PostgreSQL isolation levels with simplified implementation.
+ */
+<span class="fc" id="L7">public enum TransactionIsolationLevel {</span>
+    
+    /**
+     * Read Uncommitted - allows dirty reads, non-repeatable reads, and phantom reads.
+     * Minimal isolation, highest concurrency.
+     */
+<span class="fc" id="L13">    READ_UNCOMMITTED(&quot;READ UNCOMMITTED&quot;, 0),</span>
+    
+    /**
+     * Read Committed - prevents dirty reads, but allows non-repeatable reads and phantom reads.
+     * PostgreSQL default isolation level.
+     */
+<span class="fc" id="L19">    READ_COMMITTED(&quot;READ COMMITTED&quot;, 1),</span>
+    
+    /**
+     * Repeatable Read - prevents dirty reads and non-repeatable reads, but allows phantom reads.
+     * Provides snapshot isolation within a transaction.
+     */
+<span class="fc" id="L25">    REPEATABLE_READ(&quot;REPEATABLE READ&quot;, 2),</span>
+    
+    /**
+     * Serializable - prevents all read phenomena (dirty reads, non-repeatable reads, phantom reads).
+     * Highest isolation, may reduce concurrency due to serialization conflicts.
+     */
+<span class="fc" id="L31">    SERIALIZABLE(&quot;SERIALIZABLE&quot;, 3);</span>
+    
+    private final String sqlName;
+    private final int level;
+    
+<span class="fc" id="L36">    TransactionIsolationLevel(String sqlName, int level) {</span>
+<span class="fc" id="L37">        this.sqlName = sqlName;</span>
+<span class="fc" id="L38">        this.level = level;</span>
+<span class="fc" id="L39">    }</span>
+    
+    /**
+     * Get the SQL name of this isolation level
+     * @return the SQL name
+     */
+    public String getSqlName() {
+<span class="nc" id="L46">        return sqlName;</span>
+    }
+    
+    /**
+     * Get the numeric level of this isolation level (higher = more isolated)
+     * @return the numeric level
+     */
+    public int getLevel() {
+<span class="nc" id="L54">        return level;</span>
+    }
+    
+    /**
+     * Check if this isolation level prevents dirty reads
+     * @return true if dirty reads are prevented
+     */
+    public boolean preventsDirtyReads() {
+<span class="nc bnc" id="L62" title="All 2 branches missed.">        return this != READ_UNCOMMITTED;</span>
+    }
+    
+    /**
+     * Check if this isolation level prevents non-repeatable reads
+     * @return true if non-repeatable reads are prevented
+     */
+    public boolean preventsNonRepeatableReads() {
+<span class="nc bnc" id="L70" title="All 4 branches missed.">        return this == REPEATABLE_READ || this == SERIALIZABLE;</span>
+    }
+    
+    /**
+     * Check if this isolation level prevents phantom reads
+     * @return true if phantom reads are prevented
+     */
+    public boolean preventsPhantomReads() {
+<span class="nc bnc" id="L78" title="All 2 branches missed.">        return this == SERIALIZABLE;</span>
+    }
+    
+    /**
+     * Check if this isolation level provides snapshot isolation
+     * @return true if snapshot isolation is provided
+     */
+    public boolean providesSnapshotIsolation() {
+<span class="nc bnc" id="L86" title="All 4 branches missed.">        return this == REPEATABLE_READ || this == SERIALIZABLE;</span>
+    }
+    
+    /**
+     * Check if this isolation level requires serialization checks
+     * @return true if serialization checks are required
+     */
+    public boolean requiresSerializationChecks() {
+<span class="nc bnc" id="L94" title="All 2 branches missed.">        return this == SERIALIZABLE;</span>
+    }
+    
+    /**
+     * Compare isolation levels
+     * @param other the other isolation level
+     * @return true if this level is more restrictive than the other
+     */
+    public boolean isMoreRestrictiveThan(TransactionIsolationLevel other) {
+<span class="nc bnc" id="L103" title="All 2 branches missed.">        return this.level &gt; other.level;</span>
+    }
+    
+    /**
+     * Compare isolation levels
+     * @param other the other isolation level
+     * @return true if this level is less restrictive than the other
+     */
+    public boolean isLessRestrictiveThan(TransactionIsolationLevel other) {
+<span class="nc bnc" id="L112" title="All 2 branches missed.">        return this.level &lt; other.level;</span>
+    }
+    
+    /**
+     * Get an isolation level by its SQL name
+     * @param sqlName the SQL name (case-insensitive)
+     * @return the matching isolation level or null if not found
+     */
+    public static TransactionIsolationLevel fromSqlName(String sqlName) {
+<span class="nc bnc" id="L121" title="All 2 branches missed.">        if (sqlName == null) {</span>
+<span class="nc" id="L122">            return null;</span>
+        }
+        
+<span class="nc" id="L125">        String normalized = sqlName.toUpperCase().trim();</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">        for (TransactionIsolationLevel level : values()) {</span>
+<span class="nc bnc" id="L127" title="All 2 branches missed.">            if (level.sqlName.equals(normalized)) {</span>
+<span class="nc" id="L128">                return level;</span>
+            }
+        }
+        
+<span class="nc" id="L132">        return null;</span>
+    }
+    
+    @Override
+    public String toString() {
+<span class="fc" id="L137">        return sqlName;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>
