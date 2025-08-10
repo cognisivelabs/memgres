@@ -83,6 +83,7 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
                     context.setJoinedColumns(joinResult.columns);
                     
                     Object result = expressionEvaluator.evaluate(whereClause.getCondition(), context);
+                    
                     if (Boolean.TRUE.equals(result)) {
                         filteredRows.add(row);
                     }
@@ -163,7 +164,16 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
                 // Determine result columns
                 for (int i = 0; i < node.getSelectItems().size(); i++) {
                     SelectItem item = node.getSelectItems().get(i);
-                    String columnName = item.getAlias().orElse("column" + i);
+                    String columnName;
+                    if (item.getAlias().isPresent()) {
+                        columnName = item.getAlias().get();
+                    } else if (item.getExpression() instanceof com.memgres.sql.ast.expression.ColumnReference) {
+                        com.memgres.sql.ast.expression.ColumnReference colRef = 
+                            (com.memgres.sql.ast.expression.ColumnReference) item.getExpression();
+                        columnName = colRef.getColumnName();
+                    } else {
+                        columnName = "column" + i;
+                    }
                     resultColumns.add(new Column.Builder()
                     .name(columnName)
                     .dataType(DataType.TEXT)
@@ -459,12 +469,16 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
         List<Column> resultColumns = new ArrayList<>(baseTable.getColumns());
         List<Row> resultRows = baseTable.getAllRows();
         
+        
         // Apply joins if present
         if (joinableTable.hasJoins()) {
+            TableReference baseTableReference = baseTableRef; // Track the left table reference for alias support
             for (JoinClause joinClause : joinableTable.getJoins()) {
-                JoinResult joinResult = executeJoin(resultColumns, resultRows, joinClause, context);
+                JoinResult joinResult = executeJoin(resultColumns, resultRows, joinClause, context, baseTableReference);
                 resultColumns = joinResult.columns;
                 resultRows = joinResult.rows;
+                // For subsequent joins, the left side becomes the previous join result
+                baseTableReference = null; // No simple reference for joined result
             }
         }
         
@@ -475,7 +489,7 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
      * Execute a single join operation with optimization.
      */
     private JoinResult executeJoin(List<Column> leftColumns, List<Row> leftRows, 
-                                  JoinClause joinClause, ExecutionContext context) throws SqlExecutionException {
+                                  JoinClause joinClause, ExecutionContext context, TableReference leftTableRef) throws SqlExecutionException {
         
         // Get right table
         TableReference rightTableRef = joinClause.getTable();
@@ -491,6 +505,28 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
         // Combine column schemas
         List<Column> combinedColumns = new ArrayList<>(leftColumns);
         combinedColumns.addAll(rightColumns);
+        
+        // Set up table information for proper column resolution
+        Map<String, List<Column>> tableColumns = new HashMap<>();
+        List<String> tableOrder = new ArrayList<>();
+        
+        // Add base table info (use alias if available)
+        if (leftTableRef != null) {
+            String leftTableKey = leftTableRef.getAlias().isPresent() ?
+                leftTableRef.getAlias().get().toLowerCase() : leftTableRef.getTableName().toLowerCase();
+            tableColumns.put(leftTableKey, new ArrayList<>(leftColumns));
+            tableOrder.add(leftTableKey);
+        }
+        
+        // Add right table info (use alias if available)
+        String rightTableKey = rightTableRef.getAlias().isPresent() ? 
+            rightTableRef.getAlias().get().toLowerCase() : rightTableName.toLowerCase();
+        tableColumns.put(rightTableKey, new ArrayList<>(rightColumns));
+        tableOrder.add(rightTableKey);
+        
+        // Update context with table information
+        context.setTableColumns(tableColumns);
+        context.setTableOrder(tableOrder);
         
         List<Row> joinedRows = new ArrayList<>();
         
@@ -526,6 +562,7 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
         
         return new JoinResult(combinedColumns, joinedRows);
     }
+    
     
     /**
      * Available JOIN algorithms for optimization.
@@ -1298,7 +1335,16 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
         
         for (int i = 0; i < selectStatement.getSelectItems().size(); i++) {
             SelectItem item = selectStatement.getSelectItems().get(i);
-            String columnName = item.getAlias().orElse("column" + i);
+            String columnName;
+            if (item.getAlias().isPresent()) {
+                columnName = item.getAlias().get();
+            } else if (item.getExpression() instanceof com.memgres.sql.ast.expression.ColumnReference) {
+                com.memgres.sql.ast.expression.ColumnReference colRef = 
+                    (com.memgres.sql.ast.expression.ColumnReference) item.getExpression();
+                columnName = colRef.getColumnName();
+            } else {
+                columnName = "column" + i;
+            }
             
             if (item.getExpression() instanceof AggregateFunction) {
                 AggregateFunction aggregateFunc = (AggregateFunction) item.getExpression();
@@ -1358,7 +1404,16 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
         // Determine result columns
         for (int i = 0; i < selectStatement.getSelectItems().size(); i++) {
             SelectItem item = selectStatement.getSelectItems().get(i);
-            String columnName = item.getAlias().orElse("column" + i);
+            String columnName;
+            if (item.getAlias().isPresent()) {
+                columnName = item.getAlias().get();
+            } else if (item.getExpression() instanceof com.memgres.sql.ast.expression.ColumnReference) {
+                com.memgres.sql.ast.expression.ColumnReference colRef = 
+                    (com.memgres.sql.ast.expression.ColumnReference) item.getExpression();
+                columnName = colRef.getColumnName();
+            } else {
+                columnName = "column" + i;
+            }
             resultColumns.add(new Column.Builder()
                 .name(columnName)
                 .dataType(DataType.TEXT)

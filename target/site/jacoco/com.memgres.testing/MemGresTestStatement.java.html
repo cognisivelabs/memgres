@@ -1,0 +1,364 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MemGresTestStatement.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">MemGres Core</a> &gt; <a href="index.source.html" class="el_package">com.memgres.testing</a> &gt; <span class="el_source">MemGresTestStatement.java</span></div><h1>MemGresTestStatement.java</h1><pre class="source lang-java linenums">package com.memgres.testing;
+
+import com.memgres.sql.execution.SqlExecutionEngine;
+import com.memgres.sql.execution.SqlExecutionResult;
+
+import java.sql.*;
+import java.util.List;
+
+/**
+ * JDBC Statement implementation for MemGres testing.
+ * 
+ * &lt;p&gt;This is a simplified Statement implementation that provides basic SQL execution
+ * capabilities for testing. It supports most common SQL operations but does not
+ * implement all JDBC Statement features.&lt;/p&gt;
+ * 
+ * @since 1.0.0
+ */
+public class MemGresTestStatement implements Statement {
+    
+    private final MemGresTestConnection connection;
+    private final SqlExecutionEngine sqlEngine;
+<span class="fc" id="L22">    private boolean closed = false;</span>
+    private ResultSet lastResultSet;
+<span class="fc" id="L24">    private int updateCount = -1;</span>
+<span class="fc" id="L25">    private int maxRows = 0;</span>
+<span class="fc" id="L26">    private int queryTimeout = 0;</span>
+    
+    /**
+     * Creates a new MemGresTestStatement.
+     * 
+     * @param connection the connection
+     * @param sqlEngine the SQL execution engine
+     */
+<span class="fc" id="L34">    public MemGresTestStatement(MemGresTestConnection connection, SqlExecutionEngine sqlEngine) {</span>
+<span class="fc" id="L35">        this.connection = connection;</span>
+<span class="fc" id="L36">        this.sqlEngine = sqlEngine;</span>
+<span class="fc" id="L37">    }</span>
+    
+    @Override
+    public ResultSet executeQuery(String sql) throws SQLException {
+<span class="fc" id="L41">        checkClosed();</span>
+        
+        // Ensure transaction exists if needed
+<span class="fc" id="L44">        connection.ensureTransaction();</span>
+        
+        SqlExecutionResult result;
+        try {
+<span class="fc" id="L48">            result = sqlEngine.execute(sql);</span>
+<span class="fc" id="L49">        } catch (com.memgres.sql.execution.SqlExecutionException e) {</span>
+<span class="fc" id="L50">            throw new SQLException(&quot;Query execution failed: &quot; + e.getMessage(), e);</span>
+<span class="fc" id="L51">        }</span>
+<span class="pc bpc" id="L52" title="1 of 2 branches missed.">        if (!result.isSuccess()) {</span>
+<span class="nc" id="L53">            throw new SQLException(&quot;Query execution failed: &quot; + result.getMessage());</span>
+        }
+        
+<span class="fc" id="L56">        lastResultSet = new MemGresTestResultSet(result.getRows(), result.getColumns());</span>
+<span class="fc" id="L57">        updateCount = -1;</span>
+        
+<span class="fc" id="L59">        return lastResultSet;</span>
+    }
+    
+    @Override
+    public int executeUpdate(String sql) throws SQLException {
+<span class="fc" id="L64">        checkClosed();</span>
+        
+        // Ensure transaction exists if needed
+<span class="fc" id="L67">        connection.ensureTransaction();</span>
+        
+        SqlExecutionResult result;
+        try {
+<span class="fc" id="L71">            result = sqlEngine.execute(sql);</span>
+<span class="nc" id="L72">        } catch (com.memgres.sql.execution.SqlExecutionException e) {</span>
+<span class="nc" id="L73">            throw new SQLException(&quot;Update execution failed: &quot; + e.getMessage(), e);</span>
+<span class="fc" id="L74">        }</span>
+<span class="pc bpc" id="L75" title="1 of 2 branches missed.">        if (!result.isSuccess()) {</span>
+<span class="nc" id="L76">            throw new SQLException(&quot;Update execution failed: &quot; + result.getMessage());</span>
+        }
+        
+        // Take snapshot after successful DML operations if in transaction
+<span class="fc" id="L80">        connection.ensureTransactionSnapshotAfterDML(sql);</span>
+        
+<span class="fc" id="L82">        lastResultSet = null;</span>
+<span class="fc" id="L83">        updateCount = result.getAffectedRows();</span>
+        
+<span class="fc" id="L85">        return updateCount;</span>
+    }
+    
+    @Override
+    public void close() throws SQLException {
+<span class="pc bpc" id="L90" title="1 of 2 branches missed.">        if (!closed) {</span>
+<span class="pc bpc" id="L91" title="1 of 2 branches missed.">            if (lastResultSet != null) {</span>
+<span class="fc" id="L92">                lastResultSet.close();</span>
+            }
+<span class="fc" id="L94">            closed = true;</span>
+        }
+<span class="fc" id="L96">    }</span>
+    
+    @Override
+    public int getMaxFieldSize() throws SQLException {
+<span class="nc" id="L100">        return 0; // No limit</span>
+    }
+    
+    @Override
+    public void setMaxFieldSize(int max) throws SQLException {
+<span class="nc" id="L105">        checkClosed();</span>
+        // No-op
+<span class="nc" id="L107">    }</span>
+    
+    @Override
+    public int getMaxRows() throws SQLException {
+<span class="nc" id="L111">        return maxRows;</span>
+    }
+    
+    @Override
+    public void setMaxRows(int max) throws SQLException {
+<span class="nc" id="L116">        checkClosed();</span>
+<span class="nc" id="L117">        this.maxRows = max;</span>
+<span class="nc" id="L118">    }</span>
+    
+    @Override
+    public void setEscapeProcessing(boolean enable) throws SQLException {
+<span class="nc" id="L122">        checkClosed();</span>
+        // No-op
+<span class="nc" id="L124">    }</span>
+    
+    @Override
+    public int getQueryTimeout() throws SQLException {
+<span class="nc" id="L128">        return queryTimeout;</span>
+    }
+    
+    @Override
+    public void setQueryTimeout(int seconds) throws SQLException {
+<span class="nc" id="L133">        checkClosed();</span>
+<span class="nc" id="L134">        this.queryTimeout = seconds;</span>
+<span class="nc" id="L135">    }</span>
+    
+    @Override
+    public void cancel() throws SQLException {
+<span class="nc" id="L139">        checkClosed();</span>
+        // MemGres queries are fast, cancellation not needed
+<span class="nc" id="L141">    }</span>
+    
+    @Override
+    public SQLWarning getWarnings() throws SQLException {
+<span class="nc" id="L145">        return null;</span>
+    }
+    
+    @Override
+    public void clearWarnings() throws SQLException {
+        // No-op
+<span class="nc" id="L151">    }</span>
+    
+    @Override
+    public void setCursorName(String name) throws SQLException {
+<span class="nc" id="L155">        throw new SQLFeatureNotSupportedException(&quot;Named cursors not supported&quot;);</span>
+    }
+    
+    @Override
+    public boolean execute(String sql) throws SQLException {
+<span class="fc" id="L160">        checkClosed();</span>
+        
+        // Ensure transaction exists if needed
+<span class="fc" id="L163">        connection.ensureTransaction();</span>
+        
+        // Will take snapshot after successful execution if needed
+        
+        SqlExecutionResult result;
+        try {
+<span class="fc" id="L169">            result = sqlEngine.execute(sql);</span>
+<span class="nc" id="L170">        } catch (com.memgres.sql.execution.SqlExecutionException e) {</span>
+<span class="nc" id="L171">            throw new SQLException(&quot;SQL execution failed: &quot; + e.getMessage(), e);</span>
+<span class="fc" id="L172">        }</span>
+<span class="pc bpc" id="L173" title="1 of 2 branches missed.">        if (!result.isSuccess()) {</span>
+<span class="nc" id="L174">            throw new SQLException(&quot;SQL execution failed: &quot; + result.getMessage());</span>
+        }
+        
+        // Take snapshot after successful DML operations if in transaction
+<span class="fc" id="L178">        connection.ensureTransactionSnapshotAfterDML(sql);</span>
+        
+<span class="pc bpc" id="L180" title="1 of 2 branches missed.">        if (result.getRows() != null) {</span>
+            // Query that returns results
+<span class="fc" id="L182">            lastResultSet = new MemGresTestResultSet(result.getRows(), result.getColumns());</span>
+<span class="fc" id="L183">            updateCount = -1;</span>
+<span class="fc" id="L184">            return true;</span>
+        } else {
+            // Update/DDL statement
+<span class="nc" id="L187">            lastResultSet = null;</span>
+<span class="nc" id="L188">            updateCount = result.getAffectedRows();</span>
+<span class="nc" id="L189">            return false;</span>
+        }
+    }
+    
+    @Override
+    public ResultSet getResultSet() throws SQLException {
+<span class="nc" id="L195">        checkClosed();</span>
+<span class="nc" id="L196">        return lastResultSet;</span>
+    }
+    
+    @Override
+    public int getUpdateCount() throws SQLException {
+<span class="nc" id="L201">        checkClosed();</span>
+<span class="nc" id="L202">        return updateCount;</span>
+    }
+    
+    @Override
+    public boolean getMoreResults() throws SQLException {
+<span class="nc" id="L207">        checkClosed();</span>
+<span class="nc" id="L208">        return false; // MemGres doesn't support multiple result sets</span>
+    }
+    
+    // JDBC 2.0 methods
+    
+    @Override
+    public void setFetchDirection(int direction) throws SQLException {
+<span class="nc" id="L215">        checkClosed();</span>
+<span class="nc bnc" id="L216" title="All 2 branches missed.">        if (direction != ResultSet.FETCH_FORWARD) {</span>
+<span class="nc" id="L217">            throw new SQLFeatureNotSupportedException(&quot;Only FETCH_FORWARD supported&quot;);</span>
+        }
+<span class="nc" id="L219">    }</span>
+    
+    @Override
+    public int getFetchDirection() throws SQLException {
+<span class="nc" id="L223">        return ResultSet.FETCH_FORWARD;</span>
+    }
+    
+    @Override
+    public void setFetchSize(int rows) throws SQLException {
+<span class="nc" id="L228">        checkClosed();</span>
+        // No-op
+<span class="nc" id="L230">    }</span>
+    
+    @Override
+    public int getFetchSize() throws SQLException {
+<span class="nc" id="L234">        return 0;</span>
+    }
+    
+    @Override
+    public int getResultSetConcurrency() throws SQLException {
+<span class="nc" id="L239">        return ResultSet.CONCUR_READ_ONLY;</span>
+    }
+    
+    @Override
+    public int getResultSetType() throws SQLException {
+<span class="nc" id="L244">        return ResultSet.TYPE_FORWARD_ONLY;</span>
+    }
+    
+    @Override
+    public void addBatch(String sql) throws SQLException {
+<span class="nc" id="L249">        throw new SQLFeatureNotSupportedException(&quot;Batch updates not supported&quot;);</span>
+    }
+    
+    @Override
+    public void clearBatch() throws SQLException {
+<span class="nc" id="L254">        throw new SQLFeatureNotSupportedException(&quot;Batch updates not supported&quot;);</span>
+    }
+    
+    @Override
+    public int[] executeBatch() throws SQLException {
+<span class="nc" id="L259">        throw new SQLFeatureNotSupportedException(&quot;Batch updates not supported&quot;);</span>
+    }
+    
+    @Override
+    public Connection getConnection() throws SQLException {
+<span class="nc" id="L264">        return connection;</span>
+    }
+    
+    // JDBC 3.0 methods
+    
+    @Override
+    public boolean getMoreResults(int current) throws SQLException {
+<span class="nc" id="L271">        return false;</span>
+    }
+    
+    @Override
+    public ResultSet getGeneratedKeys() throws SQLException {
+<span class="nc" id="L276">        throw new SQLFeatureNotSupportedException(&quot;Generated keys not supported&quot;);</span>
+    }
+    
+    @Override
+    public int executeUpdate(String sql, int autoGeneratedKeys) throws SQLException {
+<span class="nc" id="L281">        return executeUpdate(sql); // Ignore auto-generated keys</span>
+    }
+    
+    @Override
+    public int executeUpdate(String sql, int[] columnIndexes) throws SQLException {
+<span class="nc" id="L286">        return executeUpdate(sql); // Ignore column indexes</span>
+    }
+    
+    @Override
+    public int executeUpdate(String sql, String[] columnNames) throws SQLException {
+<span class="nc" id="L291">        return executeUpdate(sql); // Ignore column names</span>
+    }
+    
+    @Override
+    public boolean execute(String sql, int autoGeneratedKeys) throws SQLException {
+<span class="nc" id="L296">        return execute(sql); // Ignore auto-generated keys</span>
+    }
+    
+    @Override
+    public boolean execute(String sql, int[] columnIndexes) throws SQLException {
+<span class="nc" id="L301">        return execute(sql); // Ignore column indexes</span>
+    }
+    
+    @Override
+    public boolean execute(String sql, String[] columnNames) throws SQLException {
+<span class="nc" id="L306">        return execute(sql); // Ignore column names</span>
+    }
+    
+    @Override
+    public int getResultSetHoldability() throws SQLException {
+<span class="nc" id="L311">        return ResultSet.CLOSE_CURSORS_AT_COMMIT;</span>
+    }
+    
+    @Override
+    public boolean isClosed() throws SQLException {
+<span class="nc" id="L316">        return closed;</span>
+    }
+    
+    // JDBC 4.0 methods
+    
+    @Override
+    public void setPoolable(boolean poolable) throws SQLException {
+        // No-op
+<span class="nc" id="L324">    }</span>
+    
+    @Override
+    public boolean isPoolable() throws SQLException {
+<span class="nc" id="L328">        return false;</span>
+    }
+    
+    // JDBC 4.1 methods
+    
+    @Override
+    public void closeOnCompletion() throws SQLException {
+<span class="nc" id="L335">        throw new SQLFeatureNotSupportedException(&quot;Close on completion not supported&quot;);</span>
+    }
+    
+    @Override
+    public boolean isCloseOnCompletion() throws SQLException {
+<span class="nc" id="L340">        return false;</span>
+    }
+    
+    // Wrapper interface
+    
+    @Override
+    public &lt;T&gt; T unwrap(Class&lt;T&gt; iface) throws SQLException {
+<span class="nc bnc" id="L347" title="All 2 branches missed.">        if (iface.isAssignableFrom(getClass())) {</span>
+<span class="nc" id="L348">            return iface.cast(this);</span>
+        }
+<span class="nc" id="L350">        throw new SQLException(&quot;Cannot unwrap to &quot; + iface.getName());</span>
+    }
+    
+    @Override
+    public boolean isWrapperFor(Class&lt;?&gt; iface) throws SQLException {
+<span class="nc" id="L355">        return iface.isAssignableFrom(getClass());</span>
+    }
+    
+    private void checkClosed() throws SQLException {
+<span class="pc bpc" id="L359" title="1 of 2 branches missed.">        if (closed) {</span>
+<span class="nc" id="L360">            throw new SQLException(&quot;Statement is closed&quot;);</span>
+        }
+<span class="fc" id="L362">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

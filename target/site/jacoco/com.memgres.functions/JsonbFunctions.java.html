@@ -1,0 +1,449 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JsonbFunctions.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">MemGres Core</a> &gt; <a href="index.source.html" class="el_package">com.memgres.functions</a> &gt; <span class="el_source">JsonbFunctions.java</span></div><h1>JsonbFunctions.java</h1><pre class="source lang-java linenums">package com.memgres.functions;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.*;
+import com.memgres.types.jsonb.JsonbValue;
+
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
+
+/**
+ * Enhanced JSONB functions for MemGres database.
+ * Provides advanced PostgreSQL-compatible JSONB operations including JSONPath and aggregation functions.
+ */
+<span class="nc" id="L18">public class JsonbFunctions {</span>
+<span class="fc" id="L19">    private static final ObjectMapper objectMapper = new ObjectMapper();</span>
+    
+    /**
+     * Simple JSONPath implementation for basic path queries.
+     * Supports basic path syntax like $.key, $.array[*], $.nested.key
+     * @param jsonb the JSONB value to query
+     * @param jsonPath the JSONPath expression
+     * @return array of matching values
+     */
+    public static JsonbValue[] jsonbPathQuery(JsonbValue jsonb, String jsonPath) {
+<span class="fc bfc" id="L29" title="All 4 branches covered.">        if (jsonb == null || jsonPath == null) {</span>
+<span class="fc" id="L30">            return new JsonbValue[0];</span>
+        }
+        
+<span class="fc" id="L33">        List&lt;JsonbValue&gt; results = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L34">        evaluateJsonPath(jsonb.getJsonNode(), jsonPath, results);</span>
+<span class="fc" id="L35">        return results.toArray(new JsonbValue[0]);</span>
+    }
+    
+    /**
+     * Extract all values from JSONB object or array (recursive).
+     * @param jsonb the JSONB value to extract from
+     * @return array of all values
+     */
+    public static JsonbValue[] jsonbEachRecursive(JsonbValue jsonb) {
+<span class="fc bfc" id="L44" title="All 2 branches covered.">        if (jsonb == null) {</span>
+<span class="fc" id="L45">            return new JsonbValue[0];</span>
+        }
+        
+<span class="fc" id="L48">        List&lt;JsonbValue&gt; results = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L49">        extractAllValues(jsonb.getJsonNode(), results);</span>
+<span class="fc" id="L50">        return results.toArray(new JsonbValue[0]);</span>
+    }
+    
+    /**
+     * Get all keys from JSONB object.
+     * @param jsonb the JSONB object
+     * @return array of keys
+     */
+    public static String[] jsonbObjectKeys(JsonbValue jsonb) {
+<span class="fc bfc" id="L59" title="All 4 branches covered.">        if (jsonb == null || !jsonb.isObject()) {</span>
+<span class="fc" id="L60">            return new String[0];</span>
+        }
+        
+<span class="fc" id="L63">        List&lt;String&gt; keys = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L64">        jsonb.getJsonNode().fieldNames().forEachRemaining(keys::add);</span>
+<span class="fc" id="L65">        return keys.toArray(new String[0]);</span>
+    }
+    
+    /**
+     * Get array length of JSONB array.
+     * @param jsonb the JSONB array
+     * @return the length of the array, or null if not an array
+     */
+    public static Integer jsonbArrayLength(JsonbValue jsonb) {
+<span class="fc bfc" id="L74" title="All 4 branches covered.">        if (jsonb == null || !jsonb.isArray()) {</span>
+<span class="fc" id="L75">            return null;</span>
+        }
+        
+<span class="fc" id="L78">        return jsonb.size();</span>
+    }
+    
+    /**
+     * Extract path from JSONB as text array.
+     * @param jsonb the JSONB value
+     * @param path the path elements
+     * @return the value at path as text, or null if not found
+     */
+    public static String jsonbExtractPathText(JsonbValue jsonb, String... path) {
+<span class="fc bfc" id="L88" title="All 2 branches covered.">        if (jsonb == null) {</span>
+<span class="fc" id="L89">            return null;</span>
+        }
+        
+<span class="fc" id="L92">        return jsonb.getPathAsText(path);</span>
+    }
+    
+    /**
+     * Build JSONB object from key-value pairs.
+     * @param pairs alternating keys and values
+     * @return new JSONB object
+     */
+    public static JsonbValue jsonbBuildObject(Object... pairs) {
+<span class="fc bfc" id="L101" title="All 2 branches covered.">        if (pairs == null) {</span>
+<span class="fc" id="L102">            throw new IllegalArgumentException(&quot;jsonb_build_object requires non-null arguments&quot;);</span>
+        }
+<span class="fc bfc" id="L104" title="All 2 branches covered.">        if (pairs.length % 2 != 0) {</span>
+<span class="fc" id="L105">            throw new IllegalArgumentException(&quot;jsonb_build_object requires even number of arguments&quot;);</span>
+        }
+        
+<span class="fc" id="L108">        Map&lt;String, Object&gt; map = new HashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L109" title="All 2 branches covered.">        for (int i = 0; i &lt; pairs.length; i += 2) {</span>
+<span class="fc bfc" id="L110" title="All 2 branches covered.">            String key = pairs[i] != null ? pairs[i].toString() : null;</span>
+<span class="fc" id="L111">            Object value = pairs[i + 1];</span>
+<span class="fc bfc" id="L112" title="All 2 branches covered.">            if (key != null) {</span>
+<span class="fc" id="L113">                map.put(key, value);</span>
+            }
+        }
+        
+<span class="fc" id="L117">        return JsonbValue.fromMap(map);</span>
+    }
+    
+    /**
+     * Build JSONB array from values.
+     * @param values the values to include in the array
+     * @return new JSONB array
+     */
+    public static JsonbValue jsonbBuildArray(Object... values) {
+<span class="fc bfc" id="L126" title="All 2 branches covered.">        if (values == null) {</span>
+<span class="fc" id="L127">            return JsonbValue.fromList(new ArrayList&lt;&gt;());</span>
+        }
+        
+<span class="fc" id="L130">        return JsonbValue.fromList(Arrays.asList(values));</span>
+    }
+    
+    /**
+     * Aggregate JSONB values into a single array.
+     * @param values list of JSONB values to aggregate
+     * @return aggregated JSONB array
+     */
+    public static JsonbValue jsonbAgg(List&lt;JsonbValue&gt; values) {
+<span class="fc bfc" id="L139" title="All 2 branches covered.">        if (values == null) {</span>
+<span class="fc" id="L140">            return JsonbValue.fromList(new ArrayList&lt;&gt;());</span>
+        }
+        
+<span class="fc" id="L143">        List&lt;Object&gt; aggregated = values.stream()</span>
+<span class="fc" id="L144">                .filter(Objects::nonNull)</span>
+<span class="fc" id="L145">                .map(jsonb -&gt; {</span>
+                    try {
+<span class="fc" id="L147">                        return jsonb.getJsonNode();</span>
+<span class="nc" id="L148">                    } catch (Exception e) {</span>
+<span class="nc" id="L149">                        return jsonb.toString();</span>
+                    }
+                })
+<span class="fc" id="L152">                .collect(Collectors.toList());</span>
+        
+<span class="fc" id="L154">        return JsonbValue.fromList(aggregated);</span>
+    }
+    
+    /**
+     * Aggregate JSONB objects into a single object.
+     * @param values list of JSONB objects to aggregate
+     * @return aggregated JSONB object
+     */
+    public static JsonbValue jsonbObjectAgg(List&lt;JsonbValue&gt; values) {
+<span class="fc bfc" id="L163" title="All 2 branches covered.">        if (values == null) {</span>
+<span class="fc" id="L164">            return JsonbValue.fromMap(new HashMap&lt;&gt;());</span>
+        }
+        
+<span class="fc" id="L167">        Map&lt;String, Object&gt; aggregated = new HashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L168" title="All 2 branches covered.">        for (JsonbValue value : values) {</span>
+<span class="pc bpc" id="L169" title="1 of 4 branches missed.">            if (value != null &amp;&amp; value.isObject()) {</span>
+<span class="fc" id="L170">                value.getJsonNode().fields().forEachRemaining(entry -&gt; </span>
+<span class="fc" id="L171">                    aggregated.put(entry.getKey(), entry.getValue()));</span>
+            }
+<span class="fc" id="L173">        }</span>
+        
+<span class="fc" id="L175">        return JsonbValue.fromMap(aggregated);</span>
+    }
+    
+    /**
+     * Remove key from JSONB object.
+     * @param jsonb the source JSONB object
+     * @param key the key to remove
+     * @return new JSONB object without the key
+     */
+    public static JsonbValue jsonbRemoveKey(JsonbValue jsonb, String key) {
+<span class="fc bfc" id="L185" title="All 6 branches covered.">        if (jsonb == null || !jsonb.isObject() || key == null) {</span>
+<span class="fc" id="L186">            return jsonb;</span>
+        }
+        
+<span class="fc" id="L189">        ObjectNode newObject = jsonb.getJsonNode().deepCopy();</span>
+<span class="pc bpc" id="L190" title="1 of 2 branches missed.">        if (newObject.isObject()) {</span>
+<span class="fc" id="L191">            ((ObjectNode) newObject).remove(key);</span>
+        }
+        
+<span class="fc" id="L194">        return JsonbValue.from(newObject);</span>
+    }
+    
+    /**
+     * Set value at path in JSONB.
+     * @param jsonb the source JSONB value
+     * @param path the path to set
+     * @param value the value to set
+     * @return new JSONB with value set at path
+     */
+    public static JsonbValue jsonbSetPath(JsonbValue jsonb, String[] path, JsonbValue value) {
+<span class="fc bfc" id="L205" title="All 8 branches covered.">        if (jsonb == null || path == null || path.length == 0 || value == null) {</span>
+<span class="fc" id="L206">            return jsonb;</span>
+        }
+        
+<span class="fc" id="L209">        JsonNode result = jsonb.getJsonNode().deepCopy();</span>
+<span class="fc" id="L210">        result = setPathValue(result, path, 0, value.getJsonNode());</span>
+        
+<span class="fc" id="L212">        return JsonbValue.from(result);</span>
+    }
+    
+    /**
+     * Check if JSONB value matches a pattern (simple pattern matching).
+     * @param jsonb the JSONB value to check
+     * @param pattern the pattern to match against
+     * @return true if the pattern matches
+     */
+    public static boolean jsonbMatches(JsonbValue jsonb, String pattern) {
+<span class="fc bfc" id="L222" title="All 4 branches covered.">        if (jsonb == null || pattern == null) {</span>
+<span class="fc" id="L223">            return false;</span>
+        }
+        
+<span class="fc" id="L226">        String jsonString = jsonb.toString();</span>
+<span class="fc" id="L227">        return Pattern.compile(pattern, Pattern.CASE_INSENSITIVE).matcher(jsonString).find();</span>
+    }
+    
+    /**
+     * Get the type of a JSONB value.
+     * @param jsonb the JSONB value
+     * @return the type as a string (&quot;object&quot;, &quot;array&quot;, &quot;string&quot;, &quot;number&quot;, &quot;boolean&quot;, &quot;null&quot;)
+     */
+    public static String jsonbTypeof(JsonbValue jsonb) {
+<span class="fc bfc" id="L236" title="All 2 branches covered.">        if (jsonb == null) {</span>
+<span class="fc" id="L237">            return &quot;null&quot;;</span>
+        }
+        
+<span class="fc" id="L240">        JsonNode node = jsonb.getJsonNode();</span>
+<span class="fc bfc" id="L241" title="All 2 branches covered.">        if (node.isObject()) {</span>
+<span class="fc" id="L242">            return &quot;object&quot;;</span>
+<span class="fc bfc" id="L243" title="All 2 branches covered.">        } else if (node.isArray()) {</span>
+<span class="fc" id="L244">            return &quot;array&quot;;</span>
+<span class="fc bfc" id="L245" title="All 2 branches covered.">        } else if (node.isTextual()) {</span>
+<span class="fc" id="L246">            return &quot;string&quot;;</span>
+<span class="fc bfc" id="L247" title="All 2 branches covered.">        } else if (node.isNumber()) {</span>
+<span class="fc" id="L248">            return &quot;number&quot;;</span>
+<span class="fc bfc" id="L249" title="All 2 branches covered.">        } else if (node.isBoolean()) {</span>
+<span class="fc" id="L250">            return &quot;boolean&quot;;</span>
+        } else {
+<span class="fc" id="L252">            return &quot;null&quot;;</span>
+        }
+    }
+    
+    /**
+     * Pretty print JSONB with formatting.
+     * @param jsonb the JSONB value to format
+     * @return formatted JSON string
+     */
+    public static String jsonbPretty(JsonbValue jsonb) {
+<span class="fc bfc" id="L262" title="All 2 branches covered.">        if (jsonb == null) {</span>
+<span class="fc" id="L263">            return null;</span>
+        }
+        
+        try {
+<span class="fc" id="L267">            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();</span>
+<span class="fc" id="L268">            return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonb.getJsonNode());</span>
+<span class="nc" id="L269">        } catch (Exception e) {</span>
+<span class="nc" id="L270">            return jsonb.toString();</span>
+        }
+    }
+    
+    /**
+     * Strip null values from JSONB object or array.
+     * @param jsonb the JSONB value to strip nulls from
+     * @return new JSONB value without null values
+     */
+    public static JsonbValue jsonbStripNulls(JsonbValue jsonb) {
+<span class="fc bfc" id="L280" title="All 2 branches covered.">        if (jsonb == null) {</span>
+<span class="fc" id="L281">            return null;</span>
+        }
+        
+<span class="fc" id="L284">        JsonNode stripped = stripNullValues(jsonb.getJsonNode());</span>
+<span class="fc" id="L285">        return JsonbValue.from(stripped);</span>
+    }
+    
+    private static void evaluateJsonPath(JsonNode node, String path, List&lt;JsonbValue&gt; results) {
+        // Simple JSONPath implementation - supports basic syntax
+<span class="fc bfc" id="L290" title="All 2 branches covered.">        if (path.equals(&quot;$&quot;)) {</span>
+<span class="fc" id="L291">            results.add(JsonbValue.from(node));</span>
+<span class="fc" id="L292">            return;</span>
+        }
+        
+<span class="fc bfc" id="L295" title="All 2 branches covered.">        if (path.startsWith(&quot;$.&quot;)) {</span>
+<span class="fc" id="L296">            String[] parts = path.substring(2).split(&quot;\\.&quot;);</span>
+<span class="fc" id="L297">            JsonNode current = node;</span>
+            
+<span class="fc bfc" id="L299" title="All 2 branches covered.">            for (String part : parts) {</span>
+<span class="pc bpc" id="L300" title="1 of 2 branches missed.">                if (part.equals(&quot;*&quot;)) {</span>
+                    // Wildcard - get all values
+<span class="nc bnc" id="L302" title="All 2 branches missed.">                    if (current.isObject()) {</span>
+<span class="nc" id="L303">                        current.fields().forEachRemaining(entry -&gt; </span>
+<span class="nc" id="L304">                            results.add(JsonbValue.from(entry.getValue())));</span>
+<span class="nc bnc" id="L305" title="All 2 branches missed.">                    } else if (current.isArray()) {</span>
+<span class="nc bnc" id="L306" title="All 2 branches missed.">                        for (JsonNode element : current) {</span>
+<span class="nc" id="L307">                            results.add(JsonbValue.from(element));</span>
+<span class="nc" id="L308">                        }</span>
+                    }
+<span class="nc" id="L310">                    return;</span>
+<span class="fc bfc" id="L311" title="All 2 branches covered.">                } else if (part.matches(&quot;\\w+\\[\\*\\]&quot;)) {</span>
+                    // Array wildcard like &quot;array[*]&quot;
+<span class="fc" id="L313">                    String fieldName = part.substring(0, part.indexOf('['));</span>
+<span class="pc bpc" id="L314" title="2 of 4 branches missed.">                    if (current.isObject() &amp;&amp; current.has(fieldName)) {</span>
+<span class="fc" id="L315">                        JsonNode arrayNode = current.get(fieldName);</span>
+<span class="pc bpc" id="L316" title="1 of 2 branches missed.">                        if (arrayNode.isArray()) {</span>
+<span class="fc bfc" id="L317" title="All 2 branches covered.">                            for (JsonNode element : arrayNode) {</span>
+<span class="fc" id="L318">                                results.add(JsonbValue.from(element));</span>
+<span class="fc" id="L319">                            }</span>
+                        }
+                    }
+<span class="fc" id="L322">                    return;</span>
+<span class="fc bfc" id="L323" title="All 2 branches covered.">                } else if (part.matches(&quot;\\w+\\[\\d+\\]&quot;)) {</span>
+                    // Array index like &quot;array[0]&quot;
+<span class="fc" id="L325">                    String fieldName = part.substring(0, part.indexOf('['));</span>
+<span class="fc" id="L326">                    String indexStr = part.substring(part.indexOf('[') + 1, part.indexOf(']'));</span>
+<span class="fc" id="L327">                    int index = Integer.parseInt(indexStr);</span>
+                    
+<span class="pc bpc" id="L329" title="2 of 4 branches missed.">                    if (current.isObject() &amp;&amp; current.has(fieldName)) {</span>
+<span class="fc" id="L330">                        JsonNode arrayNode = current.get(fieldName);</span>
+<span class="pc bpc" id="L331" title="2 of 4 branches missed.">                        if (arrayNode.isArray() &amp;&amp; index &lt; arrayNode.size()) {</span>
+<span class="fc" id="L332">                            current = arrayNode.get(index);</span>
+                        } else {
+<span class="nc" id="L334">                            return;</span>
+                        }
+<span class="fc" id="L336">                    } else {</span>
+<span class="nc" id="L337">                        return;</span>
+                    }
+<span class="fc" id="L339">                } else {</span>
+                    // Regular field access
+<span class="pc bpc" id="L341" title="1 of 4 branches missed.">                    if (current.isObject() &amp;&amp; current.has(part)) {</span>
+<span class="fc" id="L342">                        current = current.get(part);</span>
+                    } else {
+<span class="fc" id="L344">                        return;</span>
+                    }
+                }
+            }
+            
+<span class="fc" id="L349">            results.add(JsonbValue.from(current));</span>
+        }
+<span class="fc" id="L351">    }</span>
+    
+    private static void extractAllValues(JsonNode node, List&lt;JsonbValue&gt; results) {
+<span class="fc bfc" id="L354" title="All 2 branches covered.">        if (node.isObject()) {</span>
+<span class="fc" id="L355">            node.fields().forEachRemaining(entry -&gt; {</span>
+<span class="fc" id="L356">                results.add(JsonbValue.from(entry.getValue()));</span>
+<span class="fc" id="L357">                extractAllValues(entry.getValue(), results);</span>
+<span class="fc" id="L358">            });</span>
+<span class="fc bfc" id="L359" title="All 2 branches covered.">        } else if (node.isArray()) {</span>
+<span class="fc bfc" id="L360" title="All 2 branches covered.">            for (JsonNode element : node) {</span>
+<span class="fc" id="L361">                results.add(JsonbValue.from(element));</span>
+<span class="fc" id="L362">                extractAllValues(element, results);</span>
+<span class="fc" id="L363">            }</span>
+        } else {
+<span class="fc" id="L365">            results.add(JsonbValue.from(node));</span>
+        }
+<span class="fc" id="L367">    }</span>
+    
+    private static JsonNode setPathValue(JsonNode node, String[] path, int pathIndex, JsonNode value) {
+<span class="fc bfc" id="L370" title="All 2 branches covered.">        if (pathIndex &gt;= path.length) {</span>
+<span class="fc" id="L371">            return value;</span>
+        }
+        
+<span class="fc" id="L374">        String currentKey = path[pathIndex];</span>
+        
+<span class="pc bpc" id="L376" title="1 of 2 branches missed.">        if (node.isObject()) {</span>
+<span class="fc" id="L377">            ObjectNode objectNode = (ObjectNode) node;</span>
+<span class="fc" id="L378">            JsonNode currentValue = objectNode.get(currentKey);</span>
+<span class="fc bfc" id="L379" title="All 2 branches covered.">            if (currentValue == null) {</span>
+                // Create intermediate objects/arrays as needed
+<span class="pc bpc" id="L381" title="1 of 2 branches missed.">                if (pathIndex &lt; path.length - 1) {</span>
+<span class="nc" id="L382">                    currentValue = objectMapper.createObjectNode();</span>
+                } else {
+<span class="fc" id="L384">                    currentValue = NullNode.getInstance();</span>
+                }
+            }
+<span class="fc" id="L387">            JsonNode newValue = setPathValue(currentValue, path, pathIndex + 1, value);</span>
+<span class="fc" id="L388">            objectNode.set(currentKey, newValue);</span>
+<span class="fc" id="L389">            return objectNode;</span>
+<span class="nc bnc" id="L390" title="All 2 branches missed.">        } else if (node.isArray()) {</span>
+            try {
+<span class="nc" id="L392">                int index = Integer.parseInt(currentKey);</span>
+<span class="nc" id="L393">                ArrayNode arrayNode = (ArrayNode) node;</span>
+                // Extend array if necessary
+<span class="nc bnc" id="L395" title="All 2 branches missed.">                while (arrayNode.size() &lt;= index) {</span>
+<span class="nc" id="L396">                    arrayNode.add(NullNode.getInstance());</span>
+                }
+<span class="nc" id="L398">                JsonNode currentValue = arrayNode.get(index);</span>
+<span class="nc" id="L399">                JsonNode newValue = setPathValue(currentValue, path, pathIndex + 1, value);</span>
+<span class="nc" id="L400">                arrayNode.set(index, newValue);</span>
+<span class="nc" id="L401">                return arrayNode;</span>
+<span class="nc" id="L402">            } catch (NumberFormatException e) {</span>
+                // Invalid array index
+<span class="nc" id="L404">                return node;</span>
+            }
+        } else {
+            // Replace non-container with object or array
+<span class="nc bnc" id="L408" title="All 2 branches missed.">            if (pathIndex &lt; path.length - 1) {</span>
+                try {
+<span class="nc" id="L410">                    Integer.parseInt(currentKey);</span>
+                    // Next key is numeric, create array
+<span class="nc" id="L412">                    ArrayNode newArray = objectMapper.createArrayNode();</span>
+<span class="nc" id="L413">                    return setPathValue(newArray, path, pathIndex, value);</span>
+<span class="nc" id="L414">                } catch (NumberFormatException e) {</span>
+                    // Next key is string, create object
+<span class="nc" id="L416">                    ObjectNode newObject = objectMapper.createObjectNode();</span>
+<span class="nc" id="L417">                    return setPathValue(newObject, path, pathIndex, value);</span>
+                }
+            } else {
+<span class="nc" id="L420">                return value;</span>
+            }
+        }
+    }
+    
+    private static JsonNode stripNullValues(JsonNode node) {
+<span class="fc bfc" id="L426" title="All 2 branches covered.">        if (node.isObject()) {</span>
+<span class="fc" id="L427">            ObjectNode objectNode = objectMapper.createObjectNode();</span>
+<span class="fc" id="L428">            node.fields().forEachRemaining(entry -&gt; {</span>
+<span class="fc bfc" id="L429" title="All 2 branches covered.">                if (!entry.getValue().isNull()) {</span>
+<span class="fc" id="L430">                    JsonNode strippedValue = stripNullValues(entry.getValue());</span>
+<span class="fc" id="L431">                    objectNode.set(entry.getKey(), strippedValue);</span>
+                }
+<span class="fc" id="L433">            });</span>
+<span class="fc" id="L434">            return objectNode;</span>
+<span class="fc bfc" id="L435" title="All 2 branches covered.">        } else if (node.isArray()) {</span>
+<span class="fc" id="L436">            ArrayNode arrayNode = objectMapper.createArrayNode();</span>
+<span class="fc bfc" id="L437" title="All 2 branches covered.">            for (JsonNode element : node) {</span>
+<span class="fc bfc" id="L438" title="All 2 branches covered.">                if (!element.isNull()) {</span>
+<span class="fc" id="L439">                    JsonNode strippedElement = stripNullValues(element);</span>
+<span class="fc" id="L440">                    arrayNode.add(strippedElement);</span>
+                }
+<span class="fc" id="L442">            }</span>
+<span class="fc" id="L443">            return arrayNode;</span>
+        } else {
+<span class="fc" id="L445">            return node;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

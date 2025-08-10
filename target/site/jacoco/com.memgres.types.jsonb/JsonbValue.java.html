@@ -14,15 +14,15 @@ import java.util.*;
  * This class provides binary JSON storage and supports PostgreSQL JSONB operators.
  */
 public class JsonbValue {
-<span class="nc" id="L17">    private static final ObjectMapper objectMapper = new ObjectMapper();</span>
+<span class="fc" id="L17">    private static final ObjectMapper objectMapper = new ObjectMapper();</span>
     
     private final JsonNode jsonNode;
     private final byte[] binaryData;
     
-<span class="nc" id="L22">    private JsonbValue(JsonNode jsonNode) {</span>
-<span class="nc" id="L23">        this.jsonNode = jsonNode;</span>
-<span class="nc" id="L24">        this.binaryData = serializeToBytes(jsonNode);</span>
-<span class="nc" id="L25">    }</span>
+<span class="fc" id="L22">    private JsonbValue(JsonNode jsonNode) {</span>
+<span class="fc" id="L23">        this.jsonNode = jsonNode;</span>
+<span class="fc" id="L24">        this.binaryData = serializeToBytes(jsonNode);</span>
+<span class="fc" id="L25">    }</span>
     
     /**
      * Create a JsonbValue from a JSON string
@@ -31,13 +31,13 @@ public class JsonbValue {
      * @throws IllegalArgumentException if the JSON string is invalid
      */
     public static JsonbValue fromString(String jsonString) {
-<span class="nc bnc" id="L34" title="All 2 branches missed.">        if (jsonString == null) {</span>
+<span class="pc bpc" id="L34" title="1 of 2 branches missed.">        if (jsonString == null) {</span>
 <span class="nc" id="L35">            return new JsonbValue(NullNode.getInstance());</span>
         }
         
         try {
-<span class="nc" id="L39">            JsonNode node = objectMapper.readTree(jsonString);</span>
-<span class="nc" id="L40">            return new JsonbValue(node);</span>
+<span class="fc" id="L39">            JsonNode node = objectMapper.readTree(jsonString);</span>
+<span class="fc" id="L40">            return new JsonbValue(node);</span>
 <span class="nc" id="L41">        } catch (JsonProcessingException e) {</span>
 <span class="nc" id="L42">            throw new IllegalArgumentException(&quot;Invalid JSON string: &quot; + jsonString, e);</span>
         }
@@ -49,16 +49,16 @@ public class JsonbValue {
      * @return a new JsonbValue
      */
     public static JsonbValue from(Object object) {
-<span class="nc bnc" id="L52" title="All 2 branches missed.">        if (object == null) {</span>
+<span class="pc bpc" id="L52" title="1 of 2 branches missed.">        if (object == null) {</span>
 <span class="nc" id="L53">            return new JsonbValue(NullNode.getInstance());</span>
         }
         
-<span class="nc bnc" id="L56" title="All 2 branches missed.">        if (object instanceof JsonbValue) {</span>
+<span class="pc bpc" id="L56" title="1 of 2 branches missed.">        if (object instanceof JsonbValue) {</span>
 <span class="nc" id="L57">            return (JsonbValue) object;</span>
         }
         
-<span class="nc" id="L60">        JsonNode node = objectMapper.valueToTree(object);</span>
-<span class="nc" id="L61">        return new JsonbValue(node);</span>
+<span class="fc" id="L60">        JsonNode node = objectMapper.valueToTree(object);</span>
+<span class="fc" id="L61">        return new JsonbValue(node);</span>
     }
     
     /**
@@ -67,17 +67,17 @@ public class JsonbValue {
      * @return a new JsonbValue
      */
     public static JsonbValue fromMap(Map&lt;String, Object&gt; map) {
-<span class="nc bnc" id="L70" title="All 2 branches missed.">        if (map == null) {</span>
+<span class="pc bpc" id="L70" title="1 of 2 branches missed.">        if (map == null) {</span>
 <span class="nc" id="L71">            return new JsonbValue(NullNode.getInstance());</span>
         }
         
-<span class="nc" id="L74">        ObjectNode objectNode = objectMapper.createObjectNode();</span>
-<span class="nc bnc" id="L75" title="All 2 branches missed.">        for (Map.Entry&lt;String, Object&gt; entry : map.entrySet()) {</span>
-<span class="nc" id="L76">            JsonNode valueNode = objectMapper.valueToTree(entry.getValue());</span>
-<span class="nc" id="L77">            objectNode.set(entry.getKey(), valueNode);</span>
-<span class="nc" id="L78">        }</span>
+<span class="fc" id="L74">        ObjectNode objectNode = objectMapper.createObjectNode();</span>
+<span class="fc bfc" id="L75" title="All 2 branches covered.">        for (Map.Entry&lt;String, Object&gt; entry : map.entrySet()) {</span>
+<span class="fc" id="L76">            JsonNode valueNode = objectMapper.valueToTree(entry.getValue());</span>
+<span class="fc" id="L77">            objectNode.set(entry.getKey(), valueNode);</span>
+<span class="fc" id="L78">        }</span>
         
-<span class="nc" id="L80">        return new JsonbValue(objectNode);</span>
+<span class="fc" id="L80">        return new JsonbValue(objectNode);</span>
     }
     
     /**
@@ -86,17 +86,17 @@ public class JsonbValue {
      * @return a new JsonbValue
      */
     public static JsonbValue fromList(List&lt;Object&gt; list) {
-<span class="nc bnc" id="L89" title="All 2 branches missed.">        if (list == null) {</span>
+<span class="pc bpc" id="L89" title="1 of 2 branches missed.">        if (list == null) {</span>
 <span class="nc" id="L90">            return new JsonbValue(NullNode.getInstance());</span>
         }
         
-<span class="nc" id="L93">        ArrayNode arrayNode = objectMapper.createArrayNode();</span>
-<span class="nc bnc" id="L94" title="All 2 branches missed.">        for (Object item : list) {</span>
-<span class="nc" id="L95">            JsonNode itemNode = objectMapper.valueToTree(item);</span>
-<span class="nc" id="L96">            arrayNode.add(itemNode);</span>
-<span class="nc" id="L97">        }</span>
+<span class="fc" id="L93">        ArrayNode arrayNode = objectMapper.createArrayNode();</span>
+<span class="fc bfc" id="L94" title="All 2 branches covered.">        for (Object item : list) {</span>
+<span class="fc" id="L95">            JsonNode itemNode = objectMapper.valueToTree(item);</span>
+<span class="fc" id="L96">            arrayNode.add(itemNode);</span>
+<span class="fc" id="L97">        }</span>
         
-<span class="nc" id="L99">        return new JsonbValue(arrayNode);</span>
+<span class="fc" id="L99">        return new JsonbValue(arrayNode);</span>
     }
     
     /**
@@ -104,7 +104,7 @@ public class JsonbValue {
      * @return the underlying JsonNode
      */
     public JsonNode getJsonNode() {
-<span class="nc" id="L107">        return jsonNode;</span>
+<span class="fc" id="L107">        return jsonNode;</span>
     }
     
     /**
@@ -121,7 +121,7 @@ public class JsonbValue {
      */
     public String toJsonString() {
         try {
-<span class="nc" id="L124">            return objectMapper.writeValueAsString(jsonNode);</span>
+<span class="fc" id="L124">            return objectMapper.writeValueAsString(jsonNode);</span>
 <span class="nc" id="L125">        } catch (JsonProcessingException e) {</span>
 <span class="nc" id="L126">            throw new RuntimeException(&quot;Failed to serialize JSON&quot;, e);</span>
         }
@@ -132,7 +132,7 @@ public class JsonbValue {
      * @return true if null
      */
     public boolean isNull() {
-<span class="nc" id="L135">        return jsonNode.isNull();</span>
+<span class="fc" id="L135">        return jsonNode.isNull();</span>
     }
     
     /**
@@ -140,7 +140,7 @@ public class JsonbValue {
      * @return true if object
      */
     public boolean isObject() {
-<span class="nc" id="L143">        return jsonNode.isObject();</span>
+<span class="fc" id="L143">        return jsonNode.isObject();</span>
     }
     
     /**
@@ -148,7 +148,7 @@ public class JsonbValue {
      * @return true if array
      */
     public boolean isArray() {
-<span class="nc" id="L151">        return jsonNode.isArray();</span>
+<span class="fc" id="L151">        return jsonNode.isArray();</span>
     }
     
     /**
@@ -201,8 +201,8 @@ public class JsonbValue {
      * @return true if the key exists (for objects) or value exists (for arrays)
      */
     public boolean hasKey(String key) {
-<span class="nc bnc" id="L204" title="All 2 branches missed.">        if (jsonNode.isObject()) {</span>
-<span class="nc" id="L205">            return jsonNode.has(key);</span>
+<span class="pc bpc" id="L204" title="1 of 2 branches missed.">        if (jsonNode.isObject()) {</span>
+<span class="fc" id="L205">            return jsonNode.has(key);</span>
 <span class="nc bnc" id="L206" title="All 2 branches missed.">        } else if (jsonNode.isArray()) {</span>
 <span class="nc bnc" id="L207" title="All 2 branches missed.">            for (JsonNode element : jsonNode) {</span>
 <span class="nc bnc" id="L208" title="All 4 branches missed.">                if (element.isTextual() &amp;&amp; element.textValue().equals(key)) {</span>
@@ -247,12 +247,12 @@ public class JsonbValue {
      * @return the value at the key, or null if not found
      */
     public JsonbValue getField(String key) {
-<span class="nc bnc" id="L250" title="All 2 branches missed.">        if (!jsonNode.isObject()) {</span>
+<span class="pc bpc" id="L250" title="1 of 2 branches missed.">        if (!jsonNode.isObject()) {</span>
 <span class="nc" id="L251">            return new JsonbValue(NullNode.getInstance());</span>
         }
         
-<span class="nc" id="L254">        JsonNode fieldNode = jsonNode.get(key);</span>
-<span class="nc bnc" id="L255" title="All 2 branches missed.">        return fieldNode != null ? new JsonbValue(fieldNode) : new JsonbValue(NullNode.getInstance());</span>
+<span class="fc" id="L254">        JsonNode fieldNode = jsonNode.get(key);</span>
+<span class="pc bpc" id="L255" title="1 of 2 branches missed.">        return fieldNode != null ? new JsonbValue(fieldNode) : new JsonbValue(NullNode.getInstance());</span>
     }
     
     /**
@@ -261,12 +261,12 @@ public class JsonbValue {
      * @return the value at the index, or null if not found
      */
     public JsonbValue getElement(int index) {
-<span class="nc bnc" id="L264" title="All 2 branches missed.">        if (!jsonNode.isArray()) {</span>
+<span class="pc bpc" id="L264" title="1 of 2 branches missed.">        if (!jsonNode.isArray()) {</span>
 <span class="nc" id="L265">            return new JsonbValue(NullNode.getInstance());</span>
         }
         
-<span class="nc" id="L268">        JsonNode elementNode = jsonNode.get(index);</span>
-<span class="nc bnc" id="L269" title="All 2 branches missed.">        return elementNode != null ? new JsonbValue(elementNode) : new JsonbValue(NullNode.getInstance());</span>
+<span class="fc" id="L268">        JsonNode elementNode = jsonNode.get(index);</span>
+<span class="pc bpc" id="L269" title="1 of 2 branches missed.">        return elementNode != null ? new JsonbValue(elementNode) : new JsonbValue(NullNode.getInstance());</span>
     }
     
     /**
@@ -275,8 +275,8 @@ public class JsonbValue {
      * @return the text value at the key, or null if not found
      */
     public String getFieldAsText(String key) {
-<span class="nc" id="L278">        JsonbValue field = getField(key);</span>
-<span class="nc bnc" id="L279" title="All 2 branches missed.">        return field.isNull() ? null : field.asText();</span>
+<span class="fc" id="L278">        JsonbValue field = getField(key);</span>
+<span class="pc bpc" id="L279" title="1 of 2 branches missed.">        return field.isNull() ? null : field.asText();</span>
     }
     
     /**
@@ -285,8 +285,8 @@ public class JsonbValue {
      * @return the text value at the index, or null if not found
      */
     public String getElementAsText(int index) {
-<span class="nc" id="L288">        JsonbValue element = getElement(index);</span>
-<span class="nc bnc" id="L289" title="All 2 branches missed.">        return element.isNull() ? null : element.asText();</span>
+<span class="fc" id="L288">        JsonbValue element = getElement(index);</span>
+<span class="pc bpc" id="L289" title="1 of 2 branches missed.">        return element.isNull() ? null : element.asText();</span>
     }
     
     /**
@@ -295,11 +295,11 @@ public class JsonbValue {
      * @return the value at the path, or null if not found
      */
     public JsonbValue getPath(String... path) {
-<span class="nc" id="L298">        JsonNode current = jsonNode;</span>
+<span class="fc" id="L298">        JsonNode current = jsonNode;</span>
         
-<span class="nc bnc" id="L300" title="All 2 branches missed.">        for (String pathElement : path) {</span>
-<span class="nc bnc" id="L301" title="All 2 branches missed.">            if (current.isObject()) {</span>
-<span class="nc" id="L302">                current = current.get(pathElement);</span>
+<span class="fc bfc" id="L300" title="All 2 branches covered.">        for (String pathElement : path) {</span>
+<span class="pc bpc" id="L301" title="1 of 2 branches missed.">            if (current.isObject()) {</span>
+<span class="fc" id="L302">                current = current.get(pathElement);</span>
 <span class="nc bnc" id="L303" title="All 2 branches missed.">            } else if (current.isArray()) {</span>
                 try {
 <span class="nc" id="L305">                    int index = Integer.parseInt(pathElement);</span>
@@ -311,12 +311,12 @@ public class JsonbValue {
 <span class="nc" id="L311">                return new JsonbValue(NullNode.getInstance());</span>
             }
             
-<span class="nc bnc" id="L314" title="All 2 branches missed.">            if (current == null) {</span>
-<span class="nc" id="L315">                return new JsonbValue(NullNode.getInstance());</span>
+<span class="fc bfc" id="L314" title="All 2 branches covered.">            if (current == null) {</span>
+<span class="fc" id="L315">                return new JsonbValue(NullNode.getInstance());</span>
             }
         }
         
-<span class="nc" id="L319">        return new JsonbValue(current);</span>
+<span class="fc" id="L319">        return new JsonbValue(current);</span>
     }
     
     /**
@@ -325,8 +325,8 @@ public class JsonbValue {
      * @return the text value at the path, or null if not found
      */
     public String getPathAsText(String... path) {
-<span class="nc" id="L328">        JsonbValue pathValue = getPath(path);</span>
-<span class="nc bnc" id="L329" title="All 2 branches missed.">        return pathValue.isNull() ? null : pathValue.asText();</span>
+<span class="fc" id="L328">        JsonbValue pathValue = getPath(path);</span>
+<span class="fc bfc" id="L329" title="All 2 branches covered.">        return pathValue.isNull() ? null : pathValue.asText();</span>
     }
     
     /**
@@ -334,12 +334,12 @@ public class JsonbValue {
      * @return the text representation
      */
     public String asText() {
-<span class="nc bnc" id="L337" title="All 2 branches missed.">        if (jsonNode.isTextual()) {</span>
-<span class="nc" id="L338">            return jsonNode.textValue();</span>
-<span class="nc bnc" id="L339" title="All 2 branches missed.">        } else if (jsonNode.isNull()) {</span>
+<span class="fc bfc" id="L337" title="All 2 branches covered.">        if (jsonNode.isTextual()) {</span>
+<span class="fc" id="L338">            return jsonNode.textValue();</span>
+<span class="pc bpc" id="L339" title="1 of 2 branches missed.">        } else if (jsonNode.isNull()) {</span>
 <span class="nc" id="L340">            return null;</span>
         } else {
-<span class="nc" id="L342">            return jsonNode.toString();</span>
+<span class="fc" id="L342">            return jsonNode.toString();</span>
         }
     }
     
@@ -348,10 +348,10 @@ public class JsonbValue {
      * @return the size
      */
     public int size() {
-<span class="nc bnc" id="L351" title="All 2 branches missed.">        if (jsonNode.isObject()) {</span>
-<span class="nc" id="L352">            return jsonNode.size();</span>
-<span class="nc bnc" id="L353" title="All 2 branches missed.">        } else if (jsonNode.isArray()) {</span>
-<span class="nc" id="L354">            return jsonNode.size();</span>
+<span class="fc bfc" id="L351" title="All 2 branches covered.">        if (jsonNode.isObject()) {</span>
+<span class="fc" id="L352">            return jsonNode.size();</span>
+<span class="pc bpc" id="L353" title="1 of 2 branches missed.">        } else if (jsonNode.isArray()) {</span>
+<span class="fc" id="L354">            return jsonNode.size();</span>
         } else {
 <span class="nc bnc" id="L356" title="All 2 branches missed.">            return jsonNode.isNull() ? 0 : 1;</span>
         }
@@ -403,7 +403,7 @@ public class JsonbValue {
     
     private static byte[] serializeToBytes(JsonNode node) {
         try {
-<span class="nc" id="L406">            return objectMapper.writeValueAsBytes(node);</span>
+<span class="fc" id="L406">            return objectMapper.writeValueAsBytes(node);</span>
 <span class="nc" id="L407">        } catch (JsonProcessingException e) {</span>
 <span class="nc" id="L408">            throw new RuntimeException(&quot;Failed to serialize JSON to bytes&quot;, e);</span>
         }
@@ -411,7 +411,7 @@ public class JsonbValue {
     
     @Override
     public boolean equals(Object o) {
-<span class="nc bnc" id="L414" title="All 2 branches missed.">        if (this == o) return true;</span>
+<span class="pc bpc" id="L414" title="1 of 2 branches missed.">        if (this == o) return true;</span>
 <span class="nc bnc" id="L415" title="All 4 branches missed.">        if (o == null || getClass() != o.getClass()) return false;</span>
         
 <span class="nc" id="L417">        JsonbValue that = (JsonbValue) o;</span>
@@ -425,7 +425,7 @@ public class JsonbValue {
     
     @Override
     public String toString() {
-<span class="nc" id="L428">        return toJsonString();</span>
+<span class="fc" id="L428">        return toJsonString();</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

@@ -139,7 +139,7 @@ public class Table {
         try {
 <span class="pc bpc" id="L140" title="1 of 2 branches missed.">            for (int i = 0; i &lt; rows.size(); i++) {</span>
 <span class="fc" id="L141">                Row row = rows.get(i);</span>
-<span class="pc bpc" id="L142" title="1 of 2 branches missed.">                if (row.getId() == rowId) {</span>
+<span class="fc bfc" id="L142" title="All 2 branches covered.">                if (row.getId() == rowId) {</span>
 <span class="fc" id="L143">                    Row oldRow = new Row(row.getId(), row.getData().clone());</span>
 <span class="fc" id="L144">                    Row newRow = new Row(rowId, newData);</span>
                     
@@ -314,13 +314,49 @@ public class Table {
 <span class="nc" id="L314">        }</span>
 <span class="fc" id="L315">    }</span>
     
+    /**
+     * Insert a row with a specific ID (used for transaction rollback)
+     * @param rowId the specific row ID to use
+     * @param rowData the row data
+     */
+    public void insertRowWithId(long rowId, Object[] rowData) {
+<span class="pc bpc" id="L323" title="1 of 2 branches missed.">        if (rowData == null) {</span>
+<span class="nc" id="L324">            throw new IllegalArgumentException(&quot;Row data cannot be null&quot;);</span>
+        }
+<span class="pc bpc" id="L326" title="1 of 2 branches missed.">        if (rowData.length != columns.size()) {</span>
+<span class="nc" id="L327">            throw new IllegalArgumentException(&quot;Row data length must match column count&quot;);</span>
+        }
+        
+<span class="fc" id="L330">        tableLock.writeLock().lock();</span>
+        try {
+<span class="fc" id="L332">            Row row = new Row(rowId, rowData);</span>
+            
+            // Validate data types
+<span class="fc" id="L335">            validateRowData(row);</span>
+            
+<span class="fc" id="L337">            rows.add(row);</span>
+            
+            // Update indexes
+<span class="fc" id="L340">            updateIndexesForInsert(row);</span>
+            
+            // Update row ID generator to ensure we don't reuse this ID
+<span class="fc bfc" id="L343" title="All 2 branches covered.">            if (rowId &gt;= rowIdGenerator.get()) {</span>
+<span class="fc" id="L344">                rowIdGenerator.set(rowId);</span>
+            }
+            
+<span class="fc" id="L347">            logger.debug(&quot;Inserted row {} with specific ID into table {}&quot;, rowId, name);</span>
+        } finally {
+<span class="fc" id="L349">            tableLock.writeLock().unlock();</span>
+        }
+<span class="fc" id="L351">    }</span>
+    
     @Override
     public String toString() {
-<span class="nc" id="L319">        return &quot;Table{&quot; +</span>
+<span class="nc" id="L355">        return &quot;Table{&quot; +</span>
                 &quot;name='&quot; + name + '\'' +
-<span class="nc" id="L321">                &quot;, columns=&quot; + columns.size() +</span>
-<span class="nc" id="L322">                &quot;, rows=&quot; + getRowCount() +</span>
-<span class="nc" id="L323">                &quot;, indexes=&quot; + indexes.size() +</span>
+<span class="nc" id="L357">                &quot;, columns=&quot; + columns.size() +</span>
+<span class="nc" id="L358">                &quot;, rows=&quot; + getRowCount() +</span>
+<span class="nc" id="L359">                &quot;, indexes=&quot; + indexes.size() +</span>
                 '}';
     }
 }

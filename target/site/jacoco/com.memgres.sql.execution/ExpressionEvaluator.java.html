@@ -95,80 +95,141 @@ public class ExpressionEvaluator {
 <span class="fc" id="L95">            columns = currentTable.getColumns();</span>
         }
         
-        // Find column index (handle table-qualified references for correlated subqueries)
+        // Find column index
 <span class="fc" id="L99">        String columnName = colRef.getColumnName().toLowerCase();</span>
-<span class="fc" id="L100">        Map&lt;String, Integer&gt; columnIndexMap = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L100">        Integer columnIndex = null;</span>
         
-        // For table-qualified references (e.g., employees.dept_id)
+        // For table-qualified references (e.g., authors.id, posts.author_id)
 <span class="fc bfc" id="L103" title="All 2 branches covered.">        if (colRef.getTableName().isPresent()) {</span>
 <span class="fc" id="L104">            String tableName = colRef.getTableName().get().toLowerCase();</span>
-            // In correlated subqueries, we might need to look in outer query context
-            // For now, just search all columns - proper table resolution would be more complex
-<span class="fc bfc" id="L107" title="All 2 branches covered.">            for (int i = 0; i &lt; columns.size(); i++) {</span>
-<span class="fc" id="L108">                Column col = columns.get(i);</span>
-<span class="fc" id="L109">                columnIndexMap.put(col.getName().toLowerCase(), i);</span>
+            
+            // In join context, we need to properly resolve table-qualified column references
+            // The combined columns are ordered as [leftTable columns..., rightTable columns...]
+            // We need to get the table information from the execution context
+<span class="fc" id="L109">            Map&lt;String, List&lt;Column&gt;&gt; tableColumns = context.getTableColumns();</span>
+<span class="pc bpc" id="L110" title="1 of 4 branches missed.">            if (tableColumns != null &amp;&amp; tableColumns.containsKey(tableName)) {</span>
+<span class="fc" id="L111">                List&lt;Column&gt; targetTableColumns = tableColumns.get(tableName);</span>
+                
+                // Find the column within the specific table
+<span class="pc bpc" id="L114" title="1 of 2 branches missed.">                for (int i = 0; i &lt; targetTableColumns.size(); i++) {</span>
+<span class="fc bfc" id="L115" title="All 2 branches covered.">                    if (targetTableColumns.get(i).getName().toLowerCase().equals(columnName)) {</span>
+                        // Now find the absolute index in the combined columns list
+<span class="fc" id="L117">                        columnIndex = findColumnIndexInCombined(columns, tableName, columnName, context);</span>
+<span class="fc" id="L118">                        break;</span>
+                    }
+                }
+<span class="fc" id="L121">            } else {</span>
+                // Fallback: search all columns but prefer exact matches first
+<span class="pc bpc" id="L123" title="1 of 2 branches missed.">                for (int i = 0; i &lt; columns.size(); i++) {</span>
+<span class="fc" id="L124">                    Column col = columns.get(i);</span>
+<span class="fc bfc" id="L125" title="All 2 branches covered.">                    if (col.getName().toLowerCase().equals(columnName)) {</span>
+<span class="fc" id="L126">                        columnIndex = i;</span>
+<span class="fc" id="L127">                        break; // Take first match - this is the old buggy behavior but safer fallback</span>
+                    }
+                }
             }
-<span class="fc" id="L111">        } else {</span>
-            // Unqualified column reference
-<span class="fc bfc" id="L113" title="All 2 branches covered.">            for (int i = 0; i &lt; columns.size(); i++) {</span>
-<span class="fc" id="L114">                Column col = columns.get(i);</span>
-<span class="fc" id="L115">                columnIndexMap.put(col.getName().toLowerCase(), i);</span>
+<span class="fc" id="L131">        } else {</span>
+            // Unqualified column reference - search all columns
+<span class="pc bpc" id="L133" title="1 of 2 branches missed.">            for (int i = 0; i &lt; columns.size(); i++) {</span>
+<span class="fc" id="L134">                Column col = columns.get(i);</span>
+<span class="fc bfc" id="L135" title="All 2 branches covered.">                if (col.getName().toLowerCase().equals(columnName)) {</span>
+<span class="fc" id="L136">                    columnIndex = i;</span>
+<span class="fc" id="L137">                    break;</span>
+                }
             }
         }
         
-<span class="fc" id="L119">        Integer columnIndex = columnIndexMap.get(columnName);</span>
-<span class="pc bpc" id="L120" title="1 of 2 branches missed.">        if (columnIndex == null) {</span>
-            // For correlated subqueries, if column not found in current context, it might be from outer query
-            // This needs proper implementation of outer context passing
-<span class="nc" id="L123">            throw new IllegalArgumentException(&quot;Column not found: &quot; + columnName + </span>
-<span class="nc bnc" id="L124" title="All 2 branches missed.">                (colRef.getTableName().isPresent() ? &quot; in table &quot; + colRef.getTableName().get() : &quot;&quot;));</span>
+<span class="pc bpc" id="L142" title="1 of 2 branches missed.">        if (columnIndex == null) {</span>
+<span class="nc" id="L143">            throw new IllegalArgumentException(&quot;Column not found: &quot; + columnName + </span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">                (colRef.getTableName().isPresent() ? &quot; in table &quot; + colRef.getTableName().get() : &quot;&quot;));</span>
         }
         
-<span class="fc" id="L127">        return currentRow.getData()[columnIndex];</span>
+<span class="fc" id="L147">        return currentRow.getData()[columnIndex];</span>
+    }
+    
+    /**
+     * Find the absolute index of a table-qualified column in the combined columns list.
+     * For JOIN operations, columns are combined as [leftTable columns..., rightTable columns...]
+     */
+    private Integer findColumnIndexInCombined(List&lt;Column&gt; combinedColumns, String tableName, 
+                                            String columnName, ExecutionContext context) {
+<span class="fc" id="L156">        Map&lt;String, List&lt;Column&gt;&gt; tableColumns = context.getTableColumns();</span>
+<span class="pc bpc" id="L157" title="1 of 2 branches missed.">        if (tableColumns == null) {</span>
+<span class="nc" id="L158">            return null;</span>
+        }
+        
+<span class="fc" id="L161">        List&lt;String&gt; tableOrder = context.getTableOrder();</span>
+<span class="pc bpc" id="L162" title="1 of 2 branches missed.">        if (tableOrder == null) {</span>
+<span class="nc" id="L163">            return null;</span>
+        }
+        
+<span class="fc" id="L166">        int absoluteIndex = 0;</span>
+<span class="pc bpc" id="L167" title="1 of 2 branches missed.">        for (String currentTable : tableOrder) {</span>
+<span class="fc" id="L168">            List&lt;Column&gt; currentTableColumns = tableColumns.get(currentTable.toLowerCase());</span>
+<span class="pc bpc" id="L169" title="1 of 2 branches missed.">            if (currentTableColumns == null) {</span>
+<span class="nc" id="L170">                continue;</span>
+            }
+            
+<span class="fc bfc" id="L173" title="All 2 branches covered.">            if (currentTable.toLowerCase().equals(tableName.toLowerCase())) {</span>
+                // Found the target table, now find the column within it
+<span class="pc bpc" id="L175" title="1 of 2 branches missed.">                for (int i = 0; i &lt; currentTableColumns.size(); i++) {</span>
+<span class="fc bfc" id="L176" title="All 2 branches covered.">                    if (currentTableColumns.get(i).getName().toLowerCase().equals(columnName.toLowerCase())) {</span>
+<span class="fc" id="L177">                        return absoluteIndex + i;</span>
+                    }
+                }
+                // Column not found in this table
+<span class="nc" id="L181">                return null;</span>
+            }
+            
+            // Move to next table's columns
+<span class="fc" id="L185">            absoluteIndex += currentTableColumns.size();</span>
+<span class="fc" id="L186">        }</span>
+        
+<span class="nc" id="L188">        return null;</span>
     }
     
     private Object evaluateBinaryExpression(BinaryExpression binary, ExecutionContext context) {
-<span class="fc" id="L131">        Object left = evaluate(binary.getLeft(), context);</span>
-<span class="fc" id="L132">        Object right = evaluate(binary.getRight(), context);</span>
+<span class="fc" id="L192">        Object left = evaluate(binary.getLeft(), context);</span>
+<span class="fc" id="L193">        Object right = evaluate(binary.getRight(), context);</span>
         
-<span class="pc bpc" id="L134" title="14 of 17 branches missed.">        switch (binary.getOperator()) {</span>
+<span class="pc bpc" id="L195" title="12 of 17 branches missed.">        switch (binary.getOperator()) {</span>
             // Arithmetic operators
             case ADD:
-<span class="nc" id="L137">                return addValues(left, right);</span>
+<span class="fc" id="L198">                return addValues(left, right);</span>
             case SUBTRACT:
-<span class="nc" id="L139">                return subtractValues(left, right);</span>
+<span class="fc" id="L200">                return subtractValues(left, right);</span>
             case MULTIPLY:
-<span class="nc" id="L141">                return multiplyValues(left, right);</span>
+<span class="nc" id="L202">                return multiplyValues(left, right);</span>
             case DIVIDE:
-<span class="nc" id="L143">                return divideValues(left, right);</span>
+<span class="nc" id="L204">                return divideValues(left, right);</span>
             case MODULO:
-<span class="nc" id="L145">                return moduloValues(left, right);</span>
+<span class="nc" id="L206">                return moduloValues(left, right);</span>
                 
             // Comparison operators
             case EQUALS:
-<span class="fc" id="L149">                return equalValues(left, right);</span>
+<span class="fc" id="L210">                return equalValues(left, right);</span>
             case NOT_EQUALS:
-<span class="nc bnc" id="L151" title="All 2 branches missed.">                return !equalValues(left, right);</span>
+<span class="nc bnc" id="L212" title="All 2 branches missed.">                return !equalValues(left, right);</span>
             case LESS_THAN:
-<span class="nc bnc" id="L153" title="All 2 branches missed.">                return compareValues(left, right) &lt; 0;</span>
+<span class="nc bnc" id="L214" title="All 2 branches missed.">                return compareValues(left, right) &lt; 0;</span>
             case LESS_THAN_EQUALS:
-<span class="nc bnc" id="L155" title="All 2 branches missed.">                return compareValues(left, right) &lt;= 0;</span>
+<span class="nc bnc" id="L216" title="All 2 branches missed.">                return compareValues(left, right) &lt;= 0;</span>
             case GREATER_THAN:
-<span class="fc bfc" id="L157" title="All 2 branches covered.">                return compareValues(left, right) &gt; 0;</span>
+<span class="fc bfc" id="L218" title="All 2 branches covered.">                return compareValues(left, right) &gt; 0;</span>
             case GREATER_THAN_EQUALS:
-<span class="nc bnc" id="L159" title="All 2 branches missed.">                return compareValues(left, right) &gt;= 0;</span>
+<span class="nc bnc" id="L220" title="All 2 branches missed.">                return compareValues(left, right) &gt;= 0;</span>
                 
             // Logical operators
             case AND:
-<span class="fc bfc" id="L163" title="All 4 branches covered.">                return isTruthy(left) &amp;&amp; isTruthy(right);</span>
+<span class="fc bfc" id="L224" title="All 4 branches covered.">                return isTruthy(left) &amp;&amp; isTruthy(right);</span>
             case OR:
-<span class="nc bnc" id="L165" title="All 4 branches missed.">                return isTruthy(left) || isTruthy(right);</span>
+<span class="nc bnc" id="L226" title="All 4 branches missed.">                return isTruthy(left) || isTruthy(right);</span>
                 
             // String operators
             case CONCAT:
-<span class="nc" id="L169">                return String.valueOf(left) + String.valueOf(right);</span>
+<span class="nc" id="L230">                return String.valueOf(left) + String.valueOf(right);</span>
             case LIKE:
-<span class="nc" id="L171">                return likeMatch(String.valueOf(left), String.valueOf(right));</span>
+<span class="nc" id="L232">                return likeMatch(String.valueOf(left), String.valueOf(right));</span>
                 
             // JSONB operators (simplified implementation)
             case JSONB_CONTAINS:
@@ -178,258 +239,281 @@ public class ExpressionEvaluator {
             case JSONB_EXTRACT_TEXT:
             case JSONB_PATH_EXTRACT:
             case JSONB_PATH_EXTRACT_TEXT:
-<span class="nc" id="L181">                throw new UnsupportedOperationException(&quot;JSONB operators not yet implemented&quot;);</span>
+<span class="nc" id="L242">                throw new UnsupportedOperationException(&quot;JSONB operators not yet implemented&quot;);</span>
                 
             default:
-<span class="nc" id="L184">                throw new IllegalArgumentException(&quot;Unsupported binary operator: &quot; + binary.getOperator());</span>
+<span class="nc" id="L245">                throw new IllegalArgumentException(&quot;Unsupported binary operator: &quot; + binary.getOperator());</span>
         }
     }
     
     private Object evaluateUnaryExpression(UnaryExpression unary, ExecutionContext context) {
-<span class="nc" id="L189">        Object operand = evaluate(unary.getOperand(), context);</span>
+<span class="nc" id="L250">        Object operand = evaluate(unary.getOperand(), context);</span>
         
-<span class="nc bnc" id="L191" title="All 4 branches missed.">        switch (unary.getOperator()) {</span>
+<span class="nc bnc" id="L252" title="All 4 branches missed.">        switch (unary.getOperator()) {</span>
             case NOT:
-<span class="nc bnc" id="L193" title="All 2 branches missed.">                return !isTruthy(operand);</span>
+<span class="nc bnc" id="L254" title="All 2 branches missed.">                return !isTruthy(operand);</span>
             case MINUS:
-<span class="nc bnc" id="L195" title="All 2 branches missed.">                if (operand instanceof Number) {</span>
-<span class="nc bnc" id="L196" title="All 2 branches missed.">                    if (operand instanceof Integer) {</span>
-<span class="nc" id="L197">                        return -((Integer) operand);</span>
-<span class="nc bnc" id="L198" title="All 2 branches missed.">                    } else if (operand instanceof Long) {</span>
-<span class="nc" id="L199">                        return -((Long) operand);</span>
-<span class="nc bnc" id="L200" title="All 2 branches missed.">                    } else if (operand instanceof Double) {</span>
-<span class="nc" id="L201">                        return -((Double) operand);</span>
-<span class="nc bnc" id="L202" title="All 2 branches missed.">                    } else if (operand instanceof Float) {</span>
-<span class="nc" id="L203">                        return -((Float) operand);</span>
+<span class="nc bnc" id="L256" title="All 2 branches missed.">                if (operand instanceof Number) {</span>
+<span class="nc bnc" id="L257" title="All 2 branches missed.">                    if (operand instanceof Integer) {</span>
+<span class="nc" id="L258">                        return -((Integer) operand);</span>
+<span class="nc bnc" id="L259" title="All 2 branches missed.">                    } else if (operand instanceof Long) {</span>
+<span class="nc" id="L260">                        return -((Long) operand);</span>
+<span class="nc bnc" id="L261" title="All 2 branches missed.">                    } else if (operand instanceof Double) {</span>
+<span class="nc" id="L262">                        return -((Double) operand);</span>
+<span class="nc bnc" id="L263" title="All 2 branches missed.">                    } else if (operand instanceof Float) {</span>
+<span class="nc" id="L264">                        return -((Float) operand);</span>
                     }
                 }
-<span class="nc" id="L206">                throw new IllegalArgumentException(&quot;Cannot apply MINUS to non-numeric value&quot;);</span>
+<span class="nc" id="L267">                throw new IllegalArgumentException(&quot;Cannot apply MINUS to non-numeric value&quot;);</span>
             case PLUS:
-<span class="nc" id="L208">                return operand; // Unary plus doesn't change the value</span>
+<span class="nc" id="L269">                return operand; // Unary plus doesn't change the value</span>
             default:
-<span class="nc" id="L210">                throw new IllegalArgumentException(&quot;Unsupported unary operator: &quot; + unary.getOperator());</span>
+<span class="nc" id="L271">                throw new IllegalArgumentException(&quot;Unsupported unary operator: &quot; + unary.getOperator());</span>
         }
     }
     
     private Object evaluateFunctionCall(FunctionCall function, ExecutionContext context) {
-<span class="fc" id="L215">        String functionName = function.getFunctionName().toLowerCase();</span>
+<span class="fc" id="L276">        String functionName = function.getFunctionName().toLowerCase();</span>
         
-<span class="pc bpc" id="L217" title="3 of 4 branches missed.">        switch (functionName) {</span>
+<span class="pc bpc" id="L278" title="3 of 4 branches missed.">        switch (functionName) {</span>
             case &quot;gen_random_uuid&quot;:
-<span class="fc" id="L219">                return UuidFunctions.genRandomUuid();</span>
+<span class="fc" id="L280">                return UuidFunctions.genRandomUuid();</span>
             case &quot;uuid_generate_v1&quot;:
-<span class="nc" id="L221">                return UuidFunctions.uuidGenerateV1();</span>
+<span class="nc" id="L282">                return UuidFunctions.uuidGenerateV1();</span>
             case &quot;uuid_generate_v4&quot;:
-<span class="nc" id="L223">                return UuidFunctions.uuidGenerateV4();</span>
+<span class="nc" id="L284">                return UuidFunctions.uuidGenerateV4();</span>
             default:
-<span class="nc" id="L225">                throw new UnsupportedOperationException(&quot;Function not supported: &quot; + functionName);</span>
+<span class="nc" id="L286">                throw new UnsupportedOperationException(&quot;Function not supported: &quot; + functionName);</span>
         }
     }
     
     private Object evaluateSubqueryExpression(SubqueryExpression subquery, ExecutionContext context) {
         try {
             // Execute the subquery using StatementExecutor with current execution context for correlated subqueries
-<span class="fc" id="L232">            StatementExecutor executor = new StatementExecutor(engine);</span>
-<span class="fc" id="L233">            SqlExecutionResult result = executor.execute(subquery.getSelectStatement(), context);</span>
+<span class="fc" id="L293">            StatementExecutor executor = new StatementExecutor(engine);</span>
+<span class="fc" id="L294">            SqlExecutionResult result = executor.execute(subquery.getSelectStatement(), context);</span>
             
-<span class="pc bpc" id="L235" title="1 of 2 branches missed.">            if (result.getType() != SqlExecutionResult.ResultType.SELECT) {</span>
-<span class="nc" id="L236">                throw new IllegalStateException(&quot;Subquery must return a SELECT result&quot;);</span>
+<span class="pc bpc" id="L296" title="1 of 2 branches missed.">            if (result.getType() != SqlExecutionResult.ResultType.SELECT) {</span>
+<span class="nc" id="L297">                throw new IllegalStateException(&quot;Subquery must return a SELECT result&quot;);</span>
             }
             
-<span class="fc" id="L239">            List&lt;Row&gt; rows = result.getRows();</span>
-<span class="pc bpc" id="L240" title="1 of 2 branches missed.">            if (rows.isEmpty()) {</span>
-<span class="nc" id="L241">                return null; // Empty result set returns NULL</span>
+<span class="fc" id="L300">            List&lt;Row&gt; rows = result.getRows();</span>
+<span class="pc bpc" id="L301" title="1 of 2 branches missed.">            if (rows.isEmpty()) {</span>
+<span class="nc" id="L302">                return null; // Empty result set returns NULL</span>
             }
             
-<span class="pc bpc" id="L244" title="1 of 2 branches missed.">            if (rows.size() &gt; 1) {</span>
-<span class="nc" id="L245">                throw new IllegalStateException(&quot;Scalar subquery returned more than one row&quot;);</span>
+<span class="pc bpc" id="L305" title="1 of 2 branches missed.">            if (rows.size() &gt; 1) {</span>
+<span class="nc" id="L306">                throw new IllegalStateException(&quot;Scalar subquery returned more than one row&quot;);</span>
             }
             
-<span class="fc" id="L248">            Row row = rows.get(0);</span>
-<span class="fc" id="L249">            Object[] data = row.getData();</span>
-<span class="pc bpc" id="L250" title="1 of 2 branches missed.">            if (data.length != 1) {</span>
-<span class="nc" id="L251">                throw new IllegalStateException(&quot;Scalar subquery must return exactly one column&quot;);</span>
+<span class="fc" id="L309">            Row row = rows.get(0);</span>
+<span class="fc" id="L310">            Object[] data = row.getData();</span>
+<span class="pc bpc" id="L311" title="1 of 2 branches missed.">            if (data.length != 1) {</span>
+<span class="nc" id="L312">                throw new IllegalStateException(&quot;Scalar subquery must return exactly one column&quot;);</span>
             }
             
-<span class="fc" id="L254">            return data[0];</span>
-<span class="nc" id="L255">        } catch (SqlExecutionException e) {</span>
-<span class="nc" id="L256">            throw new RuntimeException(&quot;Failed to execute subquery&quot;, e);</span>
+<span class="fc" id="L315">            return data[0];</span>
+<span class="nc" id="L316">        } catch (SqlExecutionException e) {</span>
+<span class="nc" id="L317">            throw new RuntimeException(&quot;Failed to execute subquery&quot;, e);</span>
         }
     }
     
     private Object evaluateExistsExpression(ExistsExpression exists, ExecutionContext context) {
         try {
             // Execute the subquery using StatementExecutor
-<span class="fc" id="L263">            StatementExecutor executor = new StatementExecutor(engine);</span>
-<span class="fc" id="L264">            SqlExecutionResult result = executor.execute(exists.getSubquery());</span>
+<span class="fc" id="L324">            StatementExecutor executor = new StatementExecutor(engine);</span>
+<span class="fc" id="L325">            SqlExecutionResult result = executor.execute(exists.getSubquery());</span>
             
-<span class="pc bpc" id="L266" title="1 of 2 branches missed.">            if (result.getType() != SqlExecutionResult.ResultType.SELECT) {</span>
-<span class="nc" id="L267">                throw new IllegalStateException(&quot;EXISTS subquery must return a SELECT result&quot;);</span>
+<span class="pc bpc" id="L327" title="1 of 2 branches missed.">            if (result.getType() != SqlExecutionResult.ResultType.SELECT) {</span>
+<span class="nc" id="L328">                throw new IllegalStateException(&quot;EXISTS subquery must return a SELECT result&quot;);</span>
             }
             
             // EXISTS returns true if at least one row is returned, false otherwise
-<span class="pc bpc" id="L271" title="1 of 2 branches missed.">            return !result.getRows().isEmpty();</span>
-<span class="nc" id="L272">        } catch (SqlExecutionException e) {</span>
-<span class="nc" id="L273">            throw new RuntimeException(&quot;Failed to execute EXISTS subquery&quot;, e);</span>
+<span class="pc bpc" id="L332" title="1 of 2 branches missed.">            return !result.getRows().isEmpty();</span>
+<span class="nc" id="L333">        } catch (SqlExecutionException e) {</span>
+<span class="nc" id="L334">            throw new RuntimeException(&quot;Failed to execute EXISTS subquery&quot;, e);</span>
         }
     }
     
     private Object evaluateInSubqueryExpression(InSubqueryExpression inSubquery, ExecutionContext context) {
         // First evaluate the left-hand expression
-<span class="fc" id="L279">        Object leftValue = evaluate(inSubquery.getExpression(), context);</span>
+<span class="fc" id="L340">        Object leftValue = evaluate(inSubquery.getExpression(), context);</span>
         
         try {
             // Execute the subquery using StatementExecutor
-<span class="fc" id="L283">            StatementExecutor executor = new StatementExecutor(engine);</span>
-<span class="fc" id="L284">            SqlExecutionResult result = executor.execute(inSubquery.getSubquery());</span>
+<span class="fc" id="L344">            StatementExecutor executor = new StatementExecutor(engine);</span>
+<span class="fc" id="L345">            SqlExecutionResult result = executor.execute(inSubquery.getSubquery());</span>
             
-<span class="pc bpc" id="L286" title="1 of 2 branches missed.">            if (result.getType() != SqlExecutionResult.ResultType.SELECT) {</span>
-<span class="nc" id="L287">                throw new IllegalStateException(&quot;IN subquery must return a SELECT result&quot;);</span>
+<span class="pc bpc" id="L347" title="1 of 2 branches missed.">            if (result.getType() != SqlExecutionResult.ResultType.SELECT) {</span>
+<span class="nc" id="L348">                throw new IllegalStateException(&quot;IN subquery must return a SELECT result&quot;);</span>
             }
             
-<span class="fc" id="L290">            List&lt;Row&gt; rows = result.getRows();</span>
+<span class="fc" id="L351">            List&lt;Row&gt; rows = result.getRows();</span>
             
             // Check if the left value exists in any of the result rows
-<span class="fc" id="L293">            boolean found = false;</span>
-<span class="fc bfc" id="L294" title="All 2 branches covered.">            for (Row row : rows) {</span>
-<span class="fc" id="L295">                Object[] data = row.getData();</span>
-<span class="pc bpc" id="L296" title="1 of 2 branches missed.">                if (data.length != 1) {</span>
-<span class="nc" id="L297">                    throw new IllegalStateException(&quot;IN subquery must return exactly one column&quot;);</span>
+<span class="fc" id="L354">            boolean found = false;</span>
+<span class="fc bfc" id="L355" title="All 2 branches covered.">            for (Row row : rows) {</span>
+<span class="fc" id="L356">                Object[] data = row.getData();</span>
+<span class="pc bpc" id="L357" title="1 of 2 branches missed.">                if (data.length != 1) {</span>
+<span class="nc" id="L358">                    throw new IllegalStateException(&quot;IN subquery must return exactly one column&quot;);</span>
                 }
                 
-<span class="fc bfc" id="L300" title="All 2 branches covered.">                if (equalValues(leftValue, data[0])) {</span>
-<span class="fc" id="L301">                    found = true;</span>
-<span class="fc" id="L302">                    break;</span>
+<span class="fc bfc" id="L361" title="All 2 branches covered.">                if (equalValues(leftValue, data[0])) {</span>
+<span class="fc" id="L362">                    found = true;</span>
+<span class="fc" id="L363">                    break;</span>
                 }
-<span class="fc" id="L304">            }</span>
+<span class="fc" id="L365">            }</span>
             
             // Apply negation if needed
-<span class="fc bfc" id="L307" title="All 4 branches covered.">            return inSubquery.isNegated() ? !found : found;</span>
-<span class="nc" id="L308">        } catch (SqlExecutionException e) {</span>
-<span class="nc" id="L309">            throw new RuntimeException(&quot;Failed to execute IN subquery&quot;, e);</span>
+<span class="fc bfc" id="L368" title="All 4 branches covered.">            return inSubquery.isNegated() ? !found : found;</span>
+<span class="nc" id="L369">        } catch (SqlExecutionException e) {</span>
+<span class="nc" id="L370">            throw new RuntimeException(&quot;Failed to execute IN subquery&quot;, e);</span>
         }
     }
     
     // Helper methods for operations
     private Object addValues(Object left, Object right) {
-<span class="nc bnc" id="L315" title="All 4 branches missed.">        if (left instanceof Number &amp;&amp; right instanceof Number) {</span>
-<span class="nc" id="L316">            Number leftNum = (Number) left;</span>
-<span class="nc" id="L317">            Number rightNum = (Number) right;</span>
+<span class="pc bpc" id="L376" title="2 of 4 branches missed.">        if (left instanceof Number &amp;&amp; right instanceof Number) {</span>
+<span class="fc" id="L377">            Number leftNum = (Number) left;</span>
+<span class="fc" id="L378">            Number rightNum = (Number) right;</span>
             
-<span class="nc bnc" id="L319" title="All 4 branches missed.">            if (left instanceof Double || right instanceof Double) {</span>
-<span class="nc" id="L320">                return leftNum.doubleValue() + rightNum.doubleValue();</span>
-<span class="nc bnc" id="L321" title="All 4 branches missed.">            } else if (left instanceof Float || right instanceof Float) {</span>
-<span class="nc" id="L322">                return leftNum.floatValue() + rightNum.floatValue();</span>
-<span class="nc bnc" id="L323" title="All 4 branches missed.">            } else if (left instanceof Long || right instanceof Long) {</span>
-<span class="nc" id="L324">                return leftNum.longValue() + rightNum.longValue();</span>
+            // Handle BigDecimal operations to preserve precision
+<span class="pc bpc" id="L381" title="3 of 4 branches missed.">            if (left instanceof java.math.BigDecimal || right instanceof java.math.BigDecimal) {</span>
+<span class="pc bpc" id="L382" title="1 of 2 branches missed.">                java.math.BigDecimal leftBD = (left instanceof java.math.BigDecimal) ? </span>
+<span class="pc" id="L383">                    (java.math.BigDecimal) left : java.math.BigDecimal.valueOf(leftNum.doubleValue());</span>
+<span class="pc bpc" id="L384" title="1 of 2 branches missed.">                java.math.BigDecimal rightBD = (right instanceof java.math.BigDecimal) ? </span>
+<span class="pc" id="L385">                    (java.math.BigDecimal) right : java.math.BigDecimal.valueOf(rightNum.doubleValue());</span>
+<span class="fc" id="L386">                return leftBD.add(rightBD);</span>
+<span class="nc bnc" id="L387" title="All 4 branches missed.">            } else if (left instanceof Double || right instanceof Double) {</span>
+<span class="nc" id="L388">                return leftNum.doubleValue() + rightNum.doubleValue();</span>
+<span class="nc bnc" id="L389" title="All 4 branches missed.">            } else if (left instanceof Float || right instanceof Float) {</span>
+<span class="nc" id="L390">                return leftNum.floatValue() + rightNum.floatValue();</span>
+<span class="nc bnc" id="L391" title="All 4 branches missed.">            } else if (left instanceof Long || right instanceof Long) {</span>
+<span class="nc" id="L392">                return leftNum.longValue() + rightNum.longValue();</span>
             } else {
-<span class="nc" id="L326">                return leftNum.intValue() + rightNum.intValue();</span>
+<span class="nc" id="L394">                return leftNum.intValue() + rightNum.intValue();</span>
             }
         }
-<span class="nc" id="L329">        return String.valueOf(left) + String.valueOf(right);</span>
+<span class="nc" id="L397">        return String.valueOf(left) + String.valueOf(right);</span>
     }
     
     private Object subtractValues(Object left, Object right) {
-<span class="nc bnc" id="L333" title="All 4 branches missed.">        if (left instanceof Number &amp;&amp; right instanceof Number) {</span>
-<span class="nc" id="L334">            Number leftNum = (Number) left;</span>
-<span class="nc" id="L335">            Number rightNum = (Number) right;</span>
+<span class="pc bpc" id="L401" title="2 of 4 branches missed.">        if (left instanceof Number &amp;&amp; right instanceof Number) {</span>
+<span class="fc" id="L402">            Number leftNum = (Number) left;</span>
+<span class="fc" id="L403">            Number rightNum = (Number) right;</span>
             
-<span class="nc bnc" id="L337" title="All 4 branches missed.">            if (left instanceof Double || right instanceof Double) {</span>
-<span class="nc" id="L338">                return leftNum.doubleValue() - rightNum.doubleValue();</span>
-<span class="nc bnc" id="L339" title="All 4 branches missed.">            } else if (left instanceof Float || right instanceof Float) {</span>
-<span class="nc" id="L340">                return leftNum.floatValue() - rightNum.floatValue();</span>
-<span class="nc bnc" id="L341" title="All 4 branches missed.">            } else if (left instanceof Long || right instanceof Long) {</span>
-<span class="nc" id="L342">                return leftNum.longValue() - rightNum.longValue();</span>
+            // Handle BigDecimal operations to preserve precision
+<span class="pc bpc" id="L406" title="3 of 4 branches missed.">            if (left instanceof java.math.BigDecimal || right instanceof java.math.BigDecimal) {</span>
+<span class="pc bpc" id="L407" title="1 of 2 branches missed.">                java.math.BigDecimal leftBD = (left instanceof java.math.BigDecimal) ? </span>
+<span class="pc" id="L408">                    (java.math.BigDecimal) left : java.math.BigDecimal.valueOf(leftNum.doubleValue());</span>
+<span class="pc bpc" id="L409" title="1 of 2 branches missed.">                java.math.BigDecimal rightBD = (right instanceof java.math.BigDecimal) ? </span>
+<span class="pc" id="L410">                    (java.math.BigDecimal) right : java.math.BigDecimal.valueOf(rightNum.doubleValue());</span>
+<span class="fc" id="L411">                return leftBD.subtract(rightBD);</span>
+<span class="nc bnc" id="L412" title="All 4 branches missed.">            } else if (left instanceof Double || right instanceof Double) {</span>
+<span class="nc" id="L413">                return leftNum.doubleValue() - rightNum.doubleValue();</span>
+<span class="nc bnc" id="L414" title="All 4 branches missed.">            } else if (left instanceof Float || right instanceof Float) {</span>
+<span class="nc" id="L415">                return leftNum.floatValue() - rightNum.floatValue();</span>
+<span class="nc bnc" id="L416" title="All 4 branches missed.">            } else if (left instanceof Long || right instanceof Long) {</span>
+<span class="nc" id="L417">                return leftNum.longValue() - rightNum.longValue();</span>
             } else {
-<span class="nc" id="L344">                return leftNum.intValue() - rightNum.intValue();</span>
+<span class="nc" id="L419">                return leftNum.intValue() - rightNum.intValue();</span>
             }
         }
-<span class="nc" id="L347">        throw new IllegalArgumentException(&quot;Cannot subtract non-numeric values&quot;);</span>
+<span class="nc" id="L422">        throw new IllegalArgumentException(&quot;Cannot subtract non-numeric values&quot;);</span>
     }
     
     private Object multiplyValues(Object left, Object right) {
-<span class="nc bnc" id="L351" title="All 4 branches missed.">        if (left instanceof Number &amp;&amp; right instanceof Number) {</span>
-<span class="nc" id="L352">            Number leftNum = (Number) left;</span>
-<span class="nc" id="L353">            Number rightNum = (Number) right;</span>
+<span class="nc bnc" id="L426" title="All 4 branches missed.">        if (left instanceof Number &amp;&amp; right instanceof Number) {</span>
+<span class="nc" id="L427">            Number leftNum = (Number) left;</span>
+<span class="nc" id="L428">            Number rightNum = (Number) right;</span>
             
-<span class="nc bnc" id="L355" title="All 4 branches missed.">            if (left instanceof Double || right instanceof Double) {</span>
-<span class="nc" id="L356">                return leftNum.doubleValue() * rightNum.doubleValue();</span>
-<span class="nc bnc" id="L357" title="All 4 branches missed.">            } else if (left instanceof Float || right instanceof Float) {</span>
-<span class="nc" id="L358">                return leftNum.floatValue() * rightNum.floatValue();</span>
-<span class="nc bnc" id="L359" title="All 4 branches missed.">            } else if (left instanceof Long || right instanceof Long) {</span>
-<span class="nc" id="L360">                return leftNum.longValue() * rightNum.longValue();</span>
+<span class="nc bnc" id="L430" title="All 4 branches missed.">            if (left instanceof Double || right instanceof Double) {</span>
+<span class="nc" id="L431">                return leftNum.doubleValue() * rightNum.doubleValue();</span>
+<span class="nc bnc" id="L432" title="All 4 branches missed.">            } else if (left instanceof Float || right instanceof Float) {</span>
+<span class="nc" id="L433">                return leftNum.floatValue() * rightNum.floatValue();</span>
+<span class="nc bnc" id="L434" title="All 4 branches missed.">            } else if (left instanceof Long || right instanceof Long) {</span>
+<span class="nc" id="L435">                return leftNum.longValue() * rightNum.longValue();</span>
             } else {
-<span class="nc" id="L362">                return leftNum.intValue() * rightNum.intValue();</span>
+<span class="nc" id="L437">                return leftNum.intValue() * rightNum.intValue();</span>
             }
         }
-<span class="nc" id="L365">        throw new IllegalArgumentException(&quot;Cannot multiply non-numeric values&quot;);</span>
+<span class="nc" id="L440">        throw new IllegalArgumentException(&quot;Cannot multiply non-numeric values&quot;);</span>
     }
     
     private Object divideValues(Object left, Object right) {
-<span class="nc bnc" id="L369" title="All 4 branches missed.">        if (left instanceof Number &amp;&amp; right instanceof Number) {</span>
-<span class="nc" id="L370">            Number leftNum = (Number) left;</span>
-<span class="nc" id="L371">            Number rightNum = (Number) right;</span>
+<span class="nc bnc" id="L444" title="All 4 branches missed.">        if (left instanceof Number &amp;&amp; right instanceof Number) {</span>
+<span class="nc" id="L445">            Number leftNum = (Number) left;</span>
+<span class="nc" id="L446">            Number rightNum = (Number) right;</span>
             
-<span class="nc bnc" id="L373" title="All 2 branches missed.">            if (rightNum.doubleValue() == 0) {</span>
-<span class="nc" id="L374">                throw new ArithmeticException(&quot;Division by zero&quot;);</span>
+<span class="nc bnc" id="L448" title="All 2 branches missed.">            if (rightNum.doubleValue() == 0) {</span>
+<span class="nc" id="L449">                throw new ArithmeticException(&quot;Division by zero&quot;);</span>
             }
             
-<span class="nc" id="L377">            return leftNum.doubleValue() / rightNum.doubleValue();</span>
+<span class="nc" id="L452">            return leftNum.doubleValue() / rightNum.doubleValue();</span>
         }
-<span class="nc" id="L379">        throw new IllegalArgumentException(&quot;Cannot divide non-numeric values&quot;);</span>
+<span class="nc" id="L454">        throw new IllegalArgumentException(&quot;Cannot divide non-numeric values&quot;);</span>
     }
     
     private Object moduloValues(Object left, Object right) {
-<span class="nc bnc" id="L383" title="All 4 branches missed.">        if (left instanceof Number &amp;&amp; right instanceof Number) {</span>
-<span class="nc" id="L384">            Number leftNum = (Number) left;</span>
-<span class="nc" id="L385">            Number rightNum = (Number) right;</span>
+<span class="nc bnc" id="L458" title="All 4 branches missed.">        if (left instanceof Number &amp;&amp; right instanceof Number) {</span>
+<span class="nc" id="L459">            Number leftNum = (Number) left;</span>
+<span class="nc" id="L460">            Number rightNum = (Number) right;</span>
             
-<span class="nc bnc" id="L387" title="All 2 branches missed.">            if (rightNum.doubleValue() == 0) {</span>
-<span class="nc" id="L388">                throw new ArithmeticException(&quot;Division by zero&quot;);</span>
+<span class="nc bnc" id="L462" title="All 2 branches missed.">            if (rightNum.doubleValue() == 0) {</span>
+<span class="nc" id="L463">                throw new ArithmeticException(&quot;Division by zero&quot;);</span>
             }
             
-<span class="nc" id="L391">            return leftNum.doubleValue() % rightNum.doubleValue();</span>
+<span class="nc" id="L466">            return leftNum.doubleValue() % rightNum.doubleValue();</span>
         }
-<span class="nc" id="L393">        throw new IllegalArgumentException(&quot;Cannot modulo non-numeric values&quot;);</span>
+<span class="nc" id="L468">        throw new IllegalArgumentException(&quot;Cannot modulo non-numeric values&quot;);</span>
     }
     
     private boolean equalValues(Object left, Object right) {
-<span class="pc bpc" id="L397" title="3 of 4 branches missed.">        if (left == null &amp;&amp; right == null) return true;</span>
-<span class="pc bpc" id="L398" title="2 of 4 branches missed.">        if (left == null || right == null) return false;</span>
-<span class="fc" id="L399">        return left.equals(right);</span>
+<span class="pc bpc" id="L472" title="3 of 4 branches missed.">        if (left == null &amp;&amp; right == null) return true;</span>
+<span class="pc bpc" id="L473" title="2 of 4 branches missed.">        if (left == null || right == null) return false;</span>
+        
+        // Handle numeric type conversions
+<span class="pc bpc" id="L476" title="1 of 4 branches missed.">        if (left instanceof Number &amp;&amp; right instanceof Number) {</span>
+            // Convert both to the same numeric type for comparison
+<span class="fc" id="L478">            double leftValue = ((Number) left).doubleValue();</span>
+<span class="fc" id="L479">            double rightValue = ((Number) right).doubleValue();</span>
+<span class="fc bfc" id="L480" title="All 2 branches covered.">            return leftValue == rightValue;</span>
+        }
+        
+<span class="fc" id="L483">        return left.equals(right);</span>
     }
     
     @SuppressWarnings(&quot;unchecked&quot;)
     private int compareValues(Object left, Object right) {
-<span class="pc bpc" id="L404" title="3 of 4 branches missed.">        if (left == null &amp;&amp; right == null) return 0;</span>
-<span class="pc bpc" id="L405" title="1 of 2 branches missed.">        if (left == null) return -1;</span>
-<span class="pc bpc" id="L406" title="1 of 2 branches missed.">        if (right == null) return 1;</span>
+<span class="pc bpc" id="L488" title="3 of 4 branches missed.">        if (left == null &amp;&amp; right == null) return 0;</span>
+<span class="pc bpc" id="L489" title="1 of 2 branches missed.">        if (left == null) return -1;</span>
+<span class="pc bpc" id="L490" title="1 of 2 branches missed.">        if (right == null) return 1;</span>
         
-<span class="pc bpc" id="L408" title="2 of 4 branches missed.">        if (left instanceof Comparable &amp;&amp; right instanceof Comparable) {</span>
+<span class="pc bpc" id="L492" title="2 of 4 branches missed.">        if (left instanceof Comparable &amp;&amp; right instanceof Comparable) {</span>
             try {
-<span class="nc" id="L410">                return ((Comparable) left).compareTo(right);</span>
-<span class="fc" id="L411">            } catch (ClassCastException e) {</span>
-<span class="fc" id="L412">                return left.toString().compareTo(right.toString());</span>
+<span class="nc" id="L494">                return ((Comparable) left).compareTo(right);</span>
+<span class="fc" id="L495">            } catch (ClassCastException e) {</span>
+<span class="fc" id="L496">                return left.toString().compareTo(right.toString());</span>
             }
         }
         
-<span class="nc" id="L416">        return left.toString().compareTo(right.toString());</span>
+<span class="nc" id="L500">        return left.toString().compareTo(right.toString());</span>
     }
     
     private boolean isTruthy(Object value) {
-<span class="pc bpc" id="L420" title="1 of 2 branches missed.">        if (value == null) return false;</span>
-<span class="pc bpc" id="L421" title="1 of 2 branches missed.">        if (value instanceof Boolean) return (Boolean) value;</span>
-<span class="nc bnc" id="L422" title="All 4 branches missed.">        if (value instanceof Number) return ((Number) value).doubleValue() != 0;</span>
-<span class="nc bnc" id="L423" title="All 4 branches missed.">        if (value instanceof String) return !((String) value).isEmpty();</span>
-<span class="nc" id="L424">        return true;</span>
+<span class="pc bpc" id="L504" title="1 of 2 branches missed.">        if (value == null) return false;</span>
+<span class="pc bpc" id="L505" title="1 of 2 branches missed.">        if (value instanceof Boolean) return (Boolean) value;</span>
+<span class="nc bnc" id="L506" title="All 4 branches missed.">        if (value instanceof Number) return ((Number) value).doubleValue() != 0;</span>
+<span class="nc bnc" id="L507" title="All 4 branches missed.">        if (value instanceof String) return !((String) value).isEmpty();</span>
+<span class="nc" id="L508">        return true;</span>
     }
     
     private boolean likeMatch(String text, String pattern) {
         // Simple LIKE implementation - convert SQL LIKE pattern to regex
-<span class="nc" id="L429">        String regexPattern = pattern</span>
-<span class="nc" id="L430">            .replace(&quot;%&quot;, &quot;.*&quot;)</span>
-<span class="nc" id="L431">            .replace(&quot;_&quot;, &quot;.&quot;);</span>
-<span class="nc" id="L432">        return text.matches(regexPattern);</span>
+<span class="nc" id="L513">        String regexPattern = pattern</span>
+<span class="nc" id="L514">            .replace(&quot;%&quot;, &quot;.*&quot;)</span>
+<span class="nc" id="L515">            .replace(&quot;_&quot;, &quot;.&quot;);</span>
+<span class="nc" id="L516">        return text.matches(regexPattern);</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

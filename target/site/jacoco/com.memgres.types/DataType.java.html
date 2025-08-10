@@ -4,288 +4,291 @@ import com.memgres.types.jsonb.JsonbValue;
 
 import java.math.BigDecimal;
 import java.time.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 /**
  * Enumeration of supported data types in MemGres.
  * Each data type defines validation logic for values.
  */
-<span class="fc" id="L13">public enum DataType {</span>
+<span class="fc" id="L16">public enum DataType {</span>
     
     // Numeric types
-<span class="fc" id="L16">    SMALLINT(&quot;smallint&quot;) {</span>
+<span class="fc" id="L19">    SMALLINT(&quot;smallint&quot;) {</span>
         @Override
         public boolean isValidValue(Object value) {
-<span class="nc bnc" id="L19" title="All 2 branches missed.">            if (value instanceof Short) return true;</span>
-<span class="nc bnc" id="L20" title="All 2 branches missed.">            if (value instanceof Integer) {</span>
-<span class="nc" id="L21">                int intValue = (Integer) value;</span>
-<span class="nc bnc" id="L22" title="All 4 branches missed.">                return intValue &gt;= Short.MIN_VALUE &amp;&amp; intValue &lt;= Short.MAX_VALUE;</span>
+<span class="nc bnc" id="L22" title="All 2 branches missed.">            if (value instanceof Short) return true;</span>
+<span class="nc bnc" id="L23" title="All 2 branches missed.">            if (value instanceof Integer) {</span>
+<span class="nc" id="L24">                int intValue = (Integer) value;</span>
+<span class="nc bnc" id="L25" title="All 4 branches missed.">                return intValue &gt;= Short.MIN_VALUE &amp;&amp; intValue &lt;= Short.MAX_VALUE;</span>
             }
-<span class="nc" id="L24">            return false;</span>
+<span class="nc" id="L27">            return false;</span>
         }
         
         @Override
         public Object convertValue(Object value) {
-<span class="nc bnc" id="L29" title="All 2 branches missed.">            if (value instanceof Number) {</span>
-<span class="nc" id="L30">                return ((Number) value).shortValue();</span>
+<span class="nc bnc" id="L32" title="All 2 branches missed.">            if (value instanceof Number) {</span>
+<span class="nc" id="L33">                return ((Number) value).shortValue();</span>
             }
-<span class="nc bnc" id="L32" title="All 2 branches missed.">            if (value instanceof String) {</span>
-<span class="nc" id="L33">                return Short.parseShort((String) value);</span>
+<span class="nc bnc" id="L35" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L36">                return Short.parseShort((String) value);</span>
             }
-<span class="nc" id="L35">            return value;</span>
+<span class="nc" id="L38">            return value;</span>
         }
     },
     
-<span class="fc" id="L39">    INTEGER(&quot;integer&quot;) {</span>
+<span class="fc" id="L42">    INTEGER(&quot;integer&quot;) {</span>
         @Override
         public boolean isValidValue(Object value) {
-<span class="pc bpc" id="L42" title="5 of 6 branches missed.">            return value instanceof Integer || value instanceof Short || value instanceof Byte;</span>
+<span class="pc bpc" id="L45" title="2 of 6 branches missed.">            return value instanceof Integer || value instanceof Short || value instanceof Byte;</span>
         }
         
         @Override
         public Object convertValue(Object value) {
-<span class="pc bpc" id="L47" title="1 of 2 branches missed.">            if (value instanceof Number) {</span>
-<span class="fc" id="L48">                return ((Number) value).intValue();</span>
+<span class="fc bfc" id="L50" title="All 2 branches covered.">            if (value instanceof Number) {</span>
+<span class="fc" id="L51">                return ((Number) value).intValue();</span>
             }
-<span class="nc bnc" id="L50" title="All 2 branches missed.">            if (value instanceof String) {</span>
-<span class="nc" id="L51">                return Integer.parseInt((String) value);</span>
+<span class="pc bpc" id="L53" title="1 of 2 branches missed.">            if (value instanceof String) {</span>
+<span class="fc" id="L54">                return Integer.parseInt((String) value);</span>
             }
-<span class="nc" id="L53">            return value;</span>
+<span class="nc" id="L56">            return value;</span>
         }
     },
     
-<span class="fc" id="L57">    BIGINT(&quot;bigint&quot;) {</span>
+<span class="fc" id="L60">    BIGINT(&quot;bigint&quot;) {</span>
         @Override
         public boolean isValidValue(Object value) {
-<span class="nc bnc" id="L60" title="All 8 branches missed.">            return value instanceof Long || value instanceof Integer || </span>
+<span class="nc bnc" id="L63" title="All 8 branches missed.">            return value instanceof Long || value instanceof Integer || </span>
                    value instanceof Short || value instanceof Byte;
         }
         
         @Override
         public Object convertValue(Object value) {
-<span class="nc bnc" id="L66" title="All 2 branches missed.">            if (value instanceof Number) {</span>
-<span class="nc" id="L67">                return ((Number) value).longValue();</span>
+<span class="nc bnc" id="L69" title="All 2 branches missed.">            if (value instanceof Number) {</span>
+<span class="nc" id="L70">                return ((Number) value).longValue();</span>
             }
-<span class="nc bnc" id="L69" title="All 2 branches missed.">            if (value instanceof String) {</span>
-<span class="nc" id="L70">                return Long.parseLong((String) value);</span>
+<span class="nc bnc" id="L72" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L73">                return Long.parseLong((String) value);</span>
             }
-<span class="nc" id="L72">            return value;</span>
+<span class="nc" id="L75">            return value;</span>
         }
     },
     
-<span class="fc" id="L76">    DECIMAL(&quot;decimal&quot;) {</span>
+<span class="fc" id="L79">    DECIMAL(&quot;decimal&quot;) {</span>
         @Override
         public boolean isValidValue(Object value) {
-<span class="nc bnc" id="L79" title="All 4 branches missed.">            return value instanceof BigDecimal || value instanceof Number;</span>
+<span class="pc bpc" id="L82" title="3 of 4 branches missed.">            return value instanceof BigDecimal || value instanceof Number;</span>
         }
         
         @Override
         public Object convertValue(Object value) {
-<span class="nc bnc" id="L84" title="All 2 branches missed.">            if (value instanceof BigDecimal) {</span>
-<span class="nc" id="L85">                return value;</span>
+<span class="pc bpc" id="L87" title="1 of 2 branches missed.">            if (value instanceof BigDecimal) {</span>
+<span class="fc" id="L88">                return value;</span>
             }
-<span class="nc bnc" id="L87" title="All 2 branches missed.">            if (value instanceof Number) {</span>
-<span class="nc" id="L88">                return BigDecimal.valueOf(((Number) value).doubleValue());</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">            if (value instanceof Number) {</span>
+<span class="nc" id="L91">                return BigDecimal.valueOf(((Number) value).doubleValue());</span>
             }
-<span class="nc bnc" id="L90" title="All 2 branches missed.">            if (value instanceof String) {</span>
-<span class="nc" id="L91">                return new BigDecimal((String) value);</span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L94">                return new BigDecimal((String) value);</span>
             }
-<span class="nc" id="L93">            return value;</span>
+<span class="nc" id="L96">            return value;</span>
         }
     },
     
-<span class="fc" id="L97">    REAL(&quot;real&quot;) {</span>
+<span class="fc" id="L100">    REAL(&quot;real&quot;) {</span>
         @Override
         public boolean isValidValue(Object value) {
-<span class="nc bnc" id="L100" title="All 4 branches missed.">            return value instanceof Float || value instanceof Number;</span>
+<span class="nc bnc" id="L103" title="All 4 branches missed.">            return value instanceof Float || value instanceof Number;</span>
         }
         
         @Override
         public Object convertValue(Object value) {
-<span class="nc bnc" id="L105" title="All 2 branches missed.">            if (value instanceof Number) {</span>
-<span class="nc" id="L106">                return ((Number) value).floatValue();</span>
+<span class="nc bnc" id="L108" title="All 2 branches missed.">            if (value instanceof Number) {</span>
+<span class="nc" id="L109">                return ((Number) value).floatValue();</span>
             }
-<span class="nc bnc" id="L108" title="All 2 branches missed.">            if (value instanceof String) {</span>
-<span class="nc" id="L109">                return Float.parseFloat((String) value);</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L112">                return Float.parseFloat((String) value);</span>
             }
-<span class="nc" id="L111">            return value;</span>
+<span class="nc" id="L114">            return value;</span>
         }
     },
     
-<span class="fc" id="L115">    DOUBLE_PRECISION(&quot;double precision&quot;) {</span>
+<span class="fc" id="L118">    DOUBLE_PRECISION(&quot;double precision&quot;) {</span>
         @Override
         public boolean isValidValue(Object value) {
-<span class="nc bnc" id="L118" title="All 4 branches missed.">            return value instanceof Double || value instanceof Number;</span>
+<span class="nc bnc" id="L121" title="All 4 branches missed.">            return value instanceof Double || value instanceof Number;</span>
         }
         
         @Override
         public Object convertValue(Object value) {
-<span class="nc bnc" id="L123" title="All 2 branches missed.">            if (value instanceof Number) {</span>
-<span class="nc" id="L124">                return ((Number) value).doubleValue();</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">            if (value instanceof Number) {</span>
+<span class="nc" id="L127">                return ((Number) value).doubleValue();</span>
             }
-<span class="nc bnc" id="L126" title="All 2 branches missed.">            if (value instanceof String) {</span>
-<span class="nc" id="L127">                return Double.parseDouble((String) value);</span>
+<span class="nc bnc" id="L129" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L130">                return Double.parseDouble((String) value);</span>
             }
-<span class="nc" id="L129">            return value;</span>
+<span class="nc" id="L132">            return value;</span>
         }
     },
     
     // String types
-<span class="fc" id="L134">    VARCHAR(&quot;varchar&quot;) {</span>
+<span class="fc" id="L137">    VARCHAR(&quot;varchar&quot;) {</span>
         @Override
         public boolean isValidValue(Object value) {
-<span class="pc bpc" id="L137" title="3 of 4 branches missed.">            return value instanceof String || value instanceof Character;</span>
+<span class="pc bpc" id="L140" title="3 of 4 branches missed.">            return value instanceof String || value instanceof Character;</span>
         }
         
         @Override
         public Object convertValue(Object value) {
-<span class="pc bpc" id="L142" title="1 of 2 branches missed.">            if (value instanceof Character) {</span>
-<span class="nc" id="L143">                return value.toString();</span>
+<span class="pc bpc" id="L145" title="1 of 2 branches missed.">            if (value instanceof Character) {</span>
+<span class="nc" id="L146">                return value.toString();</span>
             }
-<span class="pc bpc" id="L145" title="1 of 2 branches missed.">            return value != null ? value.toString() : null;</span>
+<span class="pc bpc" id="L148" title="1 of 2 branches missed.">            return value != null ? value.toString() : null;</span>
         }
     },
     
-<span class="fc" id="L149">    TEXT(&quot;text&quot;) {</span>
+<span class="fc" id="L152">    TEXT(&quot;text&quot;) {</span>
         @Override
         public boolean isValidValue(Object value) {
-<span class="nc bnc" id="L152" title="All 4 branches missed.">            return value instanceof String || value instanceof Character;</span>
+<span class="pc bpc" id="L155" title="1 of 4 branches missed.">            return value instanceof String || value instanceof Character;</span>
         }
         
         @Override
         public Object convertValue(Object value) {
-<span class="nc bnc" id="L157" title="All 2 branches missed.">            if (value instanceof Character) {</span>
-<span class="nc" id="L158">                return value.toString();</span>
+<span class="pc bpc" id="L160" title="1 of 2 branches missed.">            if (value instanceof Character) {</span>
+<span class="nc" id="L161">                return value.toString();</span>
             }
-<span class="nc bnc" id="L160" title="All 2 branches missed.">            return value != null ? value.toString() : null;</span>
+<span class="pc bpc" id="L163" title="1 of 2 branches missed.">            return value != null ? value.toString() : null;</span>
         }
     },
     
-<span class="fc" id="L164">    CHAR(&quot;char&quot;) {</span>
+<span class="fc" id="L167">    CHAR(&quot;char&quot;) {</span>
         @Override
         public boolean isValidValue(Object value) {
-<span class="nc bnc" id="L167" title="All 4 branches missed.">            return value instanceof Character || </span>
-<span class="nc bnc" id="L168" title="All 2 branches missed.">                   (value instanceof String &amp;&amp; ((String) value).length() == 1);</span>
+<span class="nc bnc" id="L170" title="All 4 branches missed.">            return value instanceof Character || </span>
+<span class="nc bnc" id="L171" title="All 2 branches missed.">                   (value instanceof String &amp;&amp; ((String) value).length() == 1);</span>
         }
         
         @Override
         public Object convertValue(Object value) {
-<span class="nc bnc" id="L173" title="All 2 branches missed.">            if (value instanceof String) {</span>
-<span class="nc" id="L174">                String str = (String) value;</span>
-<span class="nc bnc" id="L175" title="All 2 branches missed.">                return str.isEmpty() ? ' ' : str.charAt(0);</span>
+<span class="nc bnc" id="L176" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L177">                String str = (String) value;</span>
+<span class="nc bnc" id="L178" title="All 2 branches missed.">                return str.isEmpty() ? ' ' : str.charAt(0);</span>
             }
-<span class="nc" id="L177">            return value;</span>
+<span class="nc" id="L180">            return value;</span>
         }
     },
     
     // Boolean type
-<span class="fc" id="L182">    BOOLEAN(&quot;boolean&quot;) {</span>
+<span class="fc" id="L185">    BOOLEAN(&quot;boolean&quot;) {</span>
         @Override
         public boolean isValidValue(Object value) {
-<span class="fc" id="L185">            return value instanceof Boolean;</span>
+<span class="fc" id="L188">            return value instanceof Boolean;</span>
         }
         
         @Override
         public Object convertValue(Object value) {
-<span class="pc bpc" id="L190" title="1 of 2 branches missed.">            if (value instanceof String) {</span>
-<span class="nc" id="L191">                String str = ((String) value).toLowerCase();</span>
-<span class="nc bnc" id="L192" title="All 6 branches missed.">                return &quot;true&quot;.equals(str) || &quot;t&quot;.equals(str) || &quot;1&quot;.equals(str) ||</span>
-<span class="nc bnc" id="L193" title="All 6 branches missed.">                       &quot;yes&quot;.equals(str) || &quot;y&quot;.equals(str) || &quot;on&quot;.equals(str);</span>
+<span class="pc bpc" id="L193" title="1 of 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L194">                String str = ((String) value).toLowerCase();</span>
+<span class="nc bnc" id="L195" title="All 6 branches missed.">                return &quot;true&quot;.equals(str) || &quot;t&quot;.equals(str) || &quot;1&quot;.equals(str) ||</span>
+<span class="nc bnc" id="L196" title="All 6 branches missed.">                       &quot;yes&quot;.equals(str) || &quot;y&quot;.equals(str) || &quot;on&quot;.equals(str);</span>
             }
-<span class="pc bpc" id="L195" title="1 of 2 branches missed.">            if (value instanceof Number) {</span>
-<span class="nc bnc" id="L196" title="All 2 branches missed.">                return ((Number) value).intValue() != 0;</span>
+<span class="pc bpc" id="L198" title="1 of 2 branches missed.">            if (value instanceof Number) {</span>
+<span class="nc bnc" id="L199" title="All 2 branches missed.">                return ((Number) value).intValue() != 0;</span>
             }
-<span class="fc" id="L198">            return value;</span>
+<span class="fc" id="L201">            return value;</span>
         }
     },
     
     // Date/Time types
-<span class="fc" id="L203">    DATE(&quot;date&quot;) {</span>
+<span class="fc" id="L206">    DATE(&quot;date&quot;) {</span>
         @Override
         public boolean isValidValue(Object value) {
-<span class="nc bnc" id="L206" title="All 4 branches missed.">            return value instanceof LocalDate || value instanceof java.sql.Date;</span>
+<span class="nc bnc" id="L209" title="All 4 branches missed.">            return value instanceof LocalDate || value instanceof java.sql.Date;</span>
         }
         
         @Override
         public Object convertValue(Object value) {
-<span class="nc bnc" id="L211" title="All 2 branches missed.">            if (value instanceof java.sql.Date) {</span>
-<span class="nc" id="L212">                return ((java.sql.Date) value).toLocalDate();</span>
+<span class="nc bnc" id="L214" title="All 2 branches missed.">            if (value instanceof java.sql.Date) {</span>
+<span class="nc" id="L215">                return ((java.sql.Date) value).toLocalDate();</span>
             }
-<span class="nc bnc" id="L214" title="All 2 branches missed.">            if (value instanceof String) {</span>
-<span class="nc" id="L215">                return LocalDate.parse((String) value);</span>
+<span class="nc bnc" id="L217" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L218">                return LocalDate.parse((String) value);</span>
             }
-<span class="nc" id="L217">            return value;</span>
+<span class="nc" id="L220">            return value;</span>
         }
     },
     
-<span class="fc" id="L221">    TIME(&quot;time&quot;) {</span>
+<span class="fc" id="L224">    TIME(&quot;time&quot;) {</span>
         @Override
         public boolean isValidValue(Object value) {
-<span class="nc bnc" id="L224" title="All 4 branches missed.">            return value instanceof LocalTime || value instanceof java.sql.Time;</span>
+<span class="nc bnc" id="L227" title="All 4 branches missed.">            return value instanceof LocalTime || value instanceof java.sql.Time;</span>
         }
         
         @Override
         public Object convertValue(Object value) {
-<span class="nc bnc" id="L229" title="All 2 branches missed.">            if (value instanceof java.sql.Time) {</span>
-<span class="nc" id="L230">                return ((java.sql.Time) value).toLocalTime();</span>
+<span class="nc bnc" id="L232" title="All 2 branches missed.">            if (value instanceof java.sql.Time) {</span>
+<span class="nc" id="L233">                return ((java.sql.Time) value).toLocalTime();</span>
             }
-<span class="nc bnc" id="L232" title="All 2 branches missed.">            if (value instanceof String) {</span>
-<span class="nc" id="L233">                return LocalTime.parse((String) value);</span>
+<span class="nc bnc" id="L235" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L236">                return LocalTime.parse((String) value);</span>
             }
-<span class="nc" id="L235">            return value;</span>
+<span class="nc" id="L238">            return value;</span>
         }
     },
     
-<span class="fc" id="L239">    TIMESTAMP(&quot;timestamp&quot;) {</span>
+<span class="fc" id="L242">    TIMESTAMP(&quot;timestamp&quot;) {</span>
         @Override
         public boolean isValidValue(Object value) {
-<span class="nc bnc" id="L242" title="All 4 branches missed.">            return value instanceof LocalDateTime || value instanceof java.sql.Timestamp;</span>
+<span class="nc bnc" id="L245" title="All 4 branches missed.">            return value instanceof LocalDateTime || value instanceof java.sql.Timestamp;</span>
         }
         
         @Override
         public Object convertValue(Object value) {
-<span class="nc bnc" id="L247" title="All 2 branches missed.">            if (value instanceof java.sql.Timestamp) {</span>
-<span class="nc" id="L248">                return ((java.sql.Timestamp) value).toLocalDateTime();</span>
+<span class="nc bnc" id="L250" title="All 2 branches missed.">            if (value instanceof java.sql.Timestamp) {</span>
+<span class="nc" id="L251">                return ((java.sql.Timestamp) value).toLocalDateTime();</span>
             }
-<span class="nc bnc" id="L250" title="All 2 branches missed.">            if (value instanceof String) {</span>
-<span class="nc" id="L251">                return LocalDateTime.parse((String) value);</span>
+<span class="nc bnc" id="L253" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L254">                return LocalDateTime.parse((String) value);</span>
             }
-<span class="nc" id="L253">            return value;</span>
+<span class="nc" id="L256">            return value;</span>
         }
     },
     
-<span class="fc" id="L257">    TIMESTAMPTZ(&quot;timestamptz&quot;) {</span>
+<span class="fc" id="L260">    TIMESTAMPTZ(&quot;timestamptz&quot;) {</span>
         @Override
         public boolean isValidValue(Object value) {
-<span class="nc bnc" id="L260" title="All 8 branches missed.">            return value instanceof ZonedDateTime || value instanceof OffsetDateTime ||</span>
+<span class="nc bnc" id="L263" title="All 8 branches missed.">            return value instanceof ZonedDateTime || value instanceof OffsetDateTime ||</span>
                    value instanceof Instant || value instanceof java.sql.Timestamp;
         }
         
         @Override
         public Object convertValue(Object value) {
-<span class="nc bnc" id="L266" title="All 2 branches missed.">            if (value instanceof java.sql.Timestamp) {</span>
-<span class="nc" id="L267">                return ((java.sql.Timestamp) value).toInstant().atZone(ZoneOffset.UTC);</span>
+<span class="nc bnc" id="L269" title="All 2 branches missed.">            if (value instanceof java.sql.Timestamp) {</span>
+<span class="nc" id="L270">                return ((java.sql.Timestamp) value).toInstant().atZone(ZoneOffset.UTC);</span>
             }
-<span class="nc bnc" id="L269" title="All 2 branches missed.">            if (value instanceof String) {</span>
-<span class="nc" id="L270">                return ZonedDateTime.parse((String) value);</span>
+<span class="nc bnc" id="L272" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L273">                return ZonedDateTime.parse((String) value);</span>
             }
-<span class="nc" id="L272">            return value;</span>
+<span class="nc" id="L275">            return value;</span>
         }
     },
     
     // UUID type
-<span class="fc" id="L277">    UUID(&quot;uuid&quot;) {</span>
+<span class="fc" id="L280">    UUID(&quot;uuid&quot;) {</span>
         @Override
         public boolean isValidValue(Object value) {
-<span class="fc" id="L280">            return value instanceof java.util.UUID;</span>
+<span class="fc" id="L283">            return value instanceof java.util.UUID;</span>
         }
         
         @Override
         public Object convertValue(Object value) {
-<span class="fc bfc" id="L285" title="All 2 branches covered.">            if (value instanceof String) {</span>
-<span class="fc" id="L286">                return java.util.UUID.fromString((String) value);</span>
+<span class="fc bfc" id="L288" title="All 2 branches covered.">            if (value instanceof String) {</span>
+<span class="fc" id="L289">                return java.util.UUID.fromString((String) value);</span>
             }
-<span class="fc" id="L288">            return value;</span>
+<span class="fc" id="L291">            return value;</span>
         }
         
         /**
@@ -293,7 +296,7 @@ import java.util.UUID;
          * @return a new random UUID
          */
         public java.util.UUID genRandomUuid() {
-<span class="nc" id="L296">            return com.memgres.functions.UuidFunctions.genRandomUuid();</span>
+<span class="nc" id="L299">            return com.memgres.functions.UuidFunctions.genRandomUuid();</span>
         }
         
         /**
@@ -301,7 +304,7 @@ import java.util.UUID;
          * @return a new time-based UUID
          */
         public java.util.UUID uuidGenerateV1() {
-<span class="nc" id="L304">            return com.memgres.functions.UuidFunctions.uuidGenerateV1();</span>
+<span class="nc" id="L307">            return com.memgres.functions.UuidFunctions.uuidGenerateV1();</span>
         }
         
         /**
@@ -309,55 +312,152 @@ import java.util.UUID;
          * @return a new random UUID
          */
         public java.util.UUID uuidGenerateV4() {
-<span class="nc" id="L312">            return com.memgres.functions.UuidFunctions.uuidGenerateV4();</span>
+<span class="nc" id="L315">            return com.memgres.functions.UuidFunctions.uuidGenerateV4();</span>
         }
     },
     
     // JSONB type
-<span class="fc" id="L317">    JSONB(&quot;jsonb&quot;) {</span>
+<span class="fc" id="L320">    JSONB(&quot;jsonb&quot;) {</span>
         @Override
         public boolean isValidValue(Object value) {
-<span class="nc bnc" id="L320" title="All 8 branches missed.">            return value instanceof JsonbValue || value instanceof String ||</span>
+<span class="nc bnc" id="L323" title="All 8 branches missed.">            return value instanceof JsonbValue || value instanceof String ||</span>
                    value instanceof java.util.Map || value instanceof java.util.List;
         }
         
         @Override
         public Object convertValue(Object value) {
-<span class="nc bnc" id="L326" title="All 2 branches missed.">            if (value instanceof JsonbValue) {</span>
-<span class="nc" id="L327">                return value;</span>
+<span class="nc bnc" id="L329" title="All 2 branches missed.">            if (value instanceof JsonbValue) {</span>
+<span class="nc" id="L330">                return value;</span>
             }
-<span class="nc" id="L329">            return JsonbValue.from(value);</span>
+<span class="nc" id="L332">            return JsonbValue.from(value);</span>
         }
     },
     
     // Binary types
-<span class="fc" id="L334">    BYTEA(&quot;bytea&quot;) {</span>
+<span class="fc" id="L337">    BYTEA(&quot;bytea&quot;) {</span>
         @Override
         public boolean isValidValue(Object value) {
-<span class="nc" id="L337">            return value instanceof byte[];</span>
+<span class="nc" id="L340">            return value instanceof byte[];</span>
         }
         
         @Override
         public Object convertValue(Object value) {
-<span class="nc bnc" id="L342" title="All 2 branches missed.">            if (value instanceof String) {</span>
-<span class="nc" id="L343">                return ((String) value).getBytes();</span>
+<span class="nc bnc" id="L345" title="All 2 branches missed.">            if (value instanceof String) {</span>
+<span class="nc" id="L346">                return ((String) value).getBytes();</span>
             }
-<span class="nc" id="L345">            return value;</span>
+<span class="nc" id="L348">            return value;</span>
+        }
+    },
+    
+    // Array types
+<span class="fc" id="L353">    INTEGER_ARRAY(&quot;integer[]&quot;) {</span>
+        @Override
+        public boolean isValidValue(Object value) {
+<span class="fc bfc" id="L356" title="All 2 branches covered.">            if (value instanceof Integer[]) return true;</span>
+<span class="fc bfc" id="L357" title="All 2 branches covered.">            if (value instanceof List&lt;?&gt;) {</span>
+<span class="fc" id="L358">                List&lt;?&gt; list = (List&lt;?&gt;) value;</span>
+<span class="fc bfc" id="L359" title="All 4 branches covered.">                return list.stream().allMatch(item -&gt; item == null || INTEGER.isValidValue(item));</span>
+            }
+<span class="fc" id="L361">            return false;</span>
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+<span class="pc bpc" id="L366" title="1 of 2 branches missed.">            if (value instanceof Integer[]) {</span>
+<span class="nc" id="L367">                return value;</span>
+            }
+<span class="fc bfc" id="L369" title="All 2 branches covered.">            if (value instanceof List&lt;?&gt;) {</span>
+<span class="fc" id="L370">                List&lt;?&gt; list = (List&lt;?&gt;) value;</span>
+<span class="fc" id="L371">                Integer[] array = new Integer[list.size()];</span>
+<span class="fc bfc" id="L372" title="All 2 branches covered.">                for (int i = 0; i &lt; list.size(); i++) {</span>
+<span class="fc" id="L373">                    Object item = list.get(i);</span>
+<span class="fc bfc" id="L374" title="All 2 branches covered.">                    array[i] = item == null ? null : (Integer) INTEGER.convertValue(item);</span>
+                }
+<span class="fc" id="L376">                return array;</span>
+            }
+<span class="pc bpc" id="L378" title="1 of 2 branches missed.">            if (value instanceof String) {</span>
+<span class="fc" id="L379">                return parseArrayFromString((String) value, INTEGER);</span>
+            }
+<span class="nc" id="L381">            return value;</span>
+        }
+    },
+    
+<span class="fc" id="L385">    TEXT_ARRAY(&quot;text[]&quot;) {</span>
+        @Override
+        public boolean isValidValue(Object value) {
+<span class="fc bfc" id="L388" title="All 2 branches covered.">            if (value instanceof String[]) return true;</span>
+<span class="fc bfc" id="L389" title="All 2 branches covered.">            if (value instanceof List&lt;?&gt;) {</span>
+<span class="fc" id="L390">                List&lt;?&gt; list = (List&lt;?&gt;) value;</span>
+<span class="fc bfc" id="L391" title="All 4 branches covered.">                return list.stream().allMatch(item -&gt; item == null || TEXT.isValidValue(item));</span>
+            }
+<span class="fc" id="L393">            return false;</span>
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+<span class="pc bpc" id="L398" title="1 of 2 branches missed.">            if (value instanceof String[]) {</span>
+<span class="nc" id="L399">                return value;</span>
+            }
+<span class="fc bfc" id="L401" title="All 2 branches covered.">            if (value instanceof List&lt;?&gt;) {</span>
+<span class="fc" id="L402">                List&lt;?&gt; list = (List&lt;?&gt;) value;</span>
+<span class="fc" id="L403">                String[] array = new String[list.size()];</span>
+<span class="fc bfc" id="L404" title="All 2 branches covered.">                for (int i = 0; i &lt; list.size(); i++) {</span>
+<span class="fc" id="L405">                    Object item = list.get(i);</span>
+<span class="fc bfc" id="L406" title="All 2 branches covered.">                    array[i] = item == null ? null : (String) TEXT.convertValue(item);</span>
+                }
+<span class="fc" id="L408">                return array;</span>
+            }
+<span class="pc bpc" id="L410" title="1 of 2 branches missed.">            if (value instanceof String) {</span>
+<span class="fc" id="L411">                return parseArrayFromString((String) value, TEXT);</span>
+            }
+<span class="nc" id="L413">            return value;</span>
+        }
+    },
+    
+<span class="fc" id="L417">    UUID_ARRAY(&quot;uuid[]&quot;) {</span>
+        @Override
+        public boolean isValidValue(Object value) {
+<span class="fc bfc" id="L420" title="All 2 branches covered.">            if (value instanceof UUID[]) return true;</span>
+<span class="fc bfc" id="L421" title="All 2 branches covered.">            if (value instanceof List&lt;?&gt;) {</span>
+<span class="fc" id="L422">                List&lt;?&gt; list = (List&lt;?&gt;) value;</span>
+<span class="fc bfc" id="L423" title="All 4 branches covered.">                return list.stream().allMatch(item -&gt; item == null || UUID.isValidValue(item));</span>
+            }
+<span class="fc" id="L425">            return false;</span>
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+<span class="pc bpc" id="L430" title="1 of 2 branches missed.">            if (value instanceof UUID[]) {</span>
+<span class="nc" id="L431">                return value;</span>
+            }
+<span class="fc bfc" id="L433" title="All 2 branches covered.">            if (value instanceof List&lt;?&gt;) {</span>
+<span class="fc" id="L434">                List&lt;?&gt; list = (List&lt;?&gt;) value;</span>
+<span class="fc" id="L435">                java.util.UUID[] array = new java.util.UUID[list.size()];</span>
+<span class="fc bfc" id="L436" title="All 2 branches covered.">                for (int i = 0; i &lt; list.size(); i++) {</span>
+<span class="fc" id="L437">                    Object item = list.get(i);</span>
+<span class="fc bfc" id="L438" title="All 2 branches covered.">                    array[i] = item == null ? null : (java.util.UUID) UUID.convertValue(item);</span>
+                }
+<span class="fc" id="L440">                return array;</span>
+            }
+<span class="pc bpc" id="L442" title="1 of 2 branches missed.">            if (value instanceof String) {</span>
+<span class="fc" id="L443">                return parseArrayFromString((String) value, UUID);</span>
+            }
+<span class="nc" id="L445">            return value;</span>
         }
     };
     
     private final String sqlName;
     
-<span class="fc" id="L351">    DataType(String sqlName) {</span>
-<span class="fc" id="L352">        this.sqlName = sqlName;</span>
-<span class="fc" id="L353">    }</span>
+<span class="fc" id="L451">    DataType(String sqlName) {</span>
+<span class="fc" id="L452">        this.sqlName = sqlName;</span>
+<span class="fc" id="L453">    }</span>
     
     /**
      * Get the SQL name of this data type
      * @return the SQL name
      */
     public String getSqlName() {
-<span class="nc" id="L360">        return sqlName;</span>
+<span class="fc" id="L460">        return sqlName;</span>
     }
     
     /**
@@ -376,60 +476,194 @@ import java.util.UUID;
     public abstract Object convertValue(Object value);
     
     /**
+     * Parse an array from a PostgreSQL-style string representation.
+     * @param arrayString the string representation (e.g., &quot;{1,2,3}&quot; or &quot;{'a','b','c'}&quot;)
+     * @param elementType the element data type
+     * @return the parsed array
+     */
+    @SuppressWarnings(&quot;unchecked&quot;)
+    private static Object parseArrayFromString(String arrayString, DataType elementType) {
+<span class="fc" id="L486">        String trimmed = arrayString.trim();</span>
+<span class="fc bfc" id="L487" title="All 4 branches covered.">        if (!trimmed.startsWith(&quot;{&quot;) || !trimmed.endsWith(&quot;}&quot;)) {</span>
+<span class="fc" id="L488">            throw new IllegalArgumentException(&quot;Array string must be enclosed in braces: &quot; + arrayString);</span>
+        }
+        
+<span class="fc" id="L491">        String content = trimmed.substring(1, trimmed.length() - 1).trim();</span>
+<span class="fc bfc" id="L492" title="All 2 branches covered.">        if (content.isEmpty()) {</span>
+            // Empty array
+<span class="pc bpc" id="L494" title="1 of 4 branches missed.">            switch (elementType) {</span>
+                case INTEGER:
+<span class="fc" id="L496">                    return new Integer[0];</span>
+                case TEXT:
+<span class="fc" id="L498">                    return new String[0];</span>
+                case UUID:
+<span class="fc" id="L500">                    return new java.util.UUID[0];</span>
+                default:
+<span class="nc" id="L502">                    throw new IllegalArgumentException(&quot;Unsupported array element type: &quot; + elementType);</span>
+            }
+        }
+        
+        // Parse elements - simple implementation that handles basic cases
+<span class="fc" id="L507">        List&lt;String&gt; elements = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L508">        boolean inQuotes = false;</span>
+<span class="fc" id="L509">        StringBuilder current = new StringBuilder();</span>
+        
+<span class="fc bfc" id="L511" title="All 2 branches covered.">        for (int i = 0; i &lt; content.length(); i++) {</span>
+<span class="fc" id="L512">            char c = content.charAt(i);</span>
+<span class="pc bpc" id="L513" title="1 of 6 branches missed.">            if (c == '\'' &amp;&amp; (i == 0 || content.charAt(i - 1) != '\\')) {</span>
+<span class="fc bfc" id="L514" title="All 2 branches covered.">                inQuotes = !inQuotes;</span>
+<span class="pc bpc" id="L515" title="1 of 4 branches missed.">            } else if (c == ',' &amp;&amp; !inQuotes) {</span>
+<span class="fc" id="L516">                elements.add(current.toString().trim());</span>
+<span class="fc" id="L517">                current = new StringBuilder();</span>
+            } else {
+<span class="fc" id="L519">                current.append(c);</span>
+            }
+        }
+<span class="fc" id="L522">        elements.add(current.toString().trim());</span>
+        
+        // Convert elements to appropriate array type
+<span class="pc bpc" id="L525" title="1 of 4 branches missed.">        switch (elementType) {</span>
+            case INTEGER:
+<span class="fc" id="L527">                Integer[] intArray = new Integer[elements.size()];</span>
+<span class="fc bfc" id="L528" title="All 2 branches covered.">                for (int i = 0; i &lt; elements.size(); i++) {</span>
+<span class="fc" id="L529">                    String element = elements.get(i);</span>
+<span class="fc bfc" id="L530" title="All 2 branches covered.">                    if (&quot;null&quot;.equalsIgnoreCase(element)) {</span>
+<span class="fc" id="L531">                        intArray[i] = null;</span>
+                    } else {
+<span class="fc" id="L533">                        intArray[i] = (Integer) INTEGER.convertValue(element);</span>
+                    }
+                }
+<span class="fc" id="L536">                return intArray;</span>
+            case TEXT:
+<span class="fc" id="L538">                String[] stringArray = new String[elements.size()];</span>
+<span class="fc bfc" id="L539" title="All 2 branches covered.">                for (int i = 0; i &lt; elements.size(); i++) {</span>
+<span class="fc" id="L540">                    String element = elements.get(i);</span>
+<span class="fc bfc" id="L541" title="All 2 branches covered.">                    if (&quot;null&quot;.equalsIgnoreCase(element)) {</span>
+<span class="fc" id="L542">                        stringArray[i] = null;</span>
+                    } else {
+                        // Remove surrounding quotes if present
+<span class="pc bpc" id="L545" title="3 of 4 branches missed.">                        if (element.startsWith(&quot;'&quot;) &amp;&amp; element.endsWith(&quot;'&quot;)) {</span>
+<span class="nc" id="L546">                            element = element.substring(1, element.length() - 1);</span>
+                        }
+<span class="fc" id="L548">                        stringArray[i] = (String) TEXT.convertValue(element);</span>
+                    }
+                }
+<span class="fc" id="L551">                return stringArray;</span>
+            case UUID:
+<span class="fc" id="L553">                java.util.UUID[] uuidArray = new java.util.UUID[elements.size()];</span>
+<span class="fc bfc" id="L554" title="All 2 branches covered.">                for (int i = 0; i &lt; elements.size(); i++) {</span>
+<span class="fc" id="L555">                    String element = elements.get(i);</span>
+<span class="fc bfc" id="L556" title="All 2 branches covered.">                    if (&quot;null&quot;.equalsIgnoreCase(element)) {</span>
+<span class="fc" id="L557">                        uuidArray[i] = null;</span>
+                    } else {
+                        // Remove surrounding quotes if present
+<span class="pc bpc" id="L560" title="3 of 4 branches missed.">                        if (element.startsWith(&quot;'&quot;) &amp;&amp; element.endsWith(&quot;'&quot;)) {</span>
+<span class="nc" id="L561">                            element = element.substring(1, element.length() - 1);</span>
+                        }
+<span class="fc" id="L563">                        uuidArray[i] = (java.util.UUID) UUID.convertValue(element);</span>
+                    }
+                }
+<span class="fc" id="L566">                return uuidArray;</span>
+            default:
+<span class="nc" id="L568">                throw new IllegalArgumentException(&quot;Unsupported array element type: &quot; + elementType);</span>
+        }
+    }
+    
+    /**
      * Get a data type by its SQL name
      * @param sqlName the SQL name (case-insensitive)
      * @return the matching data type or null if not found
      */
     public static DataType fromSqlName(String sqlName) {
-<span class="nc bnc" id="L384" title="All 2 branches missed.">        if (sqlName == null) {</span>
-<span class="nc" id="L385">            return null;</span>
+<span class="pc bpc" id="L578" title="1 of 2 branches missed.">        if (sqlName == null) {</span>
+<span class="nc" id="L579">            return null;</span>
         }
         
-<span class="nc" id="L388">        String normalized = sqlName.toLowerCase().trim();</span>
-<span class="nc bnc" id="L389" title="All 2 branches missed.">        for (DataType dataType : values()) {</span>
-<span class="nc bnc" id="L390" title="All 2 branches missed.">            if (dataType.sqlName.equals(normalized)) {</span>
-<span class="nc" id="L391">                return dataType;</span>
+<span class="fc" id="L582">        String normalized = sqlName.toLowerCase().trim();</span>
+        
+        // Check exact matches first
+<span class="fc bfc" id="L585" title="All 2 branches covered.">        for (DataType dataType : values()) {</span>
+<span class="fc bfc" id="L586" title="All 2 branches covered.">            if (dataType.sqlName.equals(normalized)) {</span>
+<span class="fc" id="L587">                return dataType;</span>
             }
         }
         
-        // Handle aliases
-<span class="nc bnc" id="L396" title="All 9 branches missed.">        switch (normalized) {</span>
+        // Handle array types with alternative syntax
+<span class="pc bpc" id="L592" title="1 of 2 branches missed.">        if (normalized.endsWith(&quot;[]&quot;)) {</span>
+<span class="fc" id="L593">            String elementType = normalized.substring(0, normalized.length() - 2);</span>
+<span class="pc bpc" id="L594" title="3 of 4 branches missed.">            switch (elementType) {</span>
+                case &quot;integer&quot;: case &quot;int&quot;: case &quot;int4&quot;:
+<span class="fc" id="L596">                    return INTEGER_ARRAY;</span>
+                case &quot;text&quot;:
+<span class="nc" id="L598">                    return TEXT_ARRAY;</span>
+                case &quot;uuid&quot;:
+<span class="nc" id="L600">                    return UUID_ARRAY;</span>
+            }
+        }
+        
+        // Handle other aliases
+<span class="nc bnc" id="L605" title="All 9 branches missed.">        switch (normalized) {</span>
             case &quot;int&quot;: case &quot;int4&quot;:
-<span class="nc" id="L398">                return INTEGER;</span>
+<span class="nc" id="L607">                return INTEGER;</span>
             case &quot;int2&quot;:
-<span class="nc" id="L400">                return SMALLINT;</span>
+<span class="nc" id="L609">                return SMALLINT;</span>
             case &quot;int8&quot;:
-<span class="nc" id="L402">                return BIGINT;</span>
+<span class="nc" id="L611">                return BIGINT;</span>
             case &quot;float4&quot;:
-<span class="nc" id="L404">                return REAL;</span>
+<span class="nc" id="L613">                return REAL;</span>
             case &quot;float8&quot;:
-<span class="nc" id="L406">                return DOUBLE_PRECISION;</span>
+<span class="nc" id="L615">                return DOUBLE_PRECISION;</span>
             case &quot;numeric&quot;:
-<span class="nc" id="L408">                return DECIMAL;</span>
+<span class="nc" id="L617">                return DECIMAL;</span>
             case &quot;string&quot;:
-<span class="nc" id="L410">                return VARCHAR;</span>
+<span class="nc" id="L619">                return VARCHAR;</span>
             case &quot;bool&quot;:
-<span class="nc" id="L412">                return BOOLEAN;</span>
+<span class="nc" id="L621">                return BOOLEAN;</span>
             default:
-<span class="nc" id="L414">                return null;</span>
+<span class="nc" id="L623">                return null;</span>
+        }
+    }
+    
+    /**
+     * Check if this data type is an array type.
+     * @return true if this is an array type
+     */
+    public boolean isArrayType() {
+<span class="fc bfc" id="L632" title="All 6 branches covered.">        return this == INTEGER_ARRAY || this == TEXT_ARRAY || this == UUID_ARRAY;</span>
+    }
+    
+    /**
+     * Get the element type for array types.
+     * @return the element type, or null if this is not an array type
+     */
+    public DataType getArrayElementType() {
+<span class="fc bfc" id="L640" title="All 4 branches covered.">        switch (this) {</span>
+            case INTEGER_ARRAY:
+<span class="fc" id="L642">                return INTEGER;</span>
+            case TEXT_ARRAY:
+<span class="fc" id="L644">                return TEXT;</span>
+            case UUID_ARRAY:
+<span class="fc" id="L646">                return UUID;</span>
+            default:
+<span class="fc" id="L648">                return null;</span>
         }
     }
     
     @Override
     public String toString() {
-<span class="nc" id="L420">        return sqlName;</span>
+<span class="fc" id="L654">        return sqlName;</span>
     }
     
     /**
      * Utility methods for UUID generation that can be used statically
      */
-<span class="nc" id="L426">    public static class UuidGenerator {</span>
+<span class="nc" id="L660">    public static class UuidGenerator {</span>
         /**
          * Generate a random UUID (equivalent to PostgreSQL's gen_random_uuid()).
          * @return a new random UUID
          */
         public static java.util.UUID genRandomUuid() {
-<span class="fc" id="L432">            return com.memgres.functions.UuidFunctions.genRandomUuid();</span>
+<span class="fc" id="L666">            return com.memgres.functions.UuidFunctions.genRandomUuid();</span>
         }
         
         /**
@@ -437,7 +671,7 @@ import java.util.UUID;
          * @return a new time-based UUID
          */
         public static java.util.UUID uuidGenerateV1() {
-<span class="fc" id="L440">            return com.memgres.functions.UuidFunctions.uuidGenerateV1();</span>
+<span class="fc" id="L674">            return com.memgres.functions.UuidFunctions.uuidGenerateV1();</span>
         }
         
         /**
@@ -445,7 +679,218 @@ import java.util.UUID;
          * @return a new random UUID
          */
         public static java.util.UUID uuidGenerateV4() {
-<span class="fc" id="L448">            return com.memgres.functions.UuidFunctions.uuidGenerateV4();</span>
+<span class="fc" id="L682">            return com.memgres.functions.UuidFunctions.uuidGenerateV4();</span>
+        }
+    }
+    
+    /**
+     * Utility methods for string functions that can be used statically
+     */
+<span class="nc" id="L689">    public static class StringFunctions {</span>
+        /**
+         * Concatenate strings (equivalent to PostgreSQL's CONCAT()).
+         * @param strings the strings to concatenate (null values are treated as empty strings)
+         * @return the concatenated string
+         */
+        public static String concat(Object... strings) {
+<span class="nc" id="L696">            return com.memgres.functions.StringFunctions.concat(strings);</span>
+        }
+        
+        /**
+         * Concatenate strings with a separator (equivalent to PostgreSQL's CONCAT_WS()).
+         * @param separator the separator to use between strings
+         * @param strings the strings to concatenate (null values are skipped)
+         * @return the concatenated string with separators
+         */
+        public static String concatWs(String separator, Object... strings) {
+<span class="nc" id="L706">            return com.memgres.functions.StringFunctions.concatWs(separator, strings);</span>
+        }
+        
+        /**
+         * Get substring from a string (equivalent to PostgreSQL's SUBSTRING()).
+         * @param string the source string
+         * @param start the starting position (1-based, as in PostgreSQL)
+         * @param length the length of substring (optional)
+         * @return the substring
+         */
+        public static String substring(String string, int start, Integer length) {
+<span class="nc" id="L717">            return com.memgres.functions.StringFunctions.substring(string, start, length);</span>
+        }
+        
+        /**
+         * Get substring from a string (2-parameter version).
+         * @param string the source string
+         * @param start the starting position (1-based)
+         * @return the substring from start to end
+         */
+        public static String substring(String string, int start) {
+<span class="nc" id="L727">            return com.memgres.functions.StringFunctions.substring(string, start);</span>
+        }
+        
+        /**
+         * Get the length of a string (equivalent to PostgreSQL's LENGTH()).
+         * @param string the string to measure
+         * @return the length of the string, or null if string is null
+         */
+        public static Integer length(String string) {
+<span class="nc" id="L736">            return com.memgres.functions.StringFunctions.length(string);</span>
+        }
+        
+        /**
+         * Convert string to uppercase (equivalent to PostgreSQL's UPPER()).
+         * @param string the string to convert
+         * @return the uppercase string
+         */
+        public static String upper(String string) {
+<span class="nc" id="L745">            return com.memgres.functions.StringFunctions.upper(string);</span>
+        }
+        
+        /**
+         * Convert string to lowercase (equivalent to PostgreSQL's LOWER()).
+         * @param string the string to convert
+         * @return the lowercase string
+         */
+        public static String lower(String string) {
+<span class="nc" id="L754">            return com.memgres.functions.StringFunctions.lower(string);</span>
+        }
+        
+        /**
+         * Trim whitespace from both ends (equivalent to PostgreSQL's TRIM()).
+         * @param string the string to trim
+         * @return the trimmed string
+         */
+        public static String trim(String string) {
+<span class="nc" id="L763">            return com.memgres.functions.StringFunctions.trim(string);</span>
+        }
+        
+        /**
+         * Replace occurrences of a substring (equivalent to PostgreSQL's REPLACE()).
+         * @param string the source string
+         * @param from the substring to replace
+         * @param to the replacement string
+         * @return the string with replacements made
+         */
+        public static String replace(String string, String from, String to) {
+<span class="nc" id="L774">            return com.memgres.functions.StringFunctions.replace(string, from, to);</span>
+        }
+        
+        /**
+         * Find position of substring in string (equivalent to PostgreSQL's POSITION()).
+         * @param substring the substring to find
+         * @param string the string to search in
+         * @return the 1-based position of the substring, or 0 if not found
+         */
+        public static Integer position(String substring, String string) {
+<span class="nc" id="L784">            return com.memgres.functions.StringFunctions.position(substring, string);</span>
+        }
+        
+        /**
+         * Aggregate strings with separator (equivalent to PostgreSQL's STRING_AGG()).
+         * @param strings the list of strings to aggregate
+         * @param separator the separator
+         * @return the aggregated string
+         */
+        public static String stringAgg(java.util.List&lt;String&gt; strings, String separator) {
+<span class="nc" id="L794">            return com.memgres.functions.StringFunctions.stringAgg(strings, separator);</span>
+        }
+        
+        /**
+         * Left-pad string to specified length (equivalent to PostgreSQL's LPAD()).
+         * @param string the string to pad
+         * @param length the target length
+         * @param padString the padding string (default is space)
+         * @return the padded string
+         */
+        public static String lpad(String string, int length, String padString) {
+<span class="nc" id="L805">            return com.memgres.functions.StringFunctions.lpad(string, length, padString);</span>
+        }
+        
+        /**
+         * Right-pad string to specified length (equivalent to PostgreSQL's RPAD()).
+         * @param string the string to pad
+         * @param length the target length
+         * @param padString the padding string (default is space)
+         * @return the padded string
+         */
+        public static String rpad(String string, int length, String padString) {
+<span class="nc" id="L816">            return com.memgres.functions.StringFunctions.rpad(string, length, padString);</span>
+        }
+    }
+    
+    /**
+     * Utility methods for date/time functions that can be used statically
+     */
+<span class="nc" id="L823">    public static class DateTimeFunctions {</span>
+        /**
+         * Get the current timestamp (equivalent to PostgreSQL's NOW()).
+         * @return the current timestamp with timezone
+         */
+        public static ZonedDateTime now() {
+<span class="nc" id="L829">            return com.memgres.functions.DateTimeFunctions.now();</span>
+        }
+        
+        /**
+         * Get the current date (equivalent to PostgreSQL's CURRENT_DATE).
+         * @return the current date
+         */
+        public static LocalDate currentDate() {
+<span class="nc" id="L837">            return com.memgres.functions.DateTimeFunctions.currentDate();</span>
+        }
+        
+        /**
+         * Get the current time (equivalent to PostgreSQL's CURRENT_TIME).
+         * @return the current time with timezone
+         */
+        public static OffsetTime currentTime() {
+<span class="nc" id="L845">            return com.memgres.functions.DateTimeFunctions.currentTime();</span>
+        }
+        
+        /**
+         * Get the current timestamp (equivalent to PostgreSQL's CURRENT_TIMESTAMP).
+         * @return the current timestamp with timezone
+         */
+        public static ZonedDateTime currentTimestamp() {
+<span class="nc" id="L853">            return com.memgres.functions.DateTimeFunctions.currentTimestamp();</span>
+        }
+        
+        /**
+         * Extract a field from a date/time value (equivalent to PostgreSQL's EXTRACT()).
+         * @param field the field to extract (year, month, day, hour, minute, second, etc.)
+         * @param datetime the date/time value to extract from
+         * @return the extracted field value
+         */
+        public static Double extract(String field, java.time.temporal.TemporalAccessor datetime) {
+<span class="nc" id="L863">            return com.memgres.functions.DateTimeFunctions.extract(field, datetime);</span>
+        }
+        
+        /**
+         * Add an interval to a date/time value.
+         * @param datetime the base date/time
+         * @param interval the interval to add (e.g., &quot;1 day&quot;, &quot;2 hours&quot;, &quot;3 months&quot;)
+         * @return the resulting date/time
+         */
+        public static java.time.temporal.TemporalAccessor dateAdd(java.time.temporal.TemporalAccessor datetime, String interval) {
+<span class="nc" id="L873">            return com.memgres.functions.DateTimeFunctions.dateAdd(datetime, interval);</span>
+        }
+        
+        /**
+         * Format a date/time value as a string.
+         * @param datetime the date/time to format
+         * @param pattern the format pattern (PostgreSQL-style or Java DateTimeFormatter pattern)
+         * @return the formatted string
+         */
+        public static String formatDateTime(java.time.temporal.TemporalAccessor datetime, String pattern) {
+<span class="nc" id="L883">            return com.memgres.functions.DateTimeFunctions.formatDateTime(datetime, pattern);</span>
+        }
+        
+        /**
+         * Calculate the age between two dates.
+         * @param birthDate the birth date
+         * @param currentDate the current date (can be null for current date)
+         * @return the age in years
+         */
+        public static java.time.Period age(LocalDate birthDate, LocalDate currentDate) {
+<span class="nc" id="L893">            return com.memgres.functions.DateTimeFunctions.age(birthDate, currentDate);</span>
         }
     }
 }

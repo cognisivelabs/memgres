@@ -1,0 +1,668 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MemGresTestPreparedStatement.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">MemGres Core</a> &gt; <a href="index.source.html" class="el_package">com.memgres.testing</a> &gt; <span class="el_source">MemGresTestPreparedStatement.java</span></div><h1>MemGresTestPreparedStatement.java</h1><pre class="source lang-java linenums">package com.memgres.testing;
+
+import com.memgres.sql.execution.SqlExecutionEngine;
+import com.memgres.sql.execution.SqlExecutionResult;
+
+import java.io.InputStream;
+import java.io.Reader;
+import java.math.BigDecimal;
+import java.net.URL;
+import java.sql.*;
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Basic PreparedStatement implementation for MemGres testing.
+ * 
+ * &lt;p&gt;This is a simplified PreparedStatement implementation that provides
+ * basic parameter binding and SQL execution. It supports common data types
+ * and operations needed for testing scenarios.&lt;/p&gt;
+ * 
+ * &lt;p&gt;&lt;strong&gt;Supported parameter types:&lt;/strong&gt;&lt;/p&gt;
+ * &lt;ul&gt;
+ *   &lt;li&gt;String, int, long, double, boolean&lt;/li&gt;
+ *   &lt;li&gt;BigDecimal, Date, Time, Timestamp&lt;/li&gt;
+ *   &lt;li&gt;null values&lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * @since 1.0.0
+ */
+public class MemGresTestPreparedStatement implements PreparedStatement {
+    
+    private final MemGresTestConnection connection;
+    private final SqlExecutionEngine sqlEngine;
+    private final String sql;
+<span class="fc" id="L36">    private final Map&lt;Integer, Object&gt; parameters = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L37">    private boolean closed = false;</span>
+    
+    /**
+     * Creates a new MemGresTestPreparedStatement.
+     * 
+     * @param connection the connection
+     * @param sqlEngine the SQL execution engine
+     * @param sql the SQL statement with parameter placeholders
+     */
+<span class="fc" id="L46">    public MemGresTestPreparedStatement(MemGresTestConnection connection, SqlExecutionEngine sqlEngine, String sql) {</span>
+<span class="fc" id="L47">        this.connection = connection;</span>
+<span class="fc" id="L48">        this.sqlEngine = sqlEngine;</span>
+<span class="fc" id="L49">        this.sql = sql;</span>
+<span class="fc" id="L50">    }</span>
+    
+    @Override
+    public ResultSet executeQuery() throws SQLException {
+<span class="fc" id="L54">        checkClosed();</span>
+<span class="fc" id="L55">        String processedSql = replaceParameters();</span>
+<span class="fc" id="L56">        connection.ensureTransaction();</span>
+        
+        try {
+<span class="fc" id="L59">            SqlExecutionResult result = sqlEngine.execute(processedSql);</span>
+<span class="pc bpc" id="L60" title="1 of 2 branches missed.">            if (!result.isSuccess()) {</span>
+<span class="nc" id="L61">                throw new SQLException(&quot;Query execution failed: &quot; + result.getMessage());</span>
+            }
+<span class="fc" id="L63">            return new MemGresTestResultSet(result.getRows(), result.getColumns());</span>
+<span class="nc" id="L64">        } catch (com.memgres.sql.execution.SqlExecutionException e) {</span>
+<span class="nc" id="L65">            throw new SQLException(&quot;SQL execution failed: &quot; + e.getMessage(), e);</span>
+        }
+    }
+    
+    @Override
+    public int executeUpdate() throws SQLException {
+<span class="fc" id="L71">        checkClosed();</span>
+<span class="fc" id="L72">        String processedSql = replaceParameters();</span>
+<span class="fc" id="L73">        connection.ensureTransaction();</span>
+        
+        try {
+<span class="fc" id="L76">            SqlExecutionResult result = sqlEngine.execute(processedSql);</span>
+<span class="pc bpc" id="L77" title="1 of 2 branches missed.">            if (!result.isSuccess()) {</span>
+<span class="nc" id="L78">                throw new SQLException(&quot;Update execution failed: &quot; + result.getMessage());</span>
+            }
+            
+            // Take snapshot after successful DML operations if in transaction
+<span class="fc" id="L82">            connection.ensureTransactionSnapshotAfterDML(processedSql);</span>
+            
+<span class="fc" id="L84">            return result.getAffectedRows();</span>
+<span class="nc" id="L85">        } catch (com.memgres.sql.execution.SqlExecutionException e) {</span>
+<span class="nc" id="L86">            throw new SQLException(&quot;SQL execution failed: &quot; + e.getMessage(), e);</span>
+        }
+    }
+    
+    @Override
+    public boolean execute() throws SQLException {
+<span class="nc" id="L92">        checkClosed();</span>
+<span class="nc" id="L93">        String processedSql = replaceParameters();</span>
+<span class="nc" id="L94">        connection.ensureTransaction();</span>
+        
+        try {
+<span class="nc" id="L97">            SqlExecutionResult result = sqlEngine.execute(processedSql);</span>
+<span class="nc bnc" id="L98" title="All 2 branches missed.">            if (!result.isSuccess()) {</span>
+<span class="nc" id="L99">                throw new SQLException(&quot;SQL execution failed: &quot; + result.getMessage());</span>
+            }
+            
+            // Take snapshot after successful DML operations if in transaction
+<span class="nc" id="L103">            connection.ensureTransactionSnapshotAfterDML(processedSql);</span>
+            
+<span class="nc bnc" id="L105" title="All 2 branches missed.">            return result.getType() == SqlExecutionResult.ResultType.SELECT;</span>
+<span class="nc" id="L106">        } catch (com.memgres.sql.execution.SqlExecutionException e) {</span>
+<span class="nc" id="L107">            throw new SQLException(&quot;SQL execution failed: &quot; + e.getMessage(), e);</span>
+        }
+    }
+    
+    // Parameter setters
+    
+    @Override
+    public void setNull(int parameterIndex, int sqlType) throws SQLException {
+<span class="nc" id="L115">        checkClosed();</span>
+<span class="nc" id="L116">        parameters.put(parameterIndex, null);</span>
+<span class="nc" id="L117">    }</span>
+    
+    @Override
+    public void setBoolean(int parameterIndex, boolean x) throws SQLException {
+<span class="nc" id="L121">        checkClosed();</span>
+<span class="nc" id="L122">        parameters.put(parameterIndex, x);</span>
+<span class="nc" id="L123">    }</span>
+    
+    @Override
+    public void setByte(int parameterIndex, byte x) throws SQLException {
+<span class="nc" id="L127">        checkClosed();</span>
+<span class="nc" id="L128">        parameters.put(parameterIndex, x);</span>
+<span class="nc" id="L129">    }</span>
+    
+    @Override
+    public void setShort(int parameterIndex, short x) throws SQLException {
+<span class="nc" id="L133">        checkClosed();</span>
+<span class="nc" id="L134">        parameters.put(parameterIndex, x);</span>
+<span class="nc" id="L135">    }</span>
+    
+    @Override
+    public void setInt(int parameterIndex, int x) throws SQLException {
+<span class="fc" id="L139">        checkClosed();</span>
+<span class="fc" id="L140">        parameters.put(parameterIndex, x);</span>
+<span class="fc" id="L141">    }</span>
+    
+    @Override
+    public void setLong(int parameterIndex, long x) throws SQLException {
+<span class="nc" id="L145">        checkClosed();</span>
+<span class="nc" id="L146">        parameters.put(parameterIndex, x);</span>
+<span class="nc" id="L147">    }</span>
+    
+    @Override
+    public void setFloat(int parameterIndex, float x) throws SQLException {
+<span class="nc" id="L151">        checkClosed();</span>
+<span class="nc" id="L152">        parameters.put(parameterIndex, x);</span>
+<span class="nc" id="L153">    }</span>
+    
+    @Override
+    public void setDouble(int parameterIndex, double x) throws SQLException {
+<span class="nc" id="L157">        checkClosed();</span>
+<span class="nc" id="L158">        parameters.put(parameterIndex, x);</span>
+<span class="nc" id="L159">    }</span>
+    
+    @Override
+    public void setBigDecimal(int parameterIndex, BigDecimal x) throws SQLException {
+<span class="fc" id="L163">        checkClosed();</span>
+<span class="fc" id="L164">        parameters.put(parameterIndex, x);</span>
+<span class="fc" id="L165">    }</span>
+    
+    @Override
+    public void setString(int parameterIndex, String x) throws SQLException {
+<span class="fc" id="L169">        checkClosed();</span>
+<span class="fc" id="L170">        parameters.put(parameterIndex, x);</span>
+<span class="fc" id="L171">    }</span>
+    
+    @Override
+    public void setBytes(int parameterIndex, byte[] x) throws SQLException {
+<span class="nc" id="L175">        checkClosed();</span>
+<span class="nc" id="L176">        parameters.put(parameterIndex, x);</span>
+<span class="nc" id="L177">    }</span>
+    
+    @Override
+    public void setDate(int parameterIndex, Date x) throws SQLException {
+<span class="nc" id="L181">        checkClosed();</span>
+<span class="nc" id="L182">        parameters.put(parameterIndex, x);</span>
+<span class="nc" id="L183">    }</span>
+    
+    @Override
+    public void setTime(int parameterIndex, Time x) throws SQLException {
+<span class="nc" id="L187">        checkClosed();</span>
+<span class="nc" id="L188">        parameters.put(parameterIndex, x);</span>
+<span class="nc" id="L189">    }</span>
+    
+    @Override
+    public void setTimestamp(int parameterIndex, Timestamp x) throws SQLException {
+<span class="nc" id="L193">        checkClosed();</span>
+<span class="nc" id="L194">        parameters.put(parameterIndex, x);</span>
+<span class="nc" id="L195">    }</span>
+    
+    @Override
+    public void clearParameters() throws SQLException {
+<span class="nc" id="L199">        checkClosed();</span>
+<span class="nc" id="L200">        parameters.clear();</span>
+<span class="nc" id="L201">    }</span>
+    
+    // ResultSet methods (delegate to Statement)
+    
+    @Override
+    public ResultSet getResultSet() throws SQLException {
+        // This should be called after execute() returns true
+<span class="nc" id="L208">        return null;</span>
+    }
+    
+    @Override
+    public int getUpdateCount() throws SQLException {
+<span class="nc" id="L213">        return -1;</span>
+    }
+    
+    @Override
+    public boolean getMoreResults() throws SQLException {
+<span class="nc" id="L218">        return false;</span>
+    }
+    
+    @Override
+    public void close() throws SQLException {
+<span class="fc" id="L223">        closed = true;</span>
+<span class="fc" id="L224">        parameters.clear();</span>
+<span class="fc" id="L225">    }</span>
+    
+    @Override
+    public boolean isClosed() throws SQLException {
+<span class="nc" id="L229">        return closed;</span>
+    }
+    
+    // Unsupported methods
+    
+    @Override
+    public void setAsciiStream(int parameterIndex, InputStream x, int length) throws SQLException {
+<span class="nc" id="L236">        throw new SQLFeatureNotSupportedException(&quot;ASCII streams not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setUnicodeStream(int parameterIndex, InputStream x, int length) throws SQLException {
+<span class="nc" id="L241">        throw new SQLFeatureNotSupportedException(&quot;Unicode streams not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setBinaryStream(int parameterIndex, InputStream x, int length) throws SQLException {
+<span class="nc" id="L246">        throw new SQLFeatureNotSupportedException(&quot;Binary streams not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setObject(int parameterIndex, Object x, int targetSqlType) throws SQLException {
+<span class="nc" id="L251">        checkClosed();</span>
+<span class="nc" id="L252">        parameters.put(parameterIndex, x);</span>
+<span class="nc" id="L253">    }</span>
+    
+    @Override
+    public void setObject(int parameterIndex, Object x) throws SQLException {
+<span class="nc" id="L257">        checkClosed();</span>
+<span class="nc" id="L258">        parameters.put(parameterIndex, x);</span>
+<span class="nc" id="L259">    }</span>
+    
+    @Override
+    public void addBatch() throws SQLException {
+<span class="nc" id="L263">        throw new SQLFeatureNotSupportedException(&quot;Batch operations not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setCharacterStream(int parameterIndex, Reader reader, int length) throws SQLException {
+<span class="nc" id="L268">        throw new SQLFeatureNotSupportedException(&quot;Character streams not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setRef(int parameterIndex, Ref x) throws SQLException {
+<span class="nc" id="L273">        throw new SQLFeatureNotSupportedException(&quot;Ref not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setBlob(int parameterIndex, Blob x) throws SQLException {
+<span class="nc" id="L278">        throw new SQLFeatureNotSupportedException(&quot;Blob not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setClob(int parameterIndex, Clob x) throws SQLException {
+<span class="nc" id="L283">        throw new SQLFeatureNotSupportedException(&quot;Clob not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setArray(int parameterIndex, Array x) throws SQLException {
+<span class="nc" id="L288">        throw new SQLFeatureNotSupportedException(&quot;Array not supported&quot;);</span>
+    }
+    
+    @Override
+    public ResultSetMetaData getMetaData() throws SQLException {
+<span class="nc" id="L293">        throw new SQLFeatureNotSupportedException(&quot;PreparedStatement metadata not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setDate(int parameterIndex, Date x, Calendar cal) throws SQLException {
+<span class="nc" id="L298">        setDate(parameterIndex, x);</span>
+<span class="nc" id="L299">    }</span>
+    
+    @Override
+    public void setTime(int parameterIndex, Time x, Calendar cal) throws SQLException {
+<span class="nc" id="L303">        setTime(parameterIndex, x);</span>
+<span class="nc" id="L304">    }</span>
+    
+    @Override
+    public void setTimestamp(int parameterIndex, Timestamp x, Calendar cal) throws SQLException {
+<span class="nc" id="L308">        setTimestamp(parameterIndex, x);</span>
+<span class="nc" id="L309">    }</span>
+    
+    @Override
+    public void setNull(int parameterIndex, int sqlType, String typeName) throws SQLException {
+<span class="nc" id="L313">        setNull(parameterIndex, sqlType);</span>
+<span class="nc" id="L314">    }</span>
+    
+    @Override
+    public void setURL(int parameterIndex, URL x) throws SQLException {
+<span class="nc" id="L318">        throw new SQLFeatureNotSupportedException(&quot;URL parameters not supported&quot;);</span>
+    }
+    
+    @Override
+    public ParameterMetaData getParameterMetaData() throws SQLException {
+<span class="nc" id="L323">        throw new SQLFeatureNotSupportedException(&quot;Parameter metadata not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setRowId(int parameterIndex, RowId x) throws SQLException {
+<span class="nc" id="L328">        throw new SQLFeatureNotSupportedException(&quot;RowId not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setNString(int parameterIndex, String value) throws SQLException {
+<span class="nc" id="L333">        setString(parameterIndex, value);</span>
+<span class="nc" id="L334">    }</span>
+    
+    @Override
+    public void setNCharacterStream(int parameterIndex, Reader value, long length) throws SQLException {
+<span class="nc" id="L338">        throw new SQLFeatureNotSupportedException(&quot;NCharacter streams not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setNClob(int parameterIndex, NClob value) throws SQLException {
+<span class="nc" id="L343">        throw new SQLFeatureNotSupportedException(&quot;NClob not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setClob(int parameterIndex, Reader reader, long length) throws SQLException {
+<span class="nc" id="L348">        throw new SQLFeatureNotSupportedException(&quot;Clob not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setBlob(int parameterIndex, InputStream inputStream, long length) throws SQLException {
+<span class="nc" id="L353">        throw new SQLFeatureNotSupportedException(&quot;Blob not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setNClob(int parameterIndex, Reader reader, long length) throws SQLException {
+<span class="nc" id="L358">        throw new SQLFeatureNotSupportedException(&quot;NClob not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setSQLXML(int parameterIndex, SQLXML xmlObject) throws SQLException {
+<span class="nc" id="L363">        throw new SQLFeatureNotSupportedException(&quot;SQLXML not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setObject(int parameterIndex, Object x, int targetSqlType, int scaleOrLength) throws SQLException {
+<span class="nc" id="L368">        setObject(parameterIndex, x, targetSqlType);</span>
+<span class="nc" id="L369">    }</span>
+    
+    @Override
+    public void setAsciiStream(int parameterIndex, InputStream x, long length) throws SQLException {
+<span class="nc" id="L373">        throw new SQLFeatureNotSupportedException(&quot;ASCII streams not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setBinaryStream(int parameterIndex, InputStream x, long length) throws SQLException {
+<span class="nc" id="L378">        throw new SQLFeatureNotSupportedException(&quot;Binary streams not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setCharacterStream(int parameterIndex, Reader reader, long length) throws SQLException {
+<span class="nc" id="L383">        throw new SQLFeatureNotSupportedException(&quot;Character streams not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setAsciiStream(int parameterIndex, InputStream x) throws SQLException {
+<span class="nc" id="L388">        throw new SQLFeatureNotSupportedException(&quot;ASCII streams not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setBinaryStream(int parameterIndex, InputStream x) throws SQLException {
+<span class="nc" id="L393">        throw new SQLFeatureNotSupportedException(&quot;Binary streams not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setCharacterStream(int parameterIndex, Reader reader) throws SQLException {
+<span class="nc" id="L398">        throw new SQLFeatureNotSupportedException(&quot;Character streams not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setNCharacterStream(int parameterIndex, Reader value) throws SQLException {
+<span class="nc" id="L403">        throw new SQLFeatureNotSupportedException(&quot;NCharacter streams not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setClob(int parameterIndex, Reader reader) throws SQLException {
+<span class="nc" id="L408">        throw new SQLFeatureNotSupportedException(&quot;Clob not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setBlob(int parameterIndex, InputStream inputStream) throws SQLException {
+<span class="nc" id="L413">        throw new SQLFeatureNotSupportedException(&quot;Blob not supported&quot;);</span>
+    }
+    
+    @Override
+    public void setNClob(int parameterIndex, Reader reader) throws SQLException {
+<span class="nc" id="L418">        throw new SQLFeatureNotSupportedException(&quot;NClob not supported&quot;);</span>
+    }
+    
+    // Statement interface delegation
+    
+    @Override
+    public ResultSet executeQuery(String sql) throws SQLException {
+<span class="nc" id="L425">        throw new SQLException(&quot;Use executeQuery() without parameters for PreparedStatement&quot;);</span>
+    }
+    
+    @Override
+    public int executeUpdate(String sql) throws SQLException {
+<span class="nc" id="L430">        throw new SQLException(&quot;Use executeUpdate() without parameters for PreparedStatement&quot;);</span>
+    }
+    
+    @Override
+    public boolean execute(String sql) throws SQLException {
+<span class="nc" id="L435">        throw new SQLException(&quot;Use execute() without parameters for PreparedStatement&quot;);</span>
+    }
+    
+    @Override
+    public int getMaxFieldSize() throws SQLException {
+<span class="nc" id="L440">        return 0;</span>
+    }
+    
+    @Override
+    public void setMaxFieldSize(int max) throws SQLException {
+        // No-op
+<span class="nc" id="L446">    }</span>
+    
+    @Override
+    public int getMaxRows() throws SQLException {
+<span class="nc" id="L450">        return 0;</span>
+    }
+    
+    @Override
+    public void setMaxRows(int max) throws SQLException {
+        // No-op
+<span class="nc" id="L456">    }</span>
+    
+    @Override
+    public void setEscapeProcessing(boolean enable) throws SQLException {
+        // No-op
+<span class="nc" id="L461">    }</span>
+    
+    @Override
+    public int getQueryTimeout() throws SQLException {
+<span class="nc" id="L465">        return 0;</span>
+    }
+    
+    @Override
+    public void setQueryTimeout(int seconds) throws SQLException {
+        // No-op
+<span class="nc" id="L471">    }</span>
+    
+    @Override
+    public void cancel() throws SQLException {
+        // No-op
+<span class="nc" id="L476">    }</span>
+    
+    @Override
+    public SQLWarning getWarnings() throws SQLException {
+<span class="nc" id="L480">        return null;</span>
+    }
+    
+    @Override
+    public void clearWarnings() throws SQLException {
+        // No-op
+<span class="nc" id="L486">    }</span>
+    
+    @Override
+    public void setCursorName(String name) throws SQLException {
+<span class="nc" id="L490">        throw new SQLFeatureNotSupportedException(&quot;Cursor names not supported&quot;);</span>
+    }
+    
+    @Override
+    public boolean getMoreResults(int current) throws SQLException {
+<span class="nc" id="L495">        return false;</span>
+    }
+    
+    @Override
+    public ResultSet getGeneratedKeys() throws SQLException {
+<span class="nc" id="L500">        throw new SQLFeatureNotSupportedException(&quot;Generated keys not supported&quot;);</span>
+    }
+    
+    @Override
+    public int executeUpdate(String sql, int autoGeneratedKeys) throws SQLException {
+<span class="nc" id="L505">        throw new SQLException(&quot;Use executeUpdate() without parameters for PreparedStatement&quot;);</span>
+    }
+    
+    @Override
+    public int executeUpdate(String sql, int[] columnIndexes) throws SQLException {
+<span class="nc" id="L510">        throw new SQLException(&quot;Use executeUpdate() without parameters for PreparedStatement&quot;);</span>
+    }
+    
+    @Override
+    public int executeUpdate(String sql, String[] columnNames) throws SQLException {
+<span class="nc" id="L515">        throw new SQLException(&quot;Use executeUpdate() without parameters for PreparedStatement&quot;);</span>
+    }
+    
+    @Override
+    public boolean execute(String sql, int autoGeneratedKeys) throws SQLException {
+<span class="nc" id="L520">        throw new SQLException(&quot;Use execute() without parameters for PreparedStatement&quot;);</span>
+    }
+    
+    @Override
+    public boolean execute(String sql, int[] columnIndexes) throws SQLException {
+<span class="nc" id="L525">        throw new SQLException(&quot;Use execute() without parameters for PreparedStatement&quot;);</span>
+    }
+    
+    @Override
+    public boolean execute(String sql, String[] columnNames) throws SQLException {
+<span class="nc" id="L530">        throw new SQLException(&quot;Use execute() without parameters for PreparedStatement&quot;);</span>
+    }
+    
+    @Override
+    public int getResultSetHoldability() throws SQLException {
+<span class="nc" id="L535">        return ResultSet.CLOSE_CURSORS_AT_COMMIT;</span>
+    }
+    
+    @Override
+    public void setPoolable(boolean poolable) throws SQLException {
+        // No-op
+<span class="nc" id="L541">    }</span>
+    
+    @Override
+    public boolean isPoolable() throws SQLException {
+<span class="nc" id="L545">        return false;</span>
+    }
+    
+    @Override
+    public void closeOnCompletion() throws SQLException {
+        // No-op
+<span class="nc" id="L551">    }</span>
+    
+    @Override
+    public boolean isCloseOnCompletion() throws SQLException {
+<span class="nc" id="L555">        return false;</span>
+    }
+    
+    // Connection methods
+    
+    @Override
+    public Connection getConnection() throws SQLException {
+<span class="nc" id="L562">        return connection;</span>
+    }
+    
+    @Override
+    public int getFetchDirection() throws SQLException {
+<span class="nc" id="L567">        return ResultSet.FETCH_FORWARD;</span>
+    }
+    
+    @Override
+    public void setFetchDirection(int direction) throws SQLException {
+        // No-op
+<span class="nc" id="L573">    }</span>
+    
+    @Override
+    public int getFetchSize() throws SQLException {
+<span class="nc" id="L577">        return 0;</span>
+    }
+    
+    @Override
+    public void setFetchSize(int rows) throws SQLException {
+        // No-op
+<span class="nc" id="L583">    }</span>
+    
+    @Override
+    public int getResultSetConcurrency() throws SQLException {
+<span class="nc" id="L587">        return ResultSet.CONCUR_READ_ONLY;</span>
+    }
+    
+    @Override
+    public int getResultSetType() throws SQLException {
+<span class="nc" id="L592">        return ResultSet.TYPE_FORWARD_ONLY;</span>
+    }
+    
+    @Override
+    public void addBatch(String sql) throws SQLException {
+<span class="nc" id="L597">        throw new SQLFeatureNotSupportedException(&quot;Batch operations not supported&quot;);</span>
+    }
+    
+    @Override
+    public void clearBatch() throws SQLException {
+<span class="nc" id="L602">        throw new SQLFeatureNotSupportedException(&quot;Batch operations not supported&quot;);</span>
+    }
+    
+    @Override
+    public int[] executeBatch() throws SQLException {
+<span class="nc" id="L607">        throw new SQLFeatureNotSupportedException(&quot;Batch operations not supported&quot;);</span>
+    }
+    
+    // Wrapper interface
+    
+    @Override
+    public &lt;T&gt; T unwrap(Class&lt;T&gt; iface) throws SQLException {
+<span class="nc bnc" id="L614" title="All 2 branches missed.">        if (iface.isAssignableFrom(getClass())) {</span>
+<span class="nc" id="L615">            return iface.cast(this);</span>
+        }
+<span class="nc" id="L617">        throw new SQLException(&quot;Cannot unwrap to &quot; + iface.getName());</span>
+    }
+    
+    @Override
+    public boolean isWrapperFor(Class&lt;?&gt; iface) throws SQLException {
+<span class="nc" id="L622">        return iface.isAssignableFrom(getClass());</span>
+    }
+    
+    /**
+     * Replaces parameter placeholders (?) in the SQL with actual parameter values.
+     * 
+     * @return the processed SQL string
+     */
+    private String replaceParameters() {
+<span class="fc" id="L631">        String result = sql;</span>
+        
+        // Replace parameters in positional order (1-based JDBC indexing)
+<span class="fc bfc" id="L634" title="All 2 branches covered.">        for (int i = 1; i &lt;= parameters.size(); i++) {</span>
+<span class="pc bpc" id="L635" title="1 of 2 branches missed.">            if (parameters.containsKey(i)) {</span>
+<span class="fc" id="L636">                String value = formatParameterValue(parameters.get(i));</span>
+<span class="fc" id="L637">                result = result.replaceFirst(&quot;\\?&quot;, value);</span>
+            }
+        }
+        
+<span class="fc" id="L641">        return result;</span>
+    }
+    
+    /**
+     * Formats a parameter value for SQL insertion.
+     * 
+     * @param value the parameter value
+     * @return the formatted value string
+     */
+    private String formatParameterValue(Object value) {
+<span class="pc bpc" id="L651" title="1 of 2 branches missed.">        if (value == null) {</span>
+<span class="nc" id="L652">            return &quot;NULL&quot;;</span>
+<span class="fc bfc" id="L653" title="All 2 branches covered.">        } else if (value instanceof String) {</span>
+<span class="fc" id="L654">            return &quot;'&quot; + value.toString().replace(&quot;'&quot;, &quot;''&quot;) + &quot;'&quot;;</span>
+<span class="pc bpc" id="L655" title="1 of 2 branches missed.">        } else if (value instanceof Boolean) {</span>
+<span class="nc bnc" id="L656" title="All 2 branches missed.">            return ((Boolean) value) ? &quot;TRUE&quot; : &quot;FALSE&quot;;</span>
+        } else {
+<span class="fc" id="L658">            return value.toString();</span>
+        }
+    }
+    
+    private void checkClosed() throws SQLException {
+<span class="pc bpc" id="L663" title="1 of 2 branches missed.">        if (closed) {</span>
+<span class="nc" id="L664">            throw new SQLException(&quot;PreparedStatement is closed&quot;);</span>
+        }
+<span class="fc" id="L666">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

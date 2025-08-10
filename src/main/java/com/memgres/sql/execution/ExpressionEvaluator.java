@@ -95,36 +95,97 @@ public class ExpressionEvaluator {
             columns = currentTable.getColumns();
         }
         
-        // Find column index (handle table-qualified references for correlated subqueries)
+        // Find column index
         String columnName = colRef.getColumnName().toLowerCase();
-        Map<String, Integer> columnIndexMap = new HashMap<>();
+        Integer columnIndex = null;
         
-        // For table-qualified references (e.g., employees.dept_id)
+        // For table-qualified references (e.g., authors.id, posts.author_id)
         if (colRef.getTableName().isPresent()) {
             String tableName = colRef.getTableName().get().toLowerCase();
-            // In correlated subqueries, we might need to look in outer query context
-            // For now, just search all columns - proper table resolution would be more complex
-            for (int i = 0; i < columns.size(); i++) {
-                Column col = columns.get(i);
-                columnIndexMap.put(col.getName().toLowerCase(), i);
+            
+            // In join context, we need to properly resolve table-qualified column references
+            // The combined columns are ordered as [leftTable columns..., rightTable columns...]
+            // We need to get the table information from the execution context
+            Map<String, List<Column>> tableColumns = context.getTableColumns();
+            if (tableColumns != null && tableColumns.containsKey(tableName)) {
+                List<Column> targetTableColumns = tableColumns.get(tableName);
+                
+                // Find the column within the specific table
+                for (int i = 0; i < targetTableColumns.size(); i++) {
+                    if (targetTableColumns.get(i).getName().toLowerCase().equals(columnName)) {
+                        // Now find the absolute index in the combined columns list
+                        columnIndex = findColumnIndexInCombined(columns, tableName, columnName, context);
+                        break;
+                    }
+                }
+            } else {
+                // Fallback: search all columns but prefer exact matches first
+                for (int i = 0; i < columns.size(); i++) {
+                    Column col = columns.get(i);
+                    if (col.getName().toLowerCase().equals(columnName)) {
+                        columnIndex = i;
+                        break; // Take first match - this is the old buggy behavior but safer fallback
+                    }
+                }
             }
         } else {
-            // Unqualified column reference
+            // Unqualified column reference - search all columns
             for (int i = 0; i < columns.size(); i++) {
                 Column col = columns.get(i);
-                columnIndexMap.put(col.getName().toLowerCase(), i);
+                if (col.getName().toLowerCase().equals(columnName)) {
+                    columnIndex = i;
+                    break;
+                }
             }
         }
         
-        Integer columnIndex = columnIndexMap.get(columnName);
         if (columnIndex == null) {
-            // For correlated subqueries, if column not found in current context, it might be from outer query
-            // This needs proper implementation of outer context passing
             throw new IllegalArgumentException("Column not found: " + columnName + 
                 (colRef.getTableName().isPresent() ? " in table " + colRef.getTableName().get() : ""));
         }
         
         return currentRow.getData()[columnIndex];
+    }
+    
+    /**
+     * Find the absolute index of a table-qualified column in the combined columns list.
+     * For JOIN operations, columns are combined as [leftTable columns..., rightTable columns...]
+     */
+    private Integer findColumnIndexInCombined(List<Column> combinedColumns, String tableName, 
+                                            String columnName, ExecutionContext context) {
+        Map<String, List<Column>> tableColumns = context.getTableColumns();
+        if (tableColumns == null) {
+            return null;
+        }
+        
+        List<String> tableOrder = context.getTableOrder();
+        if (tableOrder == null) {
+            return null;
+        }
+        
+        int absoluteIndex = 0;
+        for (String currentTable : tableOrder) {
+            List<Column> currentTableColumns = tableColumns.get(currentTable.toLowerCase());
+            if (currentTableColumns == null) {
+                continue;
+            }
+            
+            if (currentTable.toLowerCase().equals(tableName.toLowerCase())) {
+                // Found the target table, now find the column within it
+                for (int i = 0; i < currentTableColumns.size(); i++) {
+                    if (currentTableColumns.get(i).getName().toLowerCase().equals(columnName.toLowerCase())) {
+                        return absoluteIndex + i;
+                    }
+                }
+                // Column not found in this table
+                return null;
+            }
+            
+            // Move to next table's columns
+            absoluteIndex += currentTableColumns.size();
+        }
+        
+        return null;
     }
     
     private Object evaluateBinaryExpression(BinaryExpression binary, ExecutionContext context) {
@@ -316,7 +377,14 @@ public class ExpressionEvaluator {
             Number leftNum = (Number) left;
             Number rightNum = (Number) right;
             
-            if (left instanceof Double || right instanceof Double) {
+            // Handle BigDecimal operations to preserve precision
+            if (left instanceof java.math.BigDecimal || right instanceof java.math.BigDecimal) {
+                java.math.BigDecimal leftBD = (left instanceof java.math.BigDecimal) ? 
+                    (java.math.BigDecimal) left : java.math.BigDecimal.valueOf(leftNum.doubleValue());
+                java.math.BigDecimal rightBD = (right instanceof java.math.BigDecimal) ? 
+                    (java.math.BigDecimal) right : java.math.BigDecimal.valueOf(rightNum.doubleValue());
+                return leftBD.add(rightBD);
+            } else if (left instanceof Double || right instanceof Double) {
                 return leftNum.doubleValue() + rightNum.doubleValue();
             } else if (left instanceof Float || right instanceof Float) {
                 return leftNum.floatValue() + rightNum.floatValue();
@@ -334,7 +402,14 @@ public class ExpressionEvaluator {
             Number leftNum = (Number) left;
             Number rightNum = (Number) right;
             
-            if (left instanceof Double || right instanceof Double) {
+            // Handle BigDecimal operations to preserve precision
+            if (left instanceof java.math.BigDecimal || right instanceof java.math.BigDecimal) {
+                java.math.BigDecimal leftBD = (left instanceof java.math.BigDecimal) ? 
+                    (java.math.BigDecimal) left : java.math.BigDecimal.valueOf(leftNum.doubleValue());
+                java.math.BigDecimal rightBD = (right instanceof java.math.BigDecimal) ? 
+                    (java.math.BigDecimal) right : java.math.BigDecimal.valueOf(rightNum.doubleValue());
+                return leftBD.subtract(rightBD);
+            } else if (left instanceof Double || right instanceof Double) {
                 return leftNum.doubleValue() - rightNum.doubleValue();
             } else if (left instanceof Float || right instanceof Float) {
                 return leftNum.floatValue() - rightNum.floatValue();
@@ -396,6 +471,15 @@ public class ExpressionEvaluator {
     private boolean equalValues(Object left, Object right) {
         if (left == null && right == null) return true;
         if (left == null || right == null) return false;
+        
+        // Handle numeric type conversions
+        if (left instanceof Number && right instanceof Number) {
+            // Convert both to the same numeric type for comparison
+            double leftValue = ((Number) left).doubleValue();
+            double rightValue = ((Number) right).doubleValue();
+            return leftValue == rightValue;
+        }
+        
         return left.equals(right);
     }
     

@@ -53,9 +53,18 @@ public class SqlExecutionEngine {
             // Parse SQL into AST statements
             List<Statement> statements = sqlParser.parse(sql);
             
-            // Execute statements in a transaction
-            Transaction transaction = engine.getTransactionManager().beginTransaction(isolationLevel);
-            TransactionContext.setCurrentTransaction(transaction);
+            // Check if we already have a transaction context
+            Transaction existingTransaction = TransactionContext.getCurrentTransaction();
+            boolean useExistingTransaction = existingTransaction != null;
+            
+            Transaction transaction;
+            if (useExistingTransaction) {
+                transaction = existingTransaction;
+            } else {
+                // Execute statements in a new transaction
+                transaction = engine.getTransactionManager().beginTransaction(isolationLevel);
+                TransactionContext.setCurrentTransaction(transaction);
+            }
             
             try {
                 SqlExecutionResult result = null;
@@ -65,18 +74,29 @@ public class SqlExecutionEngine {
                     result = statementExecutor.execute(statement);
                 }
                 
-                // Commit transaction
-                engine.getTransactionManager().commitTransaction(transaction);
-                logger.debug("Successfully executed SQL: {}", sql);
+                // Only commit and clear context if we created the transaction
+                if (!useExistingTransaction) {
+                    // Commit transaction
+                    engine.getTransactionManager().commitTransaction(transaction);
+                    logger.debug("Successfully executed SQL: {}", sql);
+                } else {
+                    logger.debug("Successfully executed SQL in existing transaction: {}", sql);
+                }
                 
                 return result != null ? result : SqlExecutionResult.empty();
                 
             } catch (Exception e) {
-                // Rollback transaction on error
-                engine.getTransactionManager().rollbackTransaction(transaction);
+                // Only rollback if we created the transaction
+                if (!useExistingTransaction) {
+                    // Rollback transaction on error
+                    engine.getTransactionManager().rollbackTransaction(transaction);
+                }
                 throw e;
             } finally {
-                TransactionContext.setCurrentTransaction(null);
+                // Only clear context if we created the transaction
+                if (!useExistingTransaction) {
+                    TransactionContext.setCurrentTransaction(null);
+                }
             }
             
         } catch (SqlParseException e) {
