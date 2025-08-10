@@ -320,7 +320,7 @@
                         <exclude>java/**</exclude>
                         <exclude>org/springframework/**</exclude>
                         <!-- Exclude generated ANTLR classes -->
-                        <exclude>com/memgres/sql/PostgreSQL*</exclude>
+                        <exclude>com/memgres/sql/MemGres*</exclude>
                     </excludes>
                 </configuration>
                 <executions>

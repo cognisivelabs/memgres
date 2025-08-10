@@ -1,7 +1,7 @@
 package com.memgres.sql.parser;
 
-import com.memgres.sql.PostgreSQLParser;
-import com.memgres.sql.PostgreSQLParserBaseVisitor;
+import com.memgres.sql.MemGresParser;
+import com.memgres.sql.MemGresParserBaseVisitor;
 import com.memgres.sql.ast.expression.*;
 import com.memgres.sql.ast.statement.*;
 import com.memgres.types.DataType;
@@ -13,14 +13,14 @@ import java.util.stream.Collectors;
 /**
  * Visitor that converts ANTLR4 parse trees into our SQL AST nodes.
  */
-public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
+public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
     
     /**
      * Visit the top-level SQL context and return a list of statements.
      */
-    public List<Statement> visit(PostgreSQLParser.SqlContext ctx) {
+    public List<Statement> visit(MemGresParser.SqlContext ctx) {
         List<Statement> statements = new ArrayList<>();
-        for (PostgreSQLParser.StatementContext stmtCtx : ctx.statement()) {
+        for (MemGresParser.StatementContext stmtCtx : ctx.statement()) {
             Statement stmt = (Statement) visit(stmtCtx);
             if (stmt != null) {
                 statements.add(stmt);
@@ -30,7 +30,7 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
     }
     
     @Override
-    public Statement visitStatement(PostgreSQLParser.StatementContext ctx) {
+    public Statement visitStatement(MemGresParser.StatementContext ctx) {
         if (ctx.selectStatement() != null) {
             return (Statement) visit(ctx.selectStatement());
         } else if (ctx.insertStatement() != null) {
@@ -48,7 +48,7 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
     }
     
     @Override
-    public SelectStatement visitSelectStatement(PostgreSQLParser.SelectStatementContext ctx) {
+    public SelectStatement visitSelectStatement(MemGresParser.SelectStatementContext ctx) {
         // Parse DISTINCT
         boolean distinct = ctx.selectModifier() != null && 
                           ctx.selectModifier().DISTINCT() != null;
@@ -58,7 +58,7 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
         if (ctx.selectList().MULTIPLY() != null) {
             selectItems.add(new SelectItem()); // Wildcard
         } else {
-            for (PostgreSQLParser.SelectItemContext itemCtx : ctx.selectList().selectItem()) {
+            for (MemGresParser.SelectItemContext itemCtx : ctx.selectList().selectItem()) {
                 selectItems.add((SelectItem) visit(itemCtx));
             }
         }
@@ -88,7 +88,7 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
     }
     
     @Override
-    public SelectItem visitSelectItem(PostgreSQLParser.SelectItemContext ctx) {
+    public SelectItem visitSelectItem(MemGresParser.SelectItemContext ctx) {
         Expression expression = (Expression) visit(ctx.expression());
         Optional<String> alias = ctx.alias() != null ? 
             Optional.of(ctx.alias().getText()) : Optional.empty();
@@ -96,22 +96,22 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
     }
     
     @Override
-    public FromClause visitFromClause(PostgreSQLParser.FromClauseContext ctx) {
+    public FromClause visitFromClause(MemGresParser.FromClauseContext ctx) {
         List<JoinableTable> joinableTables = new ArrayList<>();
-        for (PostgreSQLParser.JoinableTableContext joinableCtx : ctx.joinableTable()) {
+        for (MemGresParser.JoinableTableContext joinableCtx : ctx.joinableTable()) {
             joinableTables.add((JoinableTable) visit(joinableCtx));
         }
         return new FromClause(joinableTables);
     }
     
     @Override
-    public JoinableTable visitJoinableTable(PostgreSQLParser.JoinableTableContext ctx) {
+    public JoinableTable visitJoinableTable(MemGresParser.JoinableTableContext ctx) {
         // Get the base table reference
         TableReference baseTable = (TableReference) visit(ctx.tableReference());
         
         // Get all join clauses
         List<JoinClause> joins = new ArrayList<>();
-        for (PostgreSQLParser.JoinClauseContext joinCtx : ctx.joinClause()) {
+        for (MemGresParser.JoinClauseContext joinCtx : ctx.joinClause()) {
             joins.add((JoinClause) visit(joinCtx));
         }
         
@@ -119,7 +119,7 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
     }
     
     @Override
-    public JoinClause visitJoinClause(PostgreSQLParser.JoinClauseContext ctx) {
+    public JoinClause visitJoinClause(MemGresParser.JoinClauseContext ctx) {
         // Get join type
         JoinClause.JoinType joinType = getJoinType(ctx.joinType());
         
@@ -129,10 +129,10 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
         // Get join condition
         Optional<Expression> onCondition = Optional.empty();
         if (ctx.joinCondition() != null) {
-            PostgreSQLParser.JoinConditionContext condCtx = ctx.joinCondition();
+            MemGresParser.JoinConditionContext condCtx = ctx.joinCondition();
             // Check if it's an ON condition (onJoinCondition alternative)
-            if (condCtx instanceof PostgreSQLParser.OnJoinConditionContext) {
-                PostgreSQLParser.OnJoinConditionContext onCtx = (PostgreSQLParser.OnJoinConditionContext) condCtx;
+            if (condCtx instanceof MemGresParser.OnJoinConditionContext) {
+                MemGresParser.OnJoinConditionContext onCtx = (MemGresParser.OnJoinConditionContext) condCtx;
                 Expression condition = (Expression) visit(onCtx.expression());
                 onCondition = Optional.of(condition);
             }
@@ -146,18 +146,18 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
     /**
      * Convert ANTLR join type context to JoinClause.JoinType enum.
      */
-    private JoinClause.JoinType getJoinType(PostgreSQLParser.JoinTypeContext ctx) {
+    private JoinClause.JoinType getJoinType(MemGresParser.JoinTypeContext ctx) {
         if (ctx == null) {
             return JoinClause.JoinType.INNER; // Default to INNER JOIN
         }
         
-        if (ctx instanceof PostgreSQLParser.InnerJoinContext) {
+        if (ctx instanceof MemGresParser.InnerJoinContext) {
             return JoinClause.JoinType.INNER;
-        } else if (ctx instanceof PostgreSQLParser.LeftJoinContext) {
+        } else if (ctx instanceof MemGresParser.LeftJoinContext) {
             return JoinClause.JoinType.LEFT;
-        } else if (ctx instanceof PostgreSQLParser.RightJoinContext) {
+        } else if (ctx instanceof MemGresParser.RightJoinContext) {
             return JoinClause.JoinType.RIGHT;
-        } else if (ctx instanceof PostgreSQLParser.FullOuterJoinContext) {
+        } else if (ctx instanceof MemGresParser.FullOuterJoinContext) {
             return JoinClause.JoinType.FULL_OUTER;
         } else {
             return JoinClause.JoinType.INNER; // Default fallback
@@ -165,7 +165,7 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
     }
     
     @Override
-    public TableReference visitTableReference(PostgreSQLParser.TableReferenceContext ctx) {
+    public TableReference visitTableReference(MemGresParser.TableReferenceContext ctx) {
         String tableName = ctx.tableName().getText();
         Optional<String> alias = ctx.alias() != null ? 
             Optional.of(ctx.alias().getText()) : Optional.empty();
@@ -173,15 +173,15 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
     }
     
     @Override
-    public WhereClause visitWhereClause(PostgreSQLParser.WhereClauseContext ctx) {
+    public WhereClause visitWhereClause(MemGresParser.WhereClauseContext ctx) {
         Expression condition = (Expression) visit(ctx.expression());
         return new WhereClause(condition);
     }
     
     @Override
-    public OrderByClause visitOrderByClause(PostgreSQLParser.OrderByClauseContext ctx) {
+    public OrderByClause visitOrderByClause(MemGresParser.OrderByClauseContext ctx) {
         List<OrderByClause.OrderItem> items = new ArrayList<>();
-        for (PostgreSQLParser.OrderItemContext itemCtx : ctx.orderItem()) {
+        for (MemGresParser.OrderItemContext itemCtx : ctx.orderItem()) {
             Expression expr = (Expression) visit(itemCtx.expression());
             boolean ascending = itemCtx.DESC() == null; // Default to ASC
             items.add(new OrderByClause.OrderItem(expr, ascending));
@@ -190,22 +190,22 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
     }
     
     @Override
-    public GroupByClause visitGroupByClause(PostgreSQLParser.GroupByClauseContext ctx) {
+    public GroupByClause visitGroupByClause(MemGresParser.GroupByClauseContext ctx) {
         List<Expression> expressions = new ArrayList<>();
-        for (PostgreSQLParser.ExpressionContext exprCtx : ctx.expression()) {
+        for (MemGresParser.ExpressionContext exprCtx : ctx.expression()) {
             expressions.add((Expression) visit(exprCtx));
         }
         return new GroupByClause(expressions);
     }
     
     @Override
-    public HavingClause visitHavingClause(PostgreSQLParser.HavingClauseContext ctx) {
+    public HavingClause visitHavingClause(MemGresParser.HavingClauseContext ctx) {
         Expression condition = (Expression) visit(ctx.expression());
         return new HavingClause(condition);
     }
     
     @Override
-    public LimitClause visitLimitClause(PostgreSQLParser.LimitClauseContext ctx) {
+    public LimitClause visitLimitClause(MemGresParser.LimitClauseContext ctx) {
         Expression limit = (Expression) visit(ctx.expression(0));
         Optional<Expression> offset = ctx.expression().size() > 1 ?
             Optional.of((Expression) visit(ctx.expression(1))) : Optional.empty();
@@ -214,12 +214,12 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
     
     // Expression visitors
     @Override
-    public Expression visitLiteralExpression(PostgreSQLParser.LiteralExpressionContext ctx) {
+    public Expression visitLiteralExpression(MemGresParser.LiteralExpressionContext ctx) {
         return (Expression) visit(ctx.literal());
     }
     
     @Override
-    public LiteralExpression visitStringLiteral(PostgreSQLParser.StringLiteralContext ctx) {
+    public LiteralExpression visitStringLiteral(MemGresParser.StringLiteralContext ctx) {
         String text = ctx.STRING().getText();
         // Remove quotes
         String value = text.substring(1, text.length() - 1);
@@ -227,36 +227,36 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
     }
     
     @Override
-    public LiteralExpression visitIntegerLiteral(PostgreSQLParser.IntegerLiteralContext ctx) {
+    public LiteralExpression visitIntegerLiteral(MemGresParser.IntegerLiteralContext ctx) {
         Long value = Long.parseLong(ctx.INTEGER_LITERAL().getText());
         return new LiteralExpression(value, LiteralExpression.LiteralType.INTEGER);
     }
     
     @Override
-    public LiteralExpression visitDecimalLiteral(PostgreSQLParser.DecimalLiteralContext ctx) {
+    public LiteralExpression visitDecimalLiteral(MemGresParser.DecimalLiteralContext ctx) {
         String decimalText = ctx.DECIMAL_LITERAL().getText();
         BigDecimal value = new BigDecimal(decimalText);
         return new LiteralExpression(value, LiteralExpression.LiteralType.DECIMAL);
     }
     
     @Override
-    public LiteralExpression visitBooleanLiteral(PostgreSQLParser.BooleanLiteralContext ctx) {
+    public LiteralExpression visitBooleanLiteral(MemGresParser.BooleanLiteralContext ctx) {
         Boolean value = ctx.TRUE() != null;
         return new LiteralExpression(value, LiteralExpression.LiteralType.BOOLEAN);
     }
     
     @Override
-    public LiteralExpression visitNullLiteral(PostgreSQLParser.NullLiteralContext ctx) {
+    public LiteralExpression visitNullLiteral(MemGresParser.NullLiteralContext ctx) {
         return new LiteralExpression(null, LiteralExpression.LiteralType.NULL);
     }
     
     @Override
-    public Expression visitColumnReferenceExpression(PostgreSQLParser.ColumnReferenceExpressionContext ctx) {
+    public Expression visitColumnReferenceExpression(MemGresParser.ColumnReferenceExpressionContext ctx) {
         return (Expression) visit(ctx.columnReference());
     }
     
     @Override
-    public ColumnReference visitColumnReference(PostgreSQLParser.ColumnReferenceContext ctx) {
+    public ColumnReference visitColumnReference(MemGresParser.ColumnReferenceContext ctx) {
         if (ctx.tableName() != null) {
             String tableName = ctx.tableName().getText();
             String columnName = ctx.columnName().getText();
@@ -268,7 +268,7 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
     }
     
     @Override
-    public Expression visitBinaryExpression(PostgreSQLParser.BinaryExpressionContext ctx) {
+    public Expression visitBinaryExpression(MemGresParser.BinaryExpressionContext ctx) {
         Expression left = (Expression) visit(ctx.expression(0));
         Expression right = (Expression) visit(ctx.expression(1));
         BinaryExpression.Operator operator = getBinaryOperator(ctx.binaryOperator());
@@ -276,31 +276,31 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
     }
     
     @Override
-    public Expression visitFunctionCallExpression(PostgreSQLParser.FunctionCallExpressionContext ctx) {
+    public Expression visitFunctionCallExpression(MemGresParser.FunctionCallExpressionContext ctx) {
         return (Expression) visit(ctx.functionCall());
     }
     
     @Override
-    public FunctionCall visitGenRandomUuidFunction(PostgreSQLParser.GenRandomUuidFunctionContext ctx) {
+    public FunctionCall visitGenRandomUuidFunction(MemGresParser.GenRandomUuidFunctionContext ctx) {
         return new FunctionCall("gen_random_uuid", List.of());
     }
     
     @Override
-    public FunctionCall visitUuidGenerateV1Function(PostgreSQLParser.UuidGenerateV1FunctionContext ctx) {
+    public FunctionCall visitUuidGenerateV1Function(MemGresParser.UuidGenerateV1FunctionContext ctx) {
         return new FunctionCall("uuid_generate_v1", List.of());
     }
     
     @Override
-    public FunctionCall visitUuidGenerateV4Function(PostgreSQLParser.UuidGenerateV4FunctionContext ctx) {
+    public FunctionCall visitUuidGenerateV4Function(MemGresParser.UuidGenerateV4FunctionContext ctx) {
         return new FunctionCall("uuid_generate_v4", List.of());
     }
     
     @Override
-    public FunctionCall visitGenericFunction(PostgreSQLParser.GenericFunctionContext ctx) {
+    public FunctionCall visitGenericFunction(MemGresParser.GenericFunctionContext ctx) {
         String functionName = ctx.identifier().getText();
         List<Expression> arguments = new ArrayList<>();
         if (ctx.expressionList() != null) {
-            for (PostgreSQLParser.ExpressionContext exprCtx : ctx.expressionList().expression()) {
+            for (MemGresParser.ExpressionContext exprCtx : ctx.expressionList().expression()) {
                 arguments.add((Expression) visit(exprCtx));
             }
         }
@@ -308,19 +308,19 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
     }
     
     @Override
-    public SubqueryExpression visitSubqueryExpression(PostgreSQLParser.SubqueryExpressionContext ctx) {
+    public SubqueryExpression visitSubqueryExpression(MemGresParser.SubqueryExpressionContext ctx) {
         SelectStatement selectStatement = (SelectStatement) visit(ctx.selectStatement());
         return new SubqueryExpression(selectStatement);
     }
     
     @Override
-    public ExistsExpression visitExistsExpression(PostgreSQLParser.ExistsExpressionContext ctx) {
+    public ExistsExpression visitExistsExpression(MemGresParser.ExistsExpressionContext ctx) {
         SelectStatement subquery = (SelectStatement) visit(ctx.selectStatement());
         return new ExistsExpression(subquery);
     }
     
     @Override
-    public InSubqueryExpression visitInSubqueryExpression(PostgreSQLParser.InSubqueryExpressionContext ctx) {
+    public InSubqueryExpression visitInSubqueryExpression(MemGresParser.InSubqueryExpressionContext ctx) {
         Expression expression = (Expression) visit(ctx.expression());
         SelectStatement subquery = (SelectStatement) visit(ctx.selectStatement());
         boolean negated = ctx.NOT() != null;
@@ -328,7 +328,7 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
     }
     
     @Override
-    public AggregateFunction visitCountFunction(PostgreSQLParser.CountFunctionContext ctx) {
+    public AggregateFunction visitCountFunction(MemGresParser.CountFunctionContext ctx) {
         if (ctx.MULTIPLY() != null) {
             // COUNT(*)
             return new AggregateFunction(AggregateFunction.AggregateType.COUNT, null);
@@ -340,38 +340,38 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
     }
     
     @Override
-    public AggregateFunction visitSumFunction(PostgreSQLParser.SumFunctionContext ctx) {
+    public AggregateFunction visitSumFunction(MemGresParser.SumFunctionContext ctx) {
         Expression expr = (Expression) visit(ctx.expression());
         return new AggregateFunction(AggregateFunction.AggregateType.SUM, expr);
     }
     
     @Override
-    public AggregateFunction visitAvgFunction(PostgreSQLParser.AvgFunctionContext ctx) {
+    public AggregateFunction visitAvgFunction(MemGresParser.AvgFunctionContext ctx) {
         Expression expr = (Expression) visit(ctx.expression());
         return new AggregateFunction(AggregateFunction.AggregateType.AVG, expr);
     }
     
     @Override
-    public AggregateFunction visitMinFunction(PostgreSQLParser.MinFunctionContext ctx) {
+    public AggregateFunction visitMinFunction(MemGresParser.MinFunctionContext ctx) {
         Expression expr = (Expression) visit(ctx.expression());
         return new AggregateFunction(AggregateFunction.AggregateType.MIN, expr);
     }
     
     @Override
-    public AggregateFunction visitMaxFunction(PostgreSQLParser.MaxFunctionContext ctx) {
+    public AggregateFunction visitMaxFunction(MemGresParser.MaxFunctionContext ctx) {
         Expression expr = (Expression) visit(ctx.expression());
         return new AggregateFunction(AggregateFunction.AggregateType.MAX, expr);
     }
     
     @Override
-    public AggregateFunction visitCountDistinctFunction(PostgreSQLParser.CountDistinctFunctionContext ctx) {
+    public AggregateFunction visitCountDistinctFunction(MemGresParser.CountDistinctFunctionContext ctx) {
         Expression expr = (Expression) visit(ctx.expression());
         return new AggregateFunction(AggregateFunction.AggregateType.COUNT_DISTINCT, expr);
     }
     
     // INSERT statement
     @Override
-    public InsertStatement visitInsertStatement(PostgreSQLParser.InsertStatementContext ctx) {
+    public InsertStatement visitInsertStatement(MemGresParser.InsertStatementContext ctx) {
         String tableName = ctx.tableName().getText();
         
         Optional<List<String>> columns = Optional.empty();
@@ -383,9 +383,9 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
         }
         
         List<List<Expression>> valuesList = new ArrayList<>();
-        for (PostgreSQLParser.ValuesClauseContext valuesCtx : ctx.valuesClause()) {
+        for (MemGresParser.ValuesClauseContext valuesCtx : ctx.valuesClause()) {
             List<Expression> values = new ArrayList<>();
-            for (PostgreSQLParser.ExpressionContext exprCtx : valuesCtx.expression()) {
+            for (MemGresParser.ExpressionContext exprCtx : valuesCtx.expression()) {
                 values.add((Expression) visit(exprCtx));
             }
             valuesList.add(values);
@@ -396,11 +396,11 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
     
     // UPDATE statement
     @Override
-    public UpdateStatement visitUpdateStatement(PostgreSQLParser.UpdateStatementContext ctx) {
+    public UpdateStatement visitUpdateStatement(MemGresParser.UpdateStatementContext ctx) {
         String tableName = ctx.tableName().getText();
         
         List<UpdateStatement.UpdateItem> updateItems = new ArrayList<>();
-        for (PostgreSQLParser.UpdateItemContext updateCtx : ctx.updateItem()) {
+        for (MemGresParser.UpdateItemContext updateCtx : ctx.updateItem()) {
             String columnName = updateCtx.columnName().getText();
             Expression value = (Expression) visit(updateCtx.expression());
             updateItems.add(new UpdateStatement.UpdateItem(columnName, value));
@@ -414,7 +414,7 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
     
     // DELETE statement
     @Override
-    public DeleteStatement visitDeleteStatement(PostgreSQLParser.DeleteStatementContext ctx) {
+    public DeleteStatement visitDeleteStatement(MemGresParser.DeleteStatementContext ctx) {
         String tableName = ctx.tableName().getText();
         
         Optional<WhereClause> whereClause = ctx.whereClause() != null ? 
@@ -425,17 +425,17 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
     
     // CREATE TABLE statement
     @Override
-    public CreateTableStatement visitCreateTableStatement(PostgreSQLParser.CreateTableStatementContext ctx) {
+    public CreateTableStatement visitCreateTableStatement(MemGresParser.CreateTableStatementContext ctx) {
         String tableName = ctx.tableName().getText();
         
         List<ColumnDefinition> columnDefinitions = new ArrayList<>();
-        for (PostgreSQLParser.ColumnDefinitionContext colCtx : ctx.columnDefinition()) {
+        for (MemGresParser.ColumnDefinitionContext colCtx : ctx.columnDefinition()) {
             String columnName = colCtx.columnName().getText();
             DataTypeNode dataType = (DataTypeNode) visit(colCtx.dataType());
             
             List<ColumnDefinition.Constraint> constraints = new ArrayList<>();
             if (colCtx.columnConstraint() != null) {
-                for (PostgreSQLParser.ColumnConstraintContext constraintCtx : colCtx.columnConstraint()) {
+                for (MemGresParser.ColumnConstraintContext constraintCtx : colCtx.columnConstraint()) {
                     if (constraintCtx.NOT() != null && constraintCtx.NULL() != null) {
                         constraints.add(ColumnDefinition.Constraint.NOT_NULL);
                     } else if (constraintCtx.PRIMARY() != null && constraintCtx.KEY() != null) {
@@ -454,106 +454,106 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
     
     // DROP TABLE statement
     @Override
-    public DropTableStatement visitDropTableStatement(PostgreSQLParser.DropTableStatementContext ctx) {
+    public DropTableStatement visitDropTableStatement(MemGresParser.DropTableStatementContext ctx) {
         String tableName = ctx.tableName().getText();
         return new DropTableStatement(tableName);
     }
     
     // Data type visitors
     @Override
-    public DataTypeNode visitIntegerType(PostgreSQLParser.IntegerTypeContext ctx) {
+    public DataTypeNode visitIntegerType(MemGresParser.IntegerTypeContext ctx) {
         return new DataTypeNode(DataType.INTEGER);
     }
     
     @Override
-    public DataTypeNode visitBigintType(PostgreSQLParser.BigintTypeContext ctx) {
+    public DataTypeNode visitBigintType(MemGresParser.BigintTypeContext ctx) {
         return new DataTypeNode(DataType.BIGINT);
     }
     
     @Override
-    public DataTypeNode visitSmallintType(PostgreSQLParser.SmallintTypeContext ctx) {
+    public DataTypeNode visitSmallintType(MemGresParser.SmallintTypeContext ctx) {
         return new DataTypeNode(DataType.SMALLINT);
     }
     
     @Override
-    public DataTypeNode visitVarcharType(PostgreSQLParser.VarcharTypeContext ctx) {
+    public DataTypeNode visitVarcharType(MemGresParser.VarcharTypeContext ctx) {
         return new DataTypeNode(DataType.VARCHAR);
     }
     
     @Override
-    public DataTypeNode visitTextType(PostgreSQLParser.TextTypeContext ctx) {
+    public DataTypeNode visitTextType(MemGresParser.TextTypeContext ctx) {
         return new DataTypeNode(DataType.TEXT);
     }
     
     @Override
-    public DataTypeNode visitCharType(PostgreSQLParser.CharTypeContext ctx) {
+    public DataTypeNode visitCharType(MemGresParser.CharTypeContext ctx) {
         return new DataTypeNode(DataType.CHAR);
     }
     
     @Override
-    public DataTypeNode visitBooleanType(PostgreSQLParser.BooleanTypeContext ctx) {
+    public DataTypeNode visitBooleanType(MemGresParser.BooleanTypeContext ctx) {
         return new DataTypeNode(DataType.BOOLEAN);
     }
     
     @Override
-    public DataTypeNode visitUuidType(PostgreSQLParser.UuidTypeContext ctx) {
+    public DataTypeNode visitUuidType(MemGresParser.UuidTypeContext ctx) {
         return new DataTypeNode(DataType.UUID);
     }
     
     @Override
-    public DataTypeNode visitJsonbType(PostgreSQLParser.JsonbTypeContext ctx) {
+    public DataTypeNode visitJsonbType(MemGresParser.JsonbTypeContext ctx) {
         return new DataTypeNode(DataType.JSONB);
     }
     
     @Override
-    public DataTypeNode visitRealType(PostgreSQLParser.RealTypeContext ctx) {
+    public DataTypeNode visitRealType(MemGresParser.RealTypeContext ctx) {
         return new DataTypeNode(DataType.REAL);
     }
     
     @Override
-    public DataTypeNode visitDoublePrecisionType(PostgreSQLParser.DoublePrecisionTypeContext ctx) {
+    public DataTypeNode visitDoublePrecisionType(MemGresParser.DoublePrecisionTypeContext ctx) {
         return new DataTypeNode(DataType.DOUBLE_PRECISION);
     }
     
     @Override
-    public DataTypeNode visitDecimalType(PostgreSQLParser.DecimalTypeContext ctx) {
+    public DataTypeNode visitDecimalType(MemGresParser.DecimalTypeContext ctx) {
         return new DataTypeNode(DataType.DECIMAL);
     }
     
     @Override
-    public DataTypeNode visitNumericType(PostgreSQLParser.NumericTypeContext ctx) {
+    public DataTypeNode visitNumericType(MemGresParser.NumericTypeContext ctx) {
         return new DataTypeNode(DataType.DECIMAL);
     }
     
     @Override
-    public DataTypeNode visitDateType(PostgreSQLParser.DateTypeContext ctx) {
+    public DataTypeNode visitDateType(MemGresParser.DateTypeContext ctx) {
         return new DataTypeNode(DataType.DATE);
     }
     
     @Override
-    public DataTypeNode visitTimeType(PostgreSQLParser.TimeTypeContext ctx) {
+    public DataTypeNode visitTimeType(MemGresParser.TimeTypeContext ctx) {
         return new DataTypeNode(DataType.TIME);
     }
     
     @Override
-    public DataTypeNode visitTimestampType(PostgreSQLParser.TimestampTypeContext ctx) {
+    public DataTypeNode visitTimestampType(MemGresParser.TimestampTypeContext ctx) {
         return new DataTypeNode(DataType.TIMESTAMP);
     }
     
     @Override
-    public DataTypeNode visitTimestamptzType(PostgreSQLParser.TimestamptzTypeContext ctx) {
+    public DataTypeNode visitTimestamptzType(MemGresParser.TimestamptzTypeContext ctx) {
         return new DataTypeNode(DataType.TIMESTAMPTZ);
     }
     
     @Override
-    public DataTypeNode visitByteaType(PostgreSQLParser.ByteaTypeContext ctx) {
+    public DataTypeNode visitByteaType(MemGresParser.ByteaTypeContext ctx) {
         return new DataTypeNode(DataType.BYTEA);
     }
     
     /**
      * Convert ANTLR4 binary operator context to our BinaryExpression.Operator enum.
      */
-    private BinaryExpression.Operator getBinaryOperator(PostgreSQLParser.BinaryOperatorContext ctx) {
+    private BinaryExpression.Operator getBinaryOperator(MemGresParser.BinaryOperatorContext ctx) {
         if (ctx.EQ() != null) return BinaryExpression.Operator.EQUALS;
         if (ctx.NE() != null) return BinaryExpression.Operator.NOT_EQUALS;
         if (ctx.LT() != null) return BinaryExpression.Operator.LESS_THAN;
