@@ -1,7 +1,7 @@
 package com.memgres.sql.parser;
 
-import com.memgres.sql.PostgreSQLLexer;
-import com.memgres.sql.PostgreSQLParser;
+import com.memgres.sql.MemGresLexer;
+import com.memgres.sql.MemGresParser;
 import com.memgres.sql.ast.statement.Statement;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
@@ -26,18 +26,18 @@ public class SqlParser {
             CharStream input = CharStreams.fromString(sql);
             
             // Create lexer and token stream
-            PostgreSQLLexer lexer = new PostgreSQLLexer(input);
+            MemGresLexer lexer = new MemGresLexer(input);
             CommonTokenStream tokens = new CommonTokenStream(lexer);
             
             // Create parser
-            PostgreSQLParser parser = new PostgreSQLParser(tokens);
+            MemGresParser parser = new MemGresParser(tokens);
             
             // Add error listener to capture parsing errors
             parser.removeErrorListeners();
             parser.addErrorListener(new SqlErrorListener());
             
             // Parse the SQL
-            PostgreSQLParser.SqlContext parseTree = parser.sql();
+            MemGresParser.SqlContext parseTree = parser.sql();
             
             // Convert parse tree to AST
             SqlAstBuilder astBuilder = new SqlAstBuilder();

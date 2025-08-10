@@ -1,7 +1,7 @@
-parser grammar PostgreSQLParser;
+parser grammar MemGresParser;
 
 options {
-    tokenVocab = PostgreSQLLexer;
+    tokenVocab = MemGresLexer;
 }
 
 // Main entry point

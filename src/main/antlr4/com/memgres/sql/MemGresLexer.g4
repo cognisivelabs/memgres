@@ -1,4 +1,4 @@
-lexer grammar PostgreSQLLexer;
+lexer grammar MemGresLexer;
 
 // Keywords (case-insensitive)
 SELECT: [Ss][Ee][Ll][Ee][Cc][Tt];
