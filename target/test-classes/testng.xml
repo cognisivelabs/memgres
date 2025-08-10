@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<suite name="MemGres TestNG Integration Suite" verbose="1">
-    <test name="TestNG Integration Tests">
-        <classes>
-            <class name="com.memgres.testing.MemGresTestNGIntegrationTest"/>
-        </classes>
-    </test>
-</suite>
