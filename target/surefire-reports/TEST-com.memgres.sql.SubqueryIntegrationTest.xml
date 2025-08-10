@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="com.memgres.sql.SubqueryIntegrationTest" time="0.023" tests="6" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="com.memgres.sql.SubqueryIntegrationTest" time="0.018" tests="6" errors="0" skipped="0" failures="0">
   <properties>
     <property name="java.specification.version" value="24"/>
     <property name="sun.jnu.encoding" value="UTF-8"/>
@@ -13,7 +13,7 @@
     <property name="sun.java.launcher" value="SUN_STANDARD"/>
     <property name="user.country" value="GB"/>
     <property name="sun.boot.library.path" value="/opt/homebrew/Cellar/openjdk/24.0.1/libexec/openjdk.jdk/Contents/Home/lib"/>
-    <property name="sun.java.command" value="/Users/sachingupta/CognisiveLabs/memgres/target/surefire/surefirebooter-20250810144050954_3.jar /Users/sachingupta/CognisiveLabs/memgres/target/surefire 2025-08-10T14-40-50_922-jvmRun1 surefire-20250810144050954_1tmp surefire_0-20250810144050954_2tmp"/>
+    <property name="sun.java.command" value="/Users/sachingupta/CognisiveLabs/memgres/target/surefire/surefirebooter-20250810194705492_3.jar /Users/sachingupta/CognisiveLabs/memgres/target/surefire 2025-08-10T19-47-05_455-jvmRun1 surefire-20250810194705492_1tmp surefire_0-20250810194705492_2tmp"/>
     <property name="http.nonProxyHosts" value="local|*.local|169.254/16|*.169.254/16"/>
     <property name="jdk.debug" value="release"/>
     <property name="surefire.test.class.path" value="/Users/sachingupta/CognisiveLabs/memgres/target/test-classes:/Users/sachingupta/CognisiveLabs/memgres/target/classes:/Users/sachingupta/.m2/repository/org/antlr/antlr4-runtime/4.13.1/antlr4-runtime-4.13.1.jar:/Users/sachingupta/.m2/repository/com/fasterxml/jackson/core/jackson-core/2.16.1/jackson-core-2.16.1.jar:/Users/sachingupta/.m2/repository/com/fasterxml/jackson/core/jackson-databind/2.16.1/jackson-databind-2.16.1.jar:/Users/sachingupta/.m2/repository/com/fasterxml/jackson/core/jackson-annotations/2.16.1/jackson-annotations-2.16.1.jar:/Users/sachingupta/.m2/repository/org/slf4j/slf4j-api/2.0.9/slf4j-api-2.0.9.jar:/Users/sachingupta/.m2/repository/ch/qos/logback/logback-classic/1.4.14/logback-classic-1.4.14.jar:/Users/sachingupta/.m2/repository/ch/qos/logback/logback-core/1.4.14/logback-core-1.4.14.jar:/Users/sachingupta/.m2/repository/com/github/ben-manes/caffeine/caffeine/3.1.8/caffeine-3.1.8.jar:/Users/sachingupta/.m2/repository/org/checkerframework/checker-qual/3.37.0/checker-qual-3.37.0.jar:/Users/sachingupta/.m2/repository/com/google/errorprone/error_prone_annotations/2.21.1/error_prone_annotations-2.21.1.jar:/Users/sachingupta/.m2/repository/org/junit/jupiter/junit-jupiter/5.10.1/junit-jupiter-5.10.1.jar:/Users/sachingupta/.m2/repository/org/junit/jupiter/junit-jupiter-api/5.10.1/junit-jupiter-api-5.10.1.jar:/Users/sachingupta/.m2/repository/org/opentest4j/opentest4j/1.3.0/opentest4j-1.3.0.jar:/Users/sachingupta/.m2/repository/org/junit/platform/junit-platform-commons/1.10.1/junit-platform-commons-1.10.1.jar:/Users/sachingupta/.m2/repository/org/apiguardian/apiguardian-api/1.1.2/apiguardian-api-1.1.2.jar:/Users/sachingupta/.m2/repository/org/junit/jupiter/junit-jupiter-params/5.10.1/junit-jupiter-params-5.10.1.jar:/Users/sachingupta/.m2/repository/org/junit/jupiter/junit-jupiter-engine/5.10.1/junit-jupiter-engine-5.10.1.jar:/Users/sachingupta/.m2/repository/org/junit/platform/junit-platform-engine/1.10.1/junit-platform-engine-1.10.1.jar:/Users/sachingupta/.m2/repository/org/testng/testng/7.8.0/testng-7.8.0.jar:/Users/sachingupta/.m2/repository/com/beust/jcommander/1.82/jcommander-1.82.jar:/Users/sachingupta/.m2/repository/org/webjars/jquery/3.6.1/jquery-3.6.1.jar:/Users/sachingupta/.m2/repository/org/mockito/mockito-core/5.8.0/mockito-core-5.8.0.jar:/Users/sachingupta/.m2/repository/net/bytebuddy/byte-buddy/1.14.10/byte-buddy-1.14.10.jar:/Users/sachingupta/.m2/repository/net/bytebuddy/byte-buddy-agent/1.14.10/byte-buddy-agent-1.14.10.jar:/Users/sachingupta/.m2/repository/org/objenesis/objenesis/3.3/objenesis-3.3.jar:/Users/sachingupta/.m2/repository/org/testcontainers/postgresql/1.19.3/postgresql-1.19.3.jar:/Users/sachingupta/.m2/repository/org/testcontainers/jdbc/1.19.3/jdbc-1.19.3.jar:/Users/sachingupta/.m2/repository/org/testcontainers/database-commons/1.19.3/database-commons-1.19.3.jar:/Users/sachingupta/.m2/repository/org/testcontainers/junit-jupiter/1.19.3/junit-jupiter-1.19.3.jar:/Users/sachingupta/.m2/repository/org/testcontainers/testcontainers/1.19.3/testcontainers-1.19.3.jar:/Users/sachingupta/.m2/repository/junit/junit/4.13.2/junit-4.13.2.jar:/Users/sachingupta/.m2/repository/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar:/Users/sachingupta/.m2/repository/org/apache/commons/commons-compress/1.24.0/commons-compress-1.24.0.jar:/Users/sachingupta/.m2/repository/org/rnorth/duct-tape/duct-tape/1.0.8/duct-tape-1.0.8.jar:/Users/sachingupta/.m2/repository/org/jetbrains/annotations/17.0.0/annotations-17.0.0.jar:/Users/sachingupta/.m2/repository/com/github/docker-java/docker-java-api/3.3.4/docker-java-api-3.3.4.jar:/Users/sachingupta/.m2/repository/com/github/docker-java/docker-java-transport-zerodep/3.3.4/docker-java-transport-zerodep-3.3.4.jar:/Users/sachingupta/.m2/repository/com/github/docker-java/docker-java-transport/3.3.4/docker-java-transport-3.3.4.jar:/Users/sachingupta/.m2/repository/net/java/dev/jna/jna/5.13.0/jna-5.13.0.jar:/Users/sachingupta/.m2/repository/org/springframework/spring-test/6.0.15/spring-test-6.0.15.jar:/Users/sachingupta/.m2/repository/org/springframework/spring-core/6.0.15/spring-core-6.0.15.jar:/Users/sachingupta/.m2/repository/org/springframework/spring-jcl/6.0.15/spring-jcl-6.0.15.jar:/Users/sachingupta/.m2/repository/org/springframework/spring-context/6.0.15/spring-context-6.0.15.jar:/Users/sachingupta/.m2/repository/org/springframework/spring-aop/6.0.15/spring-aop-6.0.15.jar:/Users/sachingupta/.m2/repository/org/springframework/spring-beans/6.0.15/spring-beans-6.0.15.jar:/Users/sachingupta/.m2/repository/org/springframework/spring-expression/6.0.15/spring-expression-6.0.15.jar:/Users/sachingupta/.m2/repository/org/springframework/boot/spring-boot-test/3.2.1/spring-boot-test-3.2.1.jar:/Users/sachingupta/.m2/repository/org/springframework/boot/spring-boot/3.2.1/spring-boot-3.2.1.jar:/Users/sachingupta/.m2/repository/org/springframework/spring-jdbc/6.0.15/spring-jdbc-6.0.15.jar:/Users/sachingupta/.m2/repository/org/springframework/spring-tx/6.0.15/spring-tx-6.0.15.jar:"/>
@@ -30,7 +30,7 @@
     <property name="java.vm.specification.vendor" value="Oracle Corporation"/>
     <property name="java.specification.name" value="Java Platform API Specification"/>
     <property name="apple.awt.application.name" value="ForkedBooter"/>
-    <property name="surefire.real.class.path" value="/Users/sachingupta/CognisiveLabs/memgres/target/surefire/surefirebooter-20250810144050954_3.jar"/>
+    <property name="surefire.real.class.path" value="/Users/sachingupta/CognisiveLabs/memgres/target/surefire/surefirebooter-20250810194705492_3.jar"/>
     <property name="sun.management.compiler" value="HotSpot 64-Bit Tiered Compilers"/>
     <property name="ftp.nonProxyHosts" value="local|*.local|169.254/16|*.169.254/16"/>
     <property name="java.runtime.version" value="24.0.1"/>
@@ -59,96 +59,96 @@
     <property name="socksNonProxyHosts" value="local|*.local|169.254/16|*.169.254/16"/>
     <property name="java.class.version" value="68.0"/>
   </properties>
-  <testcase name="testNotInSubquery" classname="com.memgres.sql.SubqueryIntegrationTest" time="0.01">
-    <system-out><![CDATA[14:40:53.024 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager initialized
-14:40:53.024 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine created
-14:40:53.024 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine initialized successfully
-14:40:53.026 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Test tables created: departments (4 rows), employees (6 rows)
-14:40:53.026 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test setup complete - tables created and populated
-14:40:53.026 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Testing NOT IN subquery
-14:40:53.033 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Non-Engineering employee: Carol White
-14:40:53.033 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Non-Engineering employee: Eve Davis
-14:40:53.033 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Non-Engineering employee: Frank Wilson
-14:40:53.033 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- NOT IN subquery test passed
-14:40:53.033 [main] INFO com.memgres.transaction.TransactionManager -- Shutting down transaction manager with 0 active transactions
-14:40:53.033 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager shutdown complete
-14:40:53.033 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine shutdown successfully
-14:40:53.033 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test teardown complete
+  <testcase name="testNotInSubquery" classname="com.memgres.sql.SubqueryIntegrationTest" time="0.008">
+    <system-out><![CDATA[19:47:06.925 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager initialized
+19:47:06.925 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine created
+19:47:06.925 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine initialized successfully
+19:47:06.930 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Test tables created: departments (4 rows), employees (6 rows)
+19:47:06.930 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test setup complete - tables created and populated
+19:47:06.930 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Testing NOT IN subquery
+19:47:06.933 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Non-Engineering employee: Carol White
+19:47:06.933 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Non-Engineering employee: Eve Davis
+19:47:06.933 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Non-Engineering employee: Frank Wilson
+19:47:06.933 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- NOT IN subquery test passed
+19:47:06.933 [main] INFO com.memgres.transaction.TransactionManager -- Shutting down transaction manager with 0 active transactions
+19:47:06.933 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager shutdown complete
+19:47:06.933 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine shutdown successfully
+19:47:06.933 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test teardown complete
 ]]></system-out>
   </testcase>
-  <testcase name="testSubqueryErrorHandling" classname="com.memgres.sql.SubqueryIntegrationTest" time="0.003">
-    <system-out><![CDATA[14:40:53.034 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager initialized
-14:40:53.034 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine created
-14:40:53.034 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine initialized successfully
-14:40:53.035 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Test tables created: departments (4 rows), employees (6 rows)
-14:40:53.036 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test setup complete - tables created and populated
-14:40:53.036 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Testing subquery error handling
-14:40:53.037 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery error handling test passed
-14:40:53.037 [main] INFO com.memgres.transaction.TransactionManager -- Shutting down transaction manager with 0 active transactions
-14:40:53.037 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager shutdown complete
-14:40:53.037 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine shutdown successfully
-14:40:53.037 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test teardown complete
+  <testcase name="testSubqueryErrorHandling" classname="com.memgres.sql.SubqueryIntegrationTest" time="0.002">
+    <system-out><![CDATA[19:47:06.933 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager initialized
+19:47:06.933 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine created
+19:47:06.933 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine initialized successfully
+19:47:06.934 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Test tables created: departments (4 rows), employees (6 rows)
+19:47:06.934 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test setup complete - tables created and populated
+19:47:06.934 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Testing subquery error handling
+19:47:06.935 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery error handling test passed
+19:47:06.935 [main] INFO com.memgres.transaction.TransactionManager -- Shutting down transaction manager with 0 active transactions
+19:47:06.935 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager shutdown complete
+19:47:06.935 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine shutdown successfully
+19:47:06.935 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test teardown complete
 ]]></system-out>
   </testcase>
-  <testcase name="testNestedSubqueries" classname="com.memgres.sql.SubqueryIntegrationTest" time="0.003">
-    <system-out><![CDATA[14:40:53.037 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager initialized
-14:40:53.037 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine created
-14:40:53.037 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine initialized successfully
-14:40:53.038 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Test tables created: departments (4 rows), employees (6 rows)
-14:40:53.038 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test setup complete - tables created and populated
-14:40:53.038 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Testing nested subqueries
-14:40:53.040 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Nested subqueries test passed - 2 employees found
-14:40:53.040 [main] INFO com.memgres.transaction.TransactionManager -- Shutting down transaction manager with 0 active transactions
-14:40:53.040 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager shutdown complete
-14:40:53.040 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine shutdown successfully
-14:40:53.040 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test teardown complete
+  <testcase name="testNestedSubqueries" classname="com.memgres.sql.SubqueryIntegrationTest" time="0.002">
+    <system-out><![CDATA[19:47:06.935 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager initialized
+19:47:06.935 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine created
+19:47:06.935 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine initialized successfully
+19:47:06.936 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Test tables created: departments (4 rows), employees (6 rows)
+19:47:06.936 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test setup complete - tables created and populated
+19:47:06.936 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Testing nested subqueries
+19:47:06.937 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Nested subqueries test passed - 2 employees found
+19:47:06.937 [main] INFO com.memgres.transaction.TransactionManager -- Shutting down transaction manager with 0 active transactions
+19:47:06.937 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager shutdown complete
+19:47:06.937 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine shutdown successfully
+19:47:06.937 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test teardown complete
 ]]></system-out>
   </testcase>
   <testcase name="testNotExistsSubquery" classname="com.memgres.sql.SubqueryIntegrationTest" time="0.002">
-    <system-out><![CDATA[14:40:53.040 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager initialized
-14:40:53.040 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine created
-14:40:53.040 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine initialized successfully
-14:40:53.041 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Test tables created: departments (4 rows), employees (6 rows)
-14:40:53.041 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test setup complete - tables created and populated
-14:40:53.041 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Testing NOT EXISTS subquery
-14:40:53.042 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- NOT EXISTS subquery test passed - 4 departments found
-14:40:53.042 [main] INFO com.memgres.transaction.TransactionManager -- Shutting down transaction manager with 0 active transactions
-14:40:53.042 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager shutdown complete
-14:40:53.042 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine shutdown successfully
-14:40:53.042 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test teardown complete
+    <system-out><![CDATA[19:47:06.937 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager initialized
+19:47:06.937 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine created
+19:47:06.937 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine initialized successfully
+19:47:06.938 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Test tables created: departments (4 rows), employees (6 rows)
+19:47:06.938 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test setup complete - tables created and populated
+19:47:06.938 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Testing NOT EXISTS subquery
+19:47:06.939 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- NOT EXISTS subquery test passed - 4 departments found
+19:47:06.939 [main] INFO com.memgres.transaction.TransactionManager -- Shutting down transaction manager with 0 active transactions
+19:47:06.939 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager shutdown complete
+19:47:06.939 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine shutdown successfully
+19:47:06.939 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test teardown complete
 ]]></system-out>
   </testcase>
-  <testcase name="testInSubquery" classname="com.memgres.sql.SubqueryIntegrationTest" time="0.002">
-    <system-out><![CDATA[14:40:53.042 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager initialized
-14:40:53.042 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine created
-14:40:53.042 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine initialized successfully
-14:40:53.043 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Test tables created: departments (4 rows), employees (6 rows)
-14:40:53.043 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test setup complete - tables created and populated
-14:40:53.043 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Testing IN subquery
-14:40:53.044 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Employee Carol White (salary: 75000) works in high-budget department
-14:40:53.044 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- IN subquery test passed
-14:40:53.044 [main] INFO com.memgres.transaction.TransactionManager -- Shutting down transaction manager with 0 active transactions
-14:40:53.044 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager shutdown complete
-14:40:53.044 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine shutdown successfully
-14:40:53.044 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test teardown complete
+  <testcase name="testInSubquery" classname="com.memgres.sql.SubqueryIntegrationTest" time="0.003">
+    <system-out><![CDATA[19:47:06.940 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager initialized
+19:47:06.940 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine created
+19:47:06.940 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine initialized successfully
+19:47:06.941 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Test tables created: departments (4 rows), employees (6 rows)
+19:47:06.941 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test setup complete - tables created and populated
+19:47:06.941 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Testing IN subquery
+19:47:06.942 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Employee Carol White (salary: 75000) works in high-budget department
+19:47:06.942 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- IN subquery test passed
+19:47:06.942 [main] INFO com.memgres.transaction.TransactionManager -- Shutting down transaction manager with 0 active transactions
+19:47:06.942 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager shutdown complete
+19:47:06.942 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine shutdown successfully
+19:47:06.942 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test teardown complete
 ]]></system-out>
   </testcase>
-  <testcase name="testExistsSubquery" classname="com.memgres.sql.SubqueryIntegrationTest" time="0.002">
-    <system-out><![CDATA[14:40:53.044 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager initialized
-14:40:53.044 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine created
-14:40:53.044 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine initialized successfully
-14:40:53.046 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Test tables created: departments (4 rows), employees (6 rows)
-14:40:53.046 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test setup complete - tables created and populated
-14:40:53.046 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Testing EXISTS subquery
-14:40:53.046 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Department with active employees: Engineering
-14:40:53.046 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Department with active employees: Sales
-14:40:53.046 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Department with active employees: Marketing
-14:40:53.046 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Department with active employees: HR
-14:40:53.046 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- EXISTS subquery test passed
-14:40:53.046 [main] INFO com.memgres.transaction.TransactionManager -- Shutting down transaction manager with 0 active transactions
-14:40:53.046 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager shutdown complete
-14:40:53.046 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine shutdown successfully
-14:40:53.046 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test teardown complete
+  <testcase name="testExistsSubquery" classname="com.memgres.sql.SubqueryIntegrationTest" time="0.001">
+    <system-out><![CDATA[19:47:06.942 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager initialized
+19:47:06.942 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine created
+19:47:06.942 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine initialized successfully
+19:47:06.942 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Test tables created: departments (4 rows), employees (6 rows)
+19:47:06.942 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test setup complete - tables created and populated
+19:47:06.943 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Testing EXISTS subquery
+19:47:06.943 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Department with active employees: Engineering
+19:47:06.943 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Department with active employees: Sales
+19:47:06.943 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Department with active employees: Marketing
+19:47:06.943 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Department with active employees: HR
+19:47:06.943 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- EXISTS subquery test passed
+19:47:06.943 [main] INFO com.memgres.transaction.TransactionManager -- Shutting down transaction manager with 0 active transactions
+19:47:06.943 [main] INFO com.memgres.transaction.TransactionManager -- Transaction manager shutdown complete
+19:47:06.943 [main] INFO com.memgres.core.MemGresEngine -- MemGres Engine shutdown successfully
+19:47:06.943 [main] INFO com.memgres.sql.SubqueryIntegrationTest -- Subquery test teardown complete
 ]]></system-out>
   </testcase>
 </testsuite>

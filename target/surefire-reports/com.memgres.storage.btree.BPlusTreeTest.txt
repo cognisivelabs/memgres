@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.memgres.storage.btree.BPlusTreeTest
 -------------------------------------------------------------------------------
-Tests run: 22, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.159 s -- in com.memgres.storage.btree.BPlusTreeTest
+Tests run: 22, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.115 s -- in com.memgres.storage.btree.BPlusTreeTest

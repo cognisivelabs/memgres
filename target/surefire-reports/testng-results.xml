@@ -2,54 +2,54 @@
 <testng-results ignored="0" total="11" passed="11" failed="0" skipped="0">
   <reporter-output>
   </reporter-output>
-  <suite started-at="2025-08-10T14:40:53 BST" name="Surefire suite" finished-at="2025-08-10T14:40:53 BST" duration-ms="165">
+  <suite started-at="2025-08-10T19:47:07 BST" name="Surefire suite" finished-at="2025-08-10T19:47:07 BST" duration-ms="79">
     <groups>
     </groups>
-    <test started-at="2025-08-10T14:40:53 BST" name="Surefire test" finished-at="2025-08-10T14:40:53 BST" duration-ms="165">
+    <test started-at="2025-08-10T19:47:07 BST" name="Surefire test" finished-at="2025-08-10T19:47:07 BST" duration-ms="79">
       <class name="com.memgres.testing.SimpleTestNGTest">
-        <test-method signature="testBasicTestNGIntegration()[pri:0, instance:com.memgres.testing.SimpleTestNGTest@770d0ea6]" started-at="2025-08-10T14:40:53 BST" name="testBasicTestNGIntegration" finished-at="2025-08-10T14:40:53 BST" duration-ms="1" status="PASS">
+        <test-method signature="testBasicTestNGIntegration()[pri:0, instance:com.memgres.testing.SimpleTestNGTest@3d680b5a]" started-at="2025-08-10T19:47:07 BST" name="testBasicTestNGIntegration" finished-at="2025-08-10T19:47:07 BST" duration-ms="1" status="PASS">
           <reporter-output>
           </reporter-output>
         </test-method> <!-- testBasicTestNGIntegration -->
-        <test-method signature="testTransactionalTestNGIntegration()[pri:0, instance:com.memgres.testing.SimpleTestNGTest@770d0ea6]" started-at="2025-08-10T14:40:53 BST" name="testTransactionalTestNGIntegration" finished-at="2025-08-10T14:40:53 BST" duration-ms="1" status="PASS">
+        <test-method signature="testTransactionalTestNGIntegration()[pri:0, instance:com.memgres.testing.SimpleTestNGTest@3d680b5a]" started-at="2025-08-10T19:47:07 BST" name="testTransactionalTestNGIntegration" finished-at="2025-08-10T19:47:07 BST" duration-ms="1" status="PASS">
           <reporter-output>
           </reporter-output>
         </test-method> <!-- testTransactionalTestNGIntegration -->
       </class> <!-- com.memgres.testing.SimpleTestNGTest -->
       <class name="com.memgres.testing.MemGresTestNGIntegrationTest">
-        <test-method signature="testConfigurationProviderAvailability()[pri:0, instance:com.memgres.testing.MemGresTestNGIntegrationTest@5ae76500]" started-at="2025-08-10T14:40:53 BST" name="testConfigurationProviderAvailability" finished-at="2025-08-10T14:40:53 BST" duration-ms="23" status="PASS">
+        <test-method signature="testConfigurationProviderAvailability()[pri:0, instance:com.memgres.testing.MemGresTestNGIntegrationTest@35047d03]" started-at="2025-08-10T19:47:07 BST" name="testConfigurationProviderAvailability" finished-at="2025-08-10T19:47:07 BST" duration-ms="9" status="PASS">
           <reporter-output>
           </reporter-output>
         </test-method> <!-- testConfigurationProviderAvailability -->
-        <test-method signature="testCustomSchemaConfiguration()[pri:0, instance:com.memgres.testing.MemGresTestNGIntegrationTest@5ae76500]" started-at="2025-08-10T14:40:53 BST" name="testCustomSchemaConfiguration" finished-at="2025-08-10T14:40:53 BST" duration-ms="82" status="PASS">
+        <test-method signature="testCustomSchemaConfiguration()[pri:0, instance:com.memgres.testing.MemGresTestNGIntegrationTest@35047d03]" started-at="2025-08-10T19:47:07 BST" name="testCustomSchemaConfiguration" finished-at="2025-08-10T19:47:07 BST" duration-ms="36" status="PASS">
           <reporter-output>
           </reporter-output>
         </test-method> <!-- testCustomSchemaConfiguration -->
-        <test-method signature="testJoinOperationsInTestNGEnvironment()[pri:0, instance:com.memgres.testing.MemGresTestNGIntegrationTest@5ae76500]" started-at="2025-08-10T14:40:53 BST" name="testJoinOperationsInTestNGEnvironment" finished-at="2025-08-10T14:40:53 BST" duration-ms="14" status="PASS">
+        <test-method signature="testJoinOperationsInTestNGEnvironment()[pri:0, instance:com.memgres.testing.MemGresTestNGIntegrationTest@35047d03]" started-at="2025-08-10T19:47:07 BST" name="testJoinOperationsInTestNGEnvironment" finished-at="2025-08-10T19:47:07 BST" duration-ms="9" status="PASS">
           <reporter-output>
           </reporter-output>
         </test-method> <!-- testJoinOperationsInTestNGEnvironment -->
-        <test-method signature="testMethodIsolation1()[pri:0, instance:com.memgres.testing.MemGresTestNGIntegrationTest@5ae76500]" started-at="2025-08-10T14:40:53 BST" name="testMethodIsolation1" finished-at="2025-08-10T14:40:53 BST" duration-ms="1" status="PASS">
+        <test-method signature="testMethodIsolation1()[pri:0, instance:com.memgres.testing.MemGresTestNGIntegrationTest@35047d03]" started-at="2025-08-10T19:47:07 BST" name="testMethodIsolation1" finished-at="2025-08-10T19:47:07 BST" duration-ms="0" status="PASS">
           <reporter-output>
           </reporter-output>
         </test-method> <!-- testMethodIsolation1 -->
-        <test-method signature="testMethodIsolation2()[pri:0, instance:com.memgres.testing.MemGresTestNGIntegrationTest@5ae76500]" started-at="2025-08-10T14:40:53 BST" name="testMethodIsolation2" finished-at="2025-08-10T14:40:53 BST" duration-ms="1" status="PASS">
+        <test-method signature="testMethodIsolation2()[pri:0, instance:com.memgres.testing.MemGresTestNGIntegrationTest@35047d03]" started-at="2025-08-10T19:47:07 BST" name="testMethodIsolation2" finished-at="2025-08-10T19:47:07 BST" duration-ms="0" status="PASS">
           <reporter-output>
           </reporter-output>
         </test-method> <!-- testMethodIsolation2 -->
-        <test-method signature="testMethodLevelAnnotationWithDataSourceOperations()[pri:0, instance:com.memgres.testing.MemGresTestNGIntegrationTest@5ae76500]" started-at="2025-08-10T14:40:53 BST" name="testMethodLevelAnnotationWithDataSourceOperations" finished-at="2025-08-10T14:40:53 BST" duration-ms="12" status="PASS">
+        <test-method signature="testMethodLevelAnnotationWithDataSourceOperations()[pri:0, instance:com.memgres.testing.MemGresTestNGIntegrationTest@35047d03]" started-at="2025-08-10T19:47:07 BST" name="testMethodLevelAnnotationWithDataSourceOperations" finished-at="2025-08-10T19:47:07 BST" duration-ms="3" status="PASS">
           <reporter-output>
           </reporter-output>
         </test-method> <!-- testMethodLevelAnnotationWithDataSourceOperations -->
-        <test-method signature="testMethodLevelAnnotationWithManualEngineRetrieval()[pri:0, instance:com.memgres.testing.MemGresTestNGIntegrationTest@5ae76500]" started-at="2025-08-10T14:40:53 BST" name="testMethodLevelAnnotationWithManualEngineRetrieval" finished-at="2025-08-10T14:40:53 BST" duration-ms="1" status="PASS">
+        <test-method signature="testMethodLevelAnnotationWithManualEngineRetrieval()[pri:0, instance:com.memgres.testing.MemGresTestNGIntegrationTest@35047d03]" started-at="2025-08-10T19:47:07 BST" name="testMethodLevelAnnotationWithManualEngineRetrieval" finished-at="2025-08-10T19:47:07 BST" duration-ms="1" status="PASS">
           <reporter-output>
           </reporter-output>
         </test-method> <!-- testMethodLevelAnnotationWithManualEngineRetrieval -->
-        <test-method signature="testMethodLevelAnnotationWithSqlEngineOperations()[pri:0, instance:com.memgres.testing.MemGresTestNGIntegrationTest@5ae76500]" started-at="2025-08-10T14:40:53 BST" name="testMethodLevelAnnotationWithSqlEngineOperations" finished-at="2025-08-10T14:40:53 BST" duration-ms="1" status="PASS">
+        <test-method signature="testMethodLevelAnnotationWithSqlEngineOperations()[pri:0, instance:com.memgres.testing.MemGresTestNGIntegrationTest@35047d03]" started-at="2025-08-10T19:47:07 BST" name="testMethodLevelAnnotationWithSqlEngineOperations" finished-at="2025-08-10T19:47:07 BST" duration-ms="1" status="PASS">
           <reporter-output>
           </reporter-output>
         </test-method> <!-- testMethodLevelAnnotationWithSqlEngineOperations -->
-        <test-method signature="testTransactionalMode()[pri:0, instance:com.memgres.testing.MemGresTestNGIntegrationTest@5ae76500]" started-at="2025-08-10T14:40:53 BST" name="testTransactionalMode" finished-at="2025-08-10T14:40:53 BST" duration-ms="2" status="PASS">
+        <test-method signature="testTransactionalMode()[pri:0, instance:com.memgres.testing.MemGresTestNGIntegrationTest@35047d03]" started-at="2025-08-10T19:47:07 BST" name="testTransactionalMode" finished-at="2025-08-10T19:47:07 BST" duration-ms="1" status="PASS">
           <reporter-output>
           </reporter-output>
         </test-method> <!-- testTransactionalMode -->

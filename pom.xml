@@ -61,10 +61,15 @@
         <antlr4-maven-plugin.version>4.13.1</antlr4-maven-plugin.version>
         <spotbugs-maven-plugin.version>4.8.2.0</spotbugs-maven-plugin.version>
         <maven-checkstyle-plugin.version>3.3.1</maven-checkstyle-plugin.version>
-        <jacoco-maven-plugin.version>0.8.11</jacoco-maven-plugin.version>
+        <jacoco-maven-plugin.version>0.8.12</jacoco-maven-plugin.version>
         <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
         <maven-javadoc-plugin.version>3.6.3</maven-javadoc-plugin.version>
         <maven-gpg-plugin.version>3.1.0</maven-gpg-plugin.version>
+        
+        <!-- JaCoCo configuration -->
+        <!-- Skip JaCoCo by default to avoid Java 17 instrumentation warnings/errors -->
+        <!-- Enable with: mvn test -Djacoco.skip=false or use coverage profile -->
+        <jacoco.skip>true</jacoco.skip>
     </properties>
 
     <dependencies>
@@ -303,11 +308,37 @@
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>${jacoco-maven-plugin.version}</version>
+                <configuration>
+                    <!-- Skip JaCoCo by default to avoid Java 17 instrumentation issues -->
+                    <skip>${jacoco.skip}</skip>
+                    <excludes>
+                        <!-- Exclude system classes that cause instrumentation issues -->
+                        <exclude>javax/sql/**</exclude>
+                        <exclude>sun/**</exclude>
+                        <exclude>com/sun/**</exclude>
+                        <exclude>jdk/**</exclude>
+                        <exclude>java/**</exclude>
+                        <exclude>org/springframework/**</exclude>
+                        <!-- Exclude generated ANTLR classes -->
+                        <exclude>com/memgres/sql/PostgreSQL*</exclude>
+                    </excludes>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
                             <goal>prepare-agent</goal>
                         </goals>
+                        <configuration>
+                            <skip>${jacoco.skip}</skip>
+                            <excludes>
+                                <exclude>javax/sql/**</exclude>
+                                <exclude>sun/**</exclude>
+                                <exclude>com/sun/**</exclude>
+                                <exclude>jdk/**</exclude>
+                                <exclude>java/**</exclude>
+                                <exclude>org/springframework/**</exclude>
+                            </excludes>
+                        </configuration>
                     </execution>
                     <execution>
                         <id>report</id>
@@ -315,6 +346,9 @@
                         <goals>
                             <goal>report</goal>
                         </goals>
+                        <configuration>
+                            <skip>${jacoco.skip}</skip>
+                        </configuration>
                     </execution>
                     <execution>
                         <id>check</id>
@@ -322,6 +356,7 @@
                             <goal>check</goal>
                         </goals>
                         <configuration>
+                            <skip>${jacoco.skip}</skip>
                             <rules>
                                 <rule>
                                     <element>BUNDLE</element>
@@ -354,6 +389,14 @@
     </distributionManagement>
 
     <profiles>
+        <!-- Code coverage profile for CI/CD -->
+        <profile>
+            <id>coverage</id>
+            <properties>
+                <jacoco.skip>false</jacoco.skip>
+            </properties>
+        </profile>
+        
         <!-- Release profile for Maven Central deployment -->
         <profile>
             <id>release</id>
