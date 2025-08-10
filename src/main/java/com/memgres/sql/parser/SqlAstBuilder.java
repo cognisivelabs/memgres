@@ -6,6 +6,7 @@ import com.memgres.sql.ast.expression.*;
 import com.memgres.sql.ast.statement.*;
 import com.memgres.types.DataType;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -233,7 +234,8 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
     
     @Override
     public LiteralExpression visitDecimalLiteral(PostgreSQLParser.DecimalLiteralContext ctx) {
-        Double value = Double.parseDouble(ctx.DECIMAL_LITERAL().getText());
+        String decimalText = ctx.DECIMAL_LITERAL().getText();
+        BigDecimal value = new BigDecimal(decimalText);
         return new LiteralExpression(value, LiteralExpression.LiteralType.DECIMAL);
     }
     
@@ -436,6 +438,10 @@ public class SqlAstBuilder extends PostgreSQLParserBaseVisitor<Object> {
                 for (PostgreSQLParser.ColumnConstraintContext constraintCtx : colCtx.columnConstraint()) {
                     if (constraintCtx.NOT() != null && constraintCtx.NULL() != null) {
                         constraints.add(ColumnDefinition.Constraint.NOT_NULL);
+                    } else if (constraintCtx.PRIMARY() != null && constraintCtx.KEY() != null) {
+                        constraints.add(ColumnDefinition.Constraint.PRIMARY_KEY);
+                    } else if (constraintCtx.UNIQUE() != null) {
+                        constraints.add(ColumnDefinition.Constraint.UNIQUE);
                     }
                 }
             }

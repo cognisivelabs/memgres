@@ -314,6 +314,42 @@ public class Table {
         }
     }
     
+    /**
+     * Insert a row with a specific ID (used for transaction rollback)
+     * @param rowId the specific row ID to use
+     * @param rowData the row data
+     */
+    public void insertRowWithId(long rowId, Object[] rowData) {
+        if (rowData == null) {
+            throw new IllegalArgumentException("Row data cannot be null");
+        }
+        if (rowData.length != columns.size()) {
+            throw new IllegalArgumentException("Row data length must match column count");
+        }
+        
+        tableLock.writeLock().lock();
+        try {
+            Row row = new Row(rowId, rowData);
+            
+            // Validate data types
+            validateRowData(row);
+            
+            rows.add(row);
+            
+            // Update indexes
+            updateIndexesForInsert(row);
+            
+            // Update row ID generator to ensure we don't reuse this ID
+            if (rowId >= rowIdGenerator.get()) {
+                rowIdGenerator.set(rowId);
+            }
+            
+            logger.debug("Inserted row {} with specific ID into table {}", rowId, name);
+        } finally {
+            tableLock.writeLock().unlock();
+        }
+    }
+    
     @Override
     public String toString() {
         return "Table{" +

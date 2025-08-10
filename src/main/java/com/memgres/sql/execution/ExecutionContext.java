@@ -5,6 +5,7 @@ import com.memgres.types.Column;
 import com.memgres.types.Row;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Execution context that maintains state during SQL statement execution.
@@ -14,6 +15,8 @@ public class ExecutionContext {
     private Row currentRow;
     private Table currentTable;
     private List<Column> joinedColumns;
+    private Map<String, List<Column>> tableColumns;
+    private List<String> tableOrder;
     
     public Row getCurrentRow() {
         return currentRow;
@@ -37,5 +40,21 @@ public class ExecutionContext {
     
     public void setJoinedColumns(List<Column> joinedColumns) {
         this.joinedColumns = joinedColumns;
+    }
+    
+    public Map<String, List<Column>> getTableColumns() {
+        return tableColumns;
+    }
+    
+    public void setTableColumns(Map<String, List<Column>> tableColumns) {
+        this.tableColumns = tableColumns;
+    }
+    
+    public List<String> getTableOrder() {
+        return tableOrder;
+    }
+    
+    public void setTableOrder(List<String> tableOrder) {
+        this.tableOrder = tableOrder;
     }
 }

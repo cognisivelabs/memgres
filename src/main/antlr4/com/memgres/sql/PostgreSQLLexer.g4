@@ -52,6 +52,9 @@ END: [Ee][Nn][Dd];
 EXISTS: [Ee][Xx][Ii][Ss][Tt][Ss];
 TRUE: [Tt][Rr][Uu][Ee];
 FALSE: [Ff][Aa][Ll][Ss][Ee];
+PRIMARY: [Pp][Rr][Ii][Mm][Aa][Rr][Yy];
+KEY: [Kk][Ee][Yy];
+UNIQUE: [Uu][Nn][Ii][Qq][Uu][Ee];
 
 // Data types
 SMALLINT: [Ss][Mm][Aa][Ll][Ll][Ii][Nn][Tt];

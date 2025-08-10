@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MemGresTestHelper.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">MemGres Core</a> &gt; <a href="index.source.html" class="el_package">com.memgres.testing</a> &gt; <span class="el_source">MemGresTestHelper.java</span></div><h1>MemGresTestHelper.java</h1><pre class="source lang-java linenums">package com.memgres.testing;
+
+import com.memgres.core.MemGresEngine;
+import com.memgres.sql.execution.SqlExecutionEngine;
+import com.memgres.sql.execution.SqlExecutionResult;
+import com.memgres.transaction.Transaction;
+import com.memgres.transaction.TransactionIsolationLevel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
+/**
+ * Helper class for MemGres testing framework integration.
+ * 
+ * &lt;p&gt;This class provides the core functionality for managing MemGres database instances
+ * in testing environments. It can be used directly or through framework-specific
+ * extensions like the JUnit 5 extension.&lt;/p&gt;
+ * 
+ * @since 1.0.0
+ */
+<span class="fc" id="L27">public class MemGresTestHelper {</span>
+    
+<span class="fc" id="L29">    private static final Logger logger = LoggerFactory.getLogger(MemGresTestHelper.class);</span>
+    
+<span class="fc" id="L31">    private final ConcurrentMap&lt;String, MemGresEngine&gt; sharedEngines = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="fc" id="L32">    private final ConcurrentMap&lt;String, Object&gt; testContext = new ConcurrentHashMap&lt;&gt;();</span>
+    
+    /**
+     * Creates and initializes a new MemGres engine for testing.
+     * 
+     * @param config the MemGres configuration
+     * @return the initialized engine
+     * @throws Exception if engine creation fails
+     */
+    public MemGresEngine createEngine(MemGresConfig config) throws Exception {
+<span class="fc" id="L42">        logger.debug(&quot;Setting up MemGres database with schema: {}&quot;, config.getSchema());</span>
+        
+<span class="fc" id="L44">        MemGresEngine engine = new MemGresEngine();</span>
+<span class="fc" id="L45">        engine.initialize();</span>
+        
+        // Create schema if specified
+<span class="pc bpc" id="L48" title="1 of 4 branches missed.">        if (!config.getSchema().equals(&quot;test&quot;) || engine.getSchema(config.getSchema()) == null) {</span>
+<span class="fc" id="L49">            engine.createSchema(config.getSchema());</span>
+        }
+        
+        // Initialize database
+<span class="fc" id="L53">        initializeDatabase(engine, config);</span>
+        
+<span class="fc" id="L55">        logger.info(&quot;MemGres database ready with schema: {}&quot;, config.getSchema());</span>
+<span class="fc" id="L56">        return engine;</span>
+    }
+    
+    /**
+     * Starts a transaction for the given configuration.
+     * 
+     * @param engine the MemGres engine
+     * @param config the configuration
+     * @return the started transaction, or null if not transactional
+     */
+    public Transaction startTransactionIfNeeded(MemGresEngine engine, MemGresConfig config) {
+<span class="nc bnc" id="L67" title="All 2 branches missed.">        if (config.isTransactional()) {</span>
+<span class="nc" id="L68">            Transaction transaction = engine.getTransactionManager()</span>
+<span class="nc" id="L69">                    .beginTransaction(TransactionIsolationLevel.READ_COMMITTED);</span>
+<span class="nc" id="L70">            logger.debug(&quot;Started transaction for transactional test&quot;);</span>
+<span class="nc" id="L71">            return transaction;</span>
+        }
+<span class="nc" id="L73">        return null;</span>
+    }
+    
+    /**
+     * Rolls back a transaction if it exists.
+     * 
+     * @param engine the MemGres engine
+     * @param transaction the transaction to rollback
+     * @param config the configuration
+     */
+    public void rollbackTransactionIfNeeded(MemGresEngine engine, Transaction transaction, MemGresConfig config) {
+<span class="pc bpc" id="L84" title="2 of 4 branches missed.">        if (config.isTransactional() &amp;&amp; transaction != null) {</span>
+<span class="fc" id="L85">            engine.getTransactionManager().rollbackTransaction(transaction);</span>
+<span class="fc" id="L86">            logger.debug(&quot;Rolled back transaction for transactional test&quot;);</span>
+        }
+<span class="fc" id="L88">    }</span>
+    
+    /**
+     * Shuts down an engine.
+     * 
+     * @param engine the engine to shutdown
+     */
+    public void shutdownEngine(MemGresEngine engine) {
+<span class="pc bpc" id="L96" title="1 of 2 branches missed.">        if (engine != null) {</span>
+<span class="fc" id="L97">            logger.debug(&quot;Shutting down MemGres database&quot;);</span>
+<span class="fc" id="L98">            engine.shutdown();</span>
+<span class="fc" id="L99">            logger.info(&quot;MemGres database shutdown complete&quot;);</span>
+        }
+<span class="fc" id="L101">    }</span>
+    
+    /**
+     * Creates parameter instances for injection.
+     * 
+     * @param parameterType the parameter type
+     * @param engine the MemGres engine
+     * @return the parameter instance
+     */
+    public Object createParameterInstance(Class&lt;?&gt; parameterType, MemGresEngine engine) {
+<span class="fc bfc" id="L111" title="All 2 branches covered.">        if (parameterType == MemGresEngine.class) {</span>
+<span class="fc" id="L112">            return engine;</span>
+<span class="fc bfc" id="L113" title="All 2 branches covered.">        } else if (parameterType == SqlExecutionEngine.class) {</span>
+<span class="fc" id="L114">            return new SqlExecutionEngine(engine);</span>
+<span class="pc bpc" id="L115" title="1 of 2 branches missed.">        } else if (parameterType == MemGresTestDataSource.class) {</span>
+<span class="fc" id="L116">            return new MemGresTestDataSource(engine);</span>
+        }
+        
+<span class="nc" id="L119">        throw new IllegalArgumentException(&quot;Unsupported parameter type: &quot; + parameterType);</span>
+    }
+    
+    private void initializeDatabase(MemGresEngine engine, MemGresConfig config) throws Exception {
+<span class="fc" id="L123">        SqlExecutionEngine sqlEngine = new SqlExecutionEngine(engine);</span>
+        
+        // Execute initialization scripts
+<span class="pc bpc" id="L126" title="1 of 2 branches missed.">        for (String scriptPath : config.getInitScripts()) {</span>
+<span class="nc" id="L127">            executeScript(sqlEngine, scriptPath);</span>
+        }
+<span class="fc" id="L129">    }</span>
+    
+    private void executeScript(SqlExecutionEngine sqlEngine, String scriptPath) throws Exception {
+<span class="nc" id="L132">        logger.debug(&quot;Executing SQL script: {}&quot;, scriptPath);</span>
+        
+<span class="nc" id="L134">        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(scriptPath)) {</span>
+<span class="nc bnc" id="L135" title="All 2 branches missed.">            if (inputStream == null) {</span>
+<span class="nc" id="L136">                throw new RuntimeException(&quot;SQL script not found: &quot; + scriptPath);</span>
+            }
+            
+<span class="nc" id="L139">            String sql = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);</span>
+            
+            // Split by semicolon and execute each statement
+<span class="nc" id="L142">            String[] statements = sql.split(&quot;;&quot;);</span>
+<span class="nc bnc" id="L143" title="All 2 branches missed.">            for (String statement : statements) {</span>
+<span class="nc" id="L144">                statement = statement.trim();</span>
+<span class="nc bnc" id="L145" title="All 2 branches missed.">                if (!statement.isEmpty()) {</span>
+                    try {
+<span class="nc" id="L147">                        SqlExecutionResult result = sqlEngine.execute(statement);</span>
+<span class="nc bnc" id="L148" title="All 2 branches missed.">                        if (!result.isSuccess()) {</span>
+<span class="nc" id="L149">                            throw new RuntimeException(</span>
+                                    &quot;Failed to execute SQL script: &quot; + scriptPath + 
+<span class="nc" id="L151">                                    &quot;, Error: &quot; + result.getMessage());</span>
+                        }
+<span class="nc" id="L153">                    } catch (com.memgres.sql.execution.SqlExecutionException e) {</span>
+<span class="nc" id="L154">                        throw new RuntimeException(</span>
+                                &quot;Failed to execute SQL script: &quot; + scriptPath + 
+<span class="nc" id="L156">                                &quot;, SQL Error: &quot; + e.getMessage(), e);</span>
+<span class="nc" id="L157">                    }</span>
+                }
+            }
+            
+<span class="nc" id="L161">            logger.debug(&quot;Successfully executed SQL script: {}&quot;, scriptPath);</span>
+<span class="nc" id="L162">        } catch (IOException e) {</span>
+<span class="nc" id="L163">            throw new RuntimeException(&quot;Failed to read SQL script: &quot; + scriptPath, e);</span>
+<span class="nc" id="L164">        }</span>
+<span class="nc" id="L165">    }</span>
+    
+    /**
+     * Configuration class for MemGres testing.
+     */
+    public static class MemGresConfig {
+        private final String schema;
+        private final boolean autoCreateTables;
+        private final String[] initScripts;
+        private final boolean transactional;
+        private final long startupTimeoutMs;
+        
+        public MemGresConfig(String schema, boolean autoCreateTables, String[] initScripts, 
+<span class="fc" id="L178">                            boolean transactional, long startupTimeoutMs) {</span>
+<span class="fc" id="L179">            this.schema = schema;</span>
+<span class="fc" id="L180">            this.autoCreateTables = autoCreateTables;</span>
+<span class="fc" id="L181">            this.initScripts = initScripts;</span>
+<span class="fc" id="L182">            this.transactional = transactional;</span>
+<span class="fc" id="L183">            this.startupTimeoutMs = startupTimeoutMs;</span>
+<span class="fc" id="L184">        }</span>
+        
+        public static MemGresConfig fromAnnotation(MemGres annotation) {
+<span class="fc" id="L187">            return new MemGresConfig(</span>
+<span class="fc" id="L188">                annotation.schema(),</span>
+<span class="fc" id="L189">                annotation.autoCreateTables(),</span>
+<span class="fc" id="L190">                annotation.initScripts(),</span>
+<span class="fc" id="L191">                annotation.transactional(),</span>
+<span class="fc" id="L192">                annotation.startupTimeoutMs()</span>
+            );
+        }
+        
+        public static MemGresConfig defaultConfig() {
+<span class="nc" id="L197">            return new MemGresConfig(&quot;test&quot;, false, new String[0], false, 5000L);</span>
+        }
+        
+<span class="fc" id="L200">        public String getSchema() { return schema; }</span>
+<span class="nc" id="L201">        public boolean isAutoCreateTables() { return autoCreateTables; }</span>
+<span class="fc" id="L202">        public String[] getInitScripts() { return initScripts; }</span>
+<span class="fc" id="L203">        public boolean isTransactional() { return transactional; }</span>
+<span class="nc" id="L204">        public long getStartupTimeoutMs() { return startupTimeoutMs; }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

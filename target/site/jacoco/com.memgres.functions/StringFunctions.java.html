@@ -1,0 +1,503 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StringFunctions.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">MemGres Core</a> &gt; <a href="index.source.html" class="el_package">com.memgres.functions</a> &gt; <span class="el_source">StringFunctions.java</span></div><h1>StringFunctions.java</h1><pre class="source lang-java linenums">package com.memgres.functions;
+
+import java.util.List;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+/**
+ * String functions for MemGres database.
+ * Provides PostgreSQL-compatible string manipulation functions.
+ */
+<span class="nc" id="L11">public class StringFunctions {</span>
+    
+    /**
+     * Concatenate strings (equivalent to PostgreSQL's CONCAT()).
+     * @param strings the strings to concatenate (null values are treated as empty strings)
+     * @return the concatenated string
+     */
+    public static String concat(Object... strings) {
+<span class="pc bpc" id="L19" title="1 of 4 branches missed.">        if (strings == null || strings.length == 0) {</span>
+<span class="fc" id="L20">            return &quot;&quot;;</span>
+        }
+        
+<span class="fc" id="L23">        StringBuilder result = new StringBuilder();</span>
+<span class="fc bfc" id="L24" title="All 2 branches covered.">        for (Object str : strings) {</span>
+<span class="fc bfc" id="L25" title="All 2 branches covered.">            if (str != null) {</span>
+<span class="fc" id="L26">                result.append(str.toString());</span>
+            }
+            // PostgreSQL CONCAT treats null as empty string (skips it)
+        }
+<span class="fc" id="L30">        return result.toString();</span>
+    }
+    
+    /**
+     * Concatenate strings with a separator (equivalent to PostgreSQL's CONCAT_WS()).
+     * @param separator the separator to use between strings
+     * @param strings the strings to concatenate (null values are skipped)
+     * @return the concatenated string with separators
+     */
+    public static String concatWs(String separator, Object... strings) {
+<span class="fc bfc" id="L40" title="All 2 branches covered.">        if (separator == null) {</span>
+<span class="fc" id="L41">            return null;</span>
+        }
+<span class="pc bpc" id="L43" title="1 of 4 branches missed.">        if (strings == null || strings.length == 0) {</span>
+<span class="fc" id="L44">            return &quot;&quot;;</span>
+        }
+        
+<span class="fc" id="L47">        StringBuilder result = new StringBuilder();</span>
+<span class="fc" id="L48">        boolean first = true;</span>
+        
+<span class="fc bfc" id="L50" title="All 2 branches covered.">        for (Object str : strings) {</span>
+<span class="fc bfc" id="L51" title="All 2 branches covered.">            if (str != null) {</span>
+<span class="fc bfc" id="L52" title="All 2 branches covered.">                if (!first) {</span>
+<span class="fc" id="L53">                    result.append(separator);</span>
+                }
+<span class="fc" id="L55">                result.append(str.toString());</span>
+<span class="fc" id="L56">                first = false;</span>
+            }
+        }
+        
+<span class="fc" id="L60">        return result.toString();</span>
+    }
+    
+    /**
+     * Get substring from a string (equivalent to PostgreSQL's SUBSTRING()).
+     * @param string the source string
+     * @param start the starting position (1-based, as in PostgreSQL)
+     * @param length the length of substring (optional)
+     * @return the substring
+     */
+    public static String substring(String string, int start, Integer length) {
+<span class="fc bfc" id="L71" title="All 2 branches covered.">        if (string == null) {</span>
+<span class="fc" id="L72">            return null;</span>
+        }
+        
+        // Convert to 0-based indexing, but handle negative/zero start positions
+<span class="fc" id="L76">        int startIndex = Math.max(0, start - 1);</span>
+<span class="fc bfc" id="L77" title="All 2 branches covered.">        if (start &lt;= 0) {</span>
+            // PostgreSQL treats positions &lt;= 0 as starting from beginning
+<span class="fc" id="L79">            startIndex = 0;</span>
+        }
+        
+<span class="fc bfc" id="L82" title="All 2 branches covered.">        if (startIndex &gt;= string.length()) {</span>
+<span class="fc" id="L83">            return &quot;&quot;;</span>
+        }
+        
+<span class="fc bfc" id="L86" title="All 2 branches covered.">        if (length == null) {</span>
+<span class="fc" id="L87">            return string.substring(startIndex);</span>
+        } else {
+<span class="fc" id="L89">            int endIndex = Math.min(string.length(), startIndex + Math.max(0, length));</span>
+<span class="fc" id="L90">            return string.substring(startIndex, endIndex);</span>
+        }
+    }
+    
+    /**
+     * Get substring from a string (2-parameter version).
+     * @param string the source string
+     * @param start the starting position (1-based)
+     * @return the substring from start to end
+     */
+    public static String substring(String string, int start) {
+<span class="fc" id="L101">        return substring(string, start, null);</span>
+    }
+    
+    /**
+     * Get substring using pattern matching (equivalent to PostgreSQL's SUBSTRING with regex).
+     * @param string the source string
+     * @param pattern the regular expression pattern
+     * @return the first match of the pattern, or null if no match
+     */
+    public static String substring(String string, String pattern) {
+<span class="fc bfc" id="L111" title="All 4 branches covered.">        if (string == null || pattern == null) {</span>
+<span class="fc" id="L112">            return null;</span>
+        }
+        
+<span class="fc" id="L115">        Pattern regex = Pattern.compile(pattern);</span>
+<span class="fc" id="L116">        java.util.regex.Matcher matcher = regex.matcher(string);</span>
+        
+<span class="fc bfc" id="L118" title="All 2 branches covered.">        if (matcher.find()) {</span>
+<span class="fc" id="L119">            return matcher.group();</span>
+        }
+        
+<span class="fc" id="L122">        return null;</span>
+    }
+    
+    /**
+     * Get the length of a string (equivalent to PostgreSQL's LENGTH()).
+     * @param string the string to measure
+     * @return the length of the string, or null if string is null
+     */
+    public static Integer length(String string) {
+<span class="fc bfc" id="L131" title="All 2 branches covered.">        return string == null ? null : string.length();</span>
+    }
+    
+    /**
+     * Convert string to uppercase (equivalent to PostgreSQL's UPPER()).
+     * @param string the string to convert
+     * @return the uppercase string
+     */
+    public static String upper(String string) {
+<span class="fc bfc" id="L140" title="All 2 branches covered.">        return string == null ? null : string.toUpperCase();</span>
+    }
+    
+    /**
+     * Convert string to lowercase (equivalent to PostgreSQL's LOWER()).
+     * @param string the string to convert
+     * @return the lowercase string
+     */
+    public static String lower(String string) {
+<span class="fc bfc" id="L149" title="All 2 branches covered.">        return string == null ? null : string.toLowerCase();</span>
+    }
+    
+    /**
+     * Trim whitespace from both ends (equivalent to PostgreSQL's TRIM()).
+     * @param string the string to trim
+     * @return the trimmed string
+     */
+    public static String trim(String string) {
+<span class="fc bfc" id="L158" title="All 2 branches covered.">        return string == null ? null : string.trim();</span>
+    }
+    
+    /**
+     * Trim specified characters from both ends.
+     * @param string the string to trim
+     * @param characters the characters to trim
+     * @return the trimmed string
+     */
+    public static String trim(String string, String characters) {
+<span class="pc bpc" id="L168" title="1 of 4 branches missed.">        if (string == null || characters == null) {</span>
+<span class="fc" id="L169">            return string;</span>
+        }
+        
+<span class="fc" id="L172">        return trimLeading(trimTrailing(string, characters), characters);</span>
+    }
+    
+    /**
+     * Trim whitespace from the left end (equivalent to PostgreSQL's LTRIM()).
+     * @param string the string to trim
+     * @return the left-trimmed string
+     */
+    public static String ltrim(String string) {
+<span class="fc bfc" id="L181" title="All 2 branches covered.">        if (string == null) {</span>
+<span class="fc" id="L182">            return null;</span>
+        }
+        
+<span class="fc" id="L185">        return trimLeading(string, &quot; \t\n\r&quot;);</span>
+    }
+    
+    /**
+     * Trim specified characters from the left end.
+     * @param string the string to trim
+     * @param characters the characters to trim
+     * @return the left-trimmed string
+     */
+    public static String ltrim(String string, String characters) {
+<span class="pc bpc" id="L195" title="1 of 2 branches missed.">        return string == null ? null : trimLeading(string, characters);</span>
+    }
+    
+    /**
+     * Trim whitespace from the right end (equivalent to PostgreSQL's RTRIM()).
+     * @param string the string to trim
+     * @return the right-trimmed string
+     */
+    public static String rtrim(String string) {
+<span class="fc bfc" id="L204" title="All 2 branches covered.">        if (string == null) {</span>
+<span class="fc" id="L205">            return null;</span>
+        }
+        
+<span class="fc" id="L208">        return trimTrailing(string, &quot; \t\n\r&quot;);</span>
+    }
+    
+    /**
+     * Trim specified characters from the right end.
+     * @param string the string to trim
+     * @param characters the characters to trim
+     * @return the right-trimmed string
+     */
+    public static String rtrim(String string, String characters) {
+<span class="pc bpc" id="L218" title="1 of 2 branches missed.">        return string == null ? null : trimTrailing(string, characters);</span>
+    }
+    
+    private static String trimLeading(String string, String characters) {
+<span class="pc bpc" id="L222" title="1 of 4 branches missed.">        if (string.isEmpty() || characters.isEmpty()) {</span>
+<span class="fc" id="L223">            return string;</span>
+        }
+        
+<span class="fc" id="L226">        int start = 0;</span>
+<span class="fc bfc" id="L227" title="All 4 branches covered.">        while (start &lt; string.length() &amp;&amp; characters.indexOf(string.charAt(start)) &gt;= 0) {</span>
+<span class="fc" id="L228">            start++;</span>
+        }
+        
+<span class="fc" id="L231">        return string.substring(start);</span>
+    }
+    
+    private static String trimTrailing(String string, String characters) {
+<span class="pc bpc" id="L235" title="1 of 4 branches missed.">        if (string.isEmpty() || characters.isEmpty()) {</span>
+<span class="fc" id="L236">            return string;</span>
+        }
+        
+<span class="fc" id="L239">        int end = string.length();</span>
+<span class="fc bfc" id="L240" title="All 4 branches covered.">        while (end &gt; 0 &amp;&amp; characters.indexOf(string.charAt(end - 1)) &gt;= 0) {</span>
+<span class="fc" id="L241">            end--;</span>
+        }
+        
+<span class="fc" id="L244">        return string.substring(0, end);</span>
+    }
+    
+    /**
+     * Replace occurrences of a substring (equivalent to PostgreSQL's REPLACE()).
+     * @param string the source string
+     * @param from the substring to replace
+     * @param to the replacement string
+     * @return the string with replacements made
+     */
+    public static String replace(String string, String from, String to) {
+<span class="fc bfc" id="L255" title="All 6 branches covered.">        if (string == null || from == null || to == null) {</span>
+<span class="fc" id="L256">            return string;</span>
+        }
+        
+<span class="fc" id="L259">        return string.replace(from, to);</span>
+    }
+    
+    /**
+     * Find position of substring in string (equivalent to PostgreSQL's POSITION()).
+     * @param substring the substring to find
+     * @param string the string to search in
+     * @return the 1-based position of the substring, or 0 if not found
+     */
+    public static Integer position(String substring, String string) {
+<span class="fc bfc" id="L269" title="All 4 branches covered.">        if (string == null || substring == null) {</span>
+<span class="fc" id="L270">            return null;</span>
+        }
+        
+<span class="fc" id="L273">        int pos = string.indexOf(substring);</span>
+<span class="fc bfc" id="L274" title="All 2 branches covered.">        return pos &gt;= 0 ? pos + 1 : 0; // Convert to 1-based indexing</span>
+    }
+    
+    /**
+     * Left-pad string to specified length (equivalent to PostgreSQL's LPAD()).
+     * @param string the string to pad
+     * @param length the target length
+     * @param padString the padding string (default is space)
+     * @return the padded string
+     */
+    public static String lpad(String string, int length, String padString) {
+<span class="fc bfc" id="L285" title="All 2 branches covered.">        if (string == null) {</span>
+<span class="fc" id="L286">            return null;</span>
+        }
+        
+<span class="pc bpc" id="L289" title="1 of 4 branches missed.">        if (padString == null || padString.isEmpty()) {</span>
+<span class="fc" id="L290">            padString = &quot; &quot;;</span>
+        }
+        
+<span class="fc bfc" id="L293" title="All 2 branches covered.">        if (string.length() &gt;= length) {</span>
+<span class="fc" id="L294">            return string.substring(0, length);</span>
+        }
+        
+<span class="fc" id="L297">        StringBuilder result = new StringBuilder();</span>
+<span class="fc" id="L298">        int padLength = length - string.length();</span>
+        
+        // Add the padding
+<span class="fc bfc" id="L301" title="All 2 branches covered.">        while (result.length() &lt; padLength) {</span>
+<span class="fc bfc" id="L302" title="All 2 branches covered.">            if (result.length() + padString.length() &lt;= padLength) {</span>
+<span class="fc" id="L303">                result.append(padString);</span>
+            } else {
+<span class="fc" id="L305">                result.append(padString.substring(0, padLength - result.length()));</span>
+<span class="fc" id="L306">                break;</span>
+            }
+        }
+        
+<span class="fc" id="L310">        result.append(string);</span>
+<span class="fc" id="L311">        return result.toString();</span>
+    }
+    
+    /**
+     * Left-pad string with spaces.
+     * @param string the string to pad
+     * @param length the target length
+     * @return the padded string
+     */
+    public static String lpad(String string, int length) {
+<span class="fc" id="L321">        return lpad(string, length, &quot; &quot;);</span>
+    }
+    
+    /**
+     * Right-pad string to specified length (equivalent to PostgreSQL's RPAD()).
+     * @param string the string to pad
+     * @param length the target length
+     * @param padString the padding string (default is space)
+     * @return the padded string
+     */
+    public static String rpad(String string, int length, String padString) {
+<span class="fc bfc" id="L332" title="All 2 branches covered.">        if (string == null) {</span>
+<span class="fc" id="L333">            return null;</span>
+        }
+        
+<span class="pc bpc" id="L336" title="1 of 4 branches missed.">        if (padString == null || padString.isEmpty()) {</span>
+<span class="fc" id="L337">            padString = &quot; &quot;;</span>
+        }
+        
+<span class="fc bfc" id="L340" title="All 2 branches covered.">        if (string.length() &gt;= length) {</span>
+<span class="fc" id="L341">            return string.substring(0, length);</span>
+        }
+        
+<span class="fc" id="L344">        StringBuilder result = new StringBuilder(string);</span>
+<span class="fc" id="L345">        int padLength = length - string.length();</span>
+        
+<span class="fc bfc" id="L347" title="All 2 branches covered.">        while (result.length() &lt; length) {</span>
+<span class="fc bfc" id="L348" title="All 2 branches covered.">            if (result.length() + padString.length() &lt;= length) {</span>
+<span class="fc" id="L349">                result.append(padString);</span>
+            } else {
+<span class="fc" id="L351">                result.append(padString.substring(0, length - result.length()));</span>
+            }
+        }
+        
+<span class="fc" id="L355">        return result.toString();</span>
+    }
+    
+    /**
+     * Right-pad string with spaces.
+     * @param string the string to pad
+     * @param length the target length
+     * @return the padded string
+     */
+    public static String rpad(String string, int length) {
+<span class="fc" id="L365">        return rpad(string, length, &quot; &quot;);</span>
+    }
+    
+    /**
+     * Reverse a string (equivalent to PostgreSQL's REVERSE()).
+     * @param string the string to reverse
+     * @return the reversed string
+     */
+    public static String reverse(String string) {
+<span class="fc bfc" id="L374" title="All 2 branches covered.">        if (string == null) {</span>
+<span class="fc" id="L375">            return null;</span>
+        }
+        
+<span class="fc" id="L378">        return new StringBuilder(string).reverse().toString();</span>
+    }
+    
+    /**
+     * Split string into array (equivalent to PostgreSQL's STRING_TO_ARRAY()).
+     * @param string the string to split
+     * @param delimiter the delimiter
+     * @return array of strings
+     */
+    public static String[] stringToArray(String string, String delimiter) {
+<span class="fc bfc" id="L388" title="All 4 branches covered.">        if (string == null || delimiter == null) {</span>
+<span class="fc" id="L389">            return null;</span>
+        }
+        
+<span class="fc bfc" id="L392" title="All 2 branches covered.">        if (delimiter.isEmpty()) {</span>
+            // Split into individual characters
+<span class="fc" id="L394">            return string.split(&quot;&quot;);</span>
+        }
+        
+<span class="fc" id="L397">        return string.split(Pattern.quote(delimiter));</span>
+    }
+    
+    /**
+     * Join array of strings (equivalent to PostgreSQL's ARRAY_TO_STRING()).
+     * @param array the array of strings
+     * @param delimiter the delimiter
+     * @return the joined string
+     */
+    public static String arrayToString(String[] array, String delimiter) {
+<span class="fc bfc" id="L407" title="All 4 branches covered.">        if (array == null || delimiter == null) {</span>
+<span class="fc" id="L408">            return null;</span>
+        }
+        
+<span class="fc" id="L411">        return String.join(delimiter, array);</span>
+    }
+    
+    /**
+     * Aggregate strings with separator (equivalent to PostgreSQL's STRING_AGG()).
+     * This is typically used in GROUP BY queries.
+     * @param strings the list of strings to aggregate
+     * @param separator the separator
+     * @return the aggregated string
+     */
+    public static String stringAgg(List&lt;String&gt; strings, String separator) {
+<span class="fc bfc" id="L422" title="All 4 branches covered.">        if (strings == null || separator == null) {</span>
+<span class="fc" id="L423">            return null;</span>
+        }
+        
+<span class="fc" id="L426">        return strings.stream()</span>
+<span class="fc bfc" id="L427" title="All 2 branches covered.">                .filter(s -&gt; s != null)</span>
+<span class="fc" id="L428">                .collect(Collectors.joining(separator));</span>
+    }
+    
+    /**
+     * Check if string starts with prefix (equivalent to PostgreSQL's starts_with()).
+     * @param string the string to check
+     * @param prefix the prefix to look for
+     * @return true if string starts with prefix
+     */
+    public static Boolean startsWith(String string, String prefix) {
+<span class="fc bfc" id="L438" title="All 4 branches covered.">        if (string == null || prefix == null) {</span>
+<span class="fc" id="L439">            return null;</span>
+        }
+        
+<span class="fc" id="L442">        return string.startsWith(prefix);</span>
+    }
+    
+    /**
+     * Repeat string n times (equivalent to PostgreSQL's REPEAT()).
+     * @param string the string to repeat
+     * @param count the number of times to repeat
+     * @return the repeated string
+     */
+    public static String repeat(String string, int count) {
+<span class="fc bfc" id="L452" title="All 4 branches covered.">        if (string == null || count &lt;= 0) {</span>
+<span class="fc bfc" id="L453" title="All 2 branches covered.">            return string == null ? null : &quot;&quot;;</span>
+        }
+        
+<span class="fc" id="L456">        StringBuilder result = new StringBuilder();</span>
+<span class="fc bfc" id="L457" title="All 2 branches covered.">        for (int i = 0; i &lt; count; i++) {</span>
+<span class="fc" id="L458">            result.append(string);</span>
+        }
+<span class="fc" id="L460">        return result.toString();</span>
+    }
+    
+    /**
+     * Get leftmost n characters (equivalent to PostgreSQL's LEFT()).
+     * @param string the source string
+     * @param length the number of characters
+     * @return the leftmost characters
+     */
+    public static String left(String string, int length) {
+<span class="fc bfc" id="L470" title="All 2 branches covered.">        if (string == null) {</span>
+<span class="fc" id="L471">            return null;</span>
+        }
+        
+<span class="fc bfc" id="L474" title="All 2 branches covered.">        if (length &lt;= 0) {</span>
+<span class="fc" id="L475">            return &quot;&quot;;</span>
+        }
+        
+<span class="fc" id="L478">        return string.substring(0, Math.min(length, string.length()));</span>
+    }
+    
+    /**
+     * Get rightmost n characters (equivalent to PostgreSQL's RIGHT()).
+     * @param string the source string
+     * @param length the number of characters
+     * @return the rightmost characters
+     */
+    public static String right(String string, int length) {
+<span class="fc bfc" id="L488" title="All 2 branches covered.">        if (string == null) {</span>
+<span class="fc" id="L489">            return null;</span>
+        }
+        
+<span class="fc bfc" id="L492" title="All 2 branches covered.">        if (length &lt;= 0) {</span>
+<span class="fc" id="L493">            return &quot;&quot;;</span>
+        }
+        
+<span class="fc bfc" id="L496" title="All 2 branches covered.">        if (length &gt;= string.length()) {</span>
+<span class="fc" id="L497">            return string;</span>
+        }
+        
+<span class="fc" id="L500">        return string.substring(string.length() - length);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

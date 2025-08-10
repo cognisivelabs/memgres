@@ -11,7 +11,7 @@ import java.util.List;
 public class ColumnDefinition extends AstNode {
     
     public enum Constraint {
-        NOT_NULL, NULL
+        NOT_NULL, NULL, PRIMARY_KEY, UNIQUE
     }
     
     private final String columnName;

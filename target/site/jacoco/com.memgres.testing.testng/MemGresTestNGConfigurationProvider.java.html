@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MemGresTestNGConfigurationProvider.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">MemGres Core</a> &gt; <a href="index.source.html" class="el_package">com.memgres.testing.testng</a> &gt; <span class="el_source">MemGresTestNGConfigurationProvider.java</span></div><h1>MemGresTestNGConfigurationProvider.java</h1><pre class="source lang-java linenums">package com.memgres.testing.testng;
+
+import com.memgres.core.MemGresEngine;
+import com.memgres.sql.execution.SqlExecutionEngine;
+import com.memgres.testing.MemGresTestDataSource;
+import com.memgres.testing.MemGresTestHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testng.ITestResult;
+import org.testng.TestListenerAdapter;
+
+/**
+ * TestNG configuration provider for MemGres components.
+ * 
+ * &lt;p&gt;This class provides utility methods for TestNG tests to access MemGres components
+ * that were set up by the {@link MemGresTestNGListener}. It uses thread-local storage
+ * to provide access to MemGres components without requiring parameter injection.&lt;/p&gt;
+ * 
+ * &lt;p&gt;Example usage:&lt;/p&gt;
+ * &lt;pre&gt;{@code
+ * public class MyTest {
+ *     @Test
+ *     @MemGres
+ *     public void testWithMemGres() {
+ *         MemGresEngine engine = MemGresTestNGConfigurationProvider.getEngine();
+ *         SqlExecutionEngine sqlEngine = MemGresTestNGConfigurationProvider.getSqlEngine();
+ *         // Test implementation
+ *     }
+ * }
+ * }&lt;/pre&gt;
+ * 
+ * @since 1.0.0
+ */
+<span class="nc" id="L34">public class MemGresTestNGConfigurationProvider extends TestListenerAdapter {</span>
+    
+    // Thread-local storage for MemGres components
+<span class="fc" id="L37">    private static final ThreadLocal&lt;MemGresEngine&gt; threadLocalEngine = new ThreadLocal&lt;&gt;();</span>
+<span class="fc" id="L38">    private static final ThreadLocal&lt;MemGresTestHelper&gt; threadLocalHelper = new ThreadLocal&lt;&gt;();</span>
+<span class="fc" id="L39">    private static final ThreadLocal&lt;MemGresTestHelper.MemGresConfig&gt; threadLocalConfig = new ThreadLocal&lt;&gt;();</span>
+    
+<span class="fc" id="L41">    private static final Logger logger = LoggerFactory.getLogger(MemGresTestNGConfigurationProvider.class);</span>
+    
+    /**
+     * Sets the thread-local MemGres components for the current test thread.
+     * This is called by MemGresTestNGListener.
+     */
+    static void setCurrentTestComponents(MemGresEngine engine, MemGresTestHelper helper, MemGresTestHelper.MemGresConfig config) {
+<span class="fc" id="L48">        threadLocalEngine.set(engine);</span>
+<span class="fc" id="L49">        threadLocalHelper.set(helper);</span>
+<span class="fc" id="L50">        threadLocalConfig.set(config);</span>
+<span class="fc" id="L51">    }</span>
+    
+    /**
+     * Clears the thread-local MemGres components for the current test thread.
+     * This is called by MemGresTestNGListener.
+     */
+    static void clearCurrentTestComponents() {
+<span class="fc" id="L58">        threadLocalEngine.remove();</span>
+<span class="fc" id="L59">        threadLocalHelper.remove();</span>
+<span class="fc" id="L60">        threadLocalConfig.remove();</span>
+<span class="fc" id="L61">    }</span>
+    
+    /**
+     * Gets the MemGresEngine instance for the current test.
+     * 
+     * @return the MemGresEngine instance
+     * @throws IllegalStateException if the engine is not available
+     */
+    public static MemGresEngine getEngine() {
+<span class="fc" id="L70">        MemGresEngine engine = threadLocalEngine.get();</span>
+<span class="pc bpc" id="L71" title="1 of 2 branches missed.">        if (engine == null) {</span>
+<span class="nc" id="L72">            throw new IllegalStateException(&quot;MemGres engine not available. Ensure @MemGres annotation is present and MemGresTestNGListener is configured.&quot;);</span>
+        }
+<span class="fc" id="L74">        return engine;</span>
+    }
+    
+    /**
+     * Gets the MemGresEngine instance for the current test (legacy method for backward compatibility).
+     * 
+     * @param result the current test result (ignored in new implementation)
+     * @return the MemGresEngine instance
+     * @throws IllegalStateException if the engine is not available
+     * @deprecated Use {@link #getEngine()} instead
+     */
+    @Deprecated
+    public static MemGresEngine getEngine(ITestResult result) {
+<span class="nc" id="L87">        return getEngine();</span>
+    }
+    
+    /**
+     * Gets the SqlExecutionEngine instance for the current test.
+     * 
+     * @return the SqlExecutionEngine instance
+     * @throws IllegalStateException if the engine is not available
+     */
+    public static SqlExecutionEngine getSqlEngine() {
+<span class="fc" id="L97">        MemGresEngine engine = getEngine();</span>
+<span class="fc" id="L98">        return new SqlExecutionEngine(engine);</span>
+    }
+    
+    /**
+     * Gets the SqlExecutionEngine instance for the current test (legacy method for backward compatibility).
+     * 
+     * @param result the current test result (ignored in new implementation)
+     * @return the SqlExecutionEngine instance
+     * @throws IllegalStateException if the engine is not available
+     * @deprecated Use {@link #getSqlEngine()} instead
+     */
+    @Deprecated
+    public static SqlExecutionEngine getSqlEngine(ITestResult result) {
+<span class="nc" id="L111">        return getSqlEngine();</span>
+    }
+    
+    /**
+     * Gets the MemGresTestDataSource instance for the current test.
+     * 
+     * @return the MemGresTestDataSource instance
+     * @throws IllegalStateException if the engine is not available
+     */
+    public static MemGresTestDataSource getDataSource() {
+<span class="fc" id="L121">        MemGresEngine engine = getEngine();</span>
+<span class="fc" id="L122">        return new MemGresTestDataSource(engine);</span>
+    }
+    
+    /**
+     * Gets the MemGresTestDataSource instance for the current test (legacy method for backward compatibility).
+     * 
+     * @param result the current test result (ignored in new implementation)
+     * @return the MemGresTestDataSource instance
+     * @throws IllegalStateException if the engine is not available
+     * @deprecated Use {@link #getDataSource()} instead
+     */
+    @Deprecated
+    public static MemGresTestDataSource getDataSource(ITestResult result) {
+<span class="nc" id="L135">        return getDataSource();</span>
+    }
+    
+    /**
+     * Gets the MemGresTestHelper instance for the current test.
+     * 
+     * @return the MemGresTestHelper instance
+     * @throws IllegalStateException if the helper is not available
+     */
+    public static MemGresTestHelper getHelper() {
+<span class="nc" id="L145">        MemGresTestHelper helper = threadLocalHelper.get();</span>
+<span class="nc bnc" id="L146" title="All 2 branches missed.">        if (helper == null) {</span>
+<span class="nc" id="L147">            throw new IllegalStateException(&quot;MemGres helper not available. Ensure @MemGres annotation is present and MemGresTestNGListener is configured.&quot;);</span>
+        }
+<span class="nc" id="L149">        return helper;</span>
+    }
+    
+    /**
+     * Gets the MemGresTestHelper instance for the current test (legacy method for backward compatibility).
+     * 
+     * @param result the current test result (ignored in new implementation)
+     * @return the MemGresTestHelper instance
+     * @throws IllegalStateException if the helper is not available
+     * @deprecated Use {@link #getHelper()} instead
+     */
+    @Deprecated
+    public static MemGresTestHelper getHelper(ITestResult result) {
+<span class="nc" id="L162">        return getHelper();</span>
+    }
+    
+    /**
+     * Gets the MemGresConfig instance for the current test.
+     * 
+     * @return the MemGresConfig instance
+     * @throws IllegalStateException if the config is not available
+     */
+    public static MemGresTestHelper.MemGresConfig getConfig() {
+<span class="fc" id="L172">        MemGresTestHelper.MemGresConfig config = threadLocalConfig.get();</span>
+<span class="pc bpc" id="L173" title="1 of 2 branches missed.">        if (config == null) {</span>
+<span class="nc" id="L174">            throw new IllegalStateException(&quot;MemGres config not available. Ensure @MemGres annotation is present and MemGresTestNGListener is configured.&quot;);</span>
+        }
+<span class="fc" id="L176">        return config;</span>
+    }
+    
+    /**
+     * Gets the MemGresConfig instance for the current test (legacy method for backward compatibility).
+     * 
+     * @param result the current test result (ignored in new implementation)
+     * @return the MemGresConfig instance
+     * @throws IllegalStateException if the config is not available
+     * @deprecated Use {@link #getConfig()} instead
+     */
+    @Deprecated
+    public static MemGresTestHelper.MemGresConfig getConfig(ITestResult result) {
+<span class="nc" id="L189">        return getConfig();</span>
+    }
+    
+    /**
+     * Checks if MemGres is available for the current test.
+     * 
+     * @return true if MemGres is available, false otherwise
+     */
+    public static boolean isMemGresAvailable() {
+<span class="pc bpc" id="L198" title="1 of 2 branches missed.">        return threadLocalEngine.get() != null;</span>
+    }
+    
+    /**
+     * Checks if MemGres is available for the current test (legacy method for backward compatibility).
+     * 
+     * @param result the current test result (ignored in new implementation)
+     * @return true if MemGres is available, false otherwise
+     * @deprecated Use {@link #isMemGresAvailable()} instead
+     */
+    @Deprecated
+    public static boolean isMemGresAvailable(ITestResult result) {
+<span class="nc" id="L210">        return isMemGresAvailable();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

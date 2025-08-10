@@ -35,7 +35,7 @@ public class TransactionManager {
      * @return the transaction object
      */
     public Transaction beginTransaction() {
-<span class="nc" id="L38">        return beginTransaction(TransactionIsolationLevel.READ_COMMITTED);</span>
+<span class="fc" id="L38">        return beginTransaction(TransactionIsolationLevel.READ_COMMITTED);</span>
     }
     
     /**
@@ -188,8 +188,8 @@ public class TransactionManager {
      * @param transaction the transaction to set (null to clear)
      */
     public void setCurrentTransaction(Transaction transaction) {
-<span class="nc" id="L191">        TransactionContext.setCurrentTransaction(transaction);</span>
-<span class="nc" id="L192">    }</span>
+<span class="fc" id="L191">        TransactionContext.setCurrentTransaction(transaction);</span>
+<span class="fc" id="L192">    }</span>
     
     /**
      * Execute a block of code within a transaction

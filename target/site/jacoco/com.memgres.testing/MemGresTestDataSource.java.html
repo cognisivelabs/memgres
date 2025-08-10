@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MemGresTestDataSource.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">MemGres Core</a> &gt; <a href="index.source.html" class="el_package">com.memgres.testing</a> &gt; <span class="el_source">MemGresTestDataSource.java</span></div><h1>MemGresTestDataSource.java</h1><pre class="source lang-java linenums">package com.memgres.testing;
+
+import com.memgres.core.MemGresEngine;
+import com.memgres.sql.execution.SqlExecutionEngine;
+
+import javax.sql.DataSource;
+import java.io.PrintWriter;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
+import java.util.logging.Logger;
+
+/**
+ * DataSource implementation for MemGres testing integration.
+ * 
+ * &lt;p&gt;This class provides a JDBC-compatible DataSource interface for MemGres
+ * database instances in testing environments. It allows integration with
+ * existing frameworks and tools that expect a standard DataSource.&lt;/p&gt;
+ * 
+ * &lt;p&gt;Note: This is a simplified DataSource implementation designed for testing.
+ * It does not support connection pooling or advanced DataSource features.&lt;/p&gt;
+ * 
+ * @since 1.0.0
+ */
+public class MemGresTestDataSource implements DataSource {
+    
+    private final MemGresEngine engine;
+    private final SqlExecutionEngine sqlEngine;
+    private PrintWriter logWriter;
+<span class="fc" id="L30">    private int loginTimeout = 0;</span>
+    
+    /**
+     * Creates a new MemGresTestDataSource wrapping the given engine.
+     * 
+     * @param engine the MemGres engine to wrap
+     */
+<span class="fc" id="L37">    public MemGresTestDataSource(MemGresEngine engine) {</span>
+<span class="fc" id="L38">        this.engine = engine;</span>
+<span class="fc" id="L39">        this.sqlEngine = new SqlExecutionEngine(engine);</span>
+<span class="fc" id="L40">    }</span>
+    
+    @Override
+    public Connection getConnection() throws SQLException {
+<span class="fc" id="L44">        return new MemGresTestConnection(engine, sqlEngine);</span>
+    }
+    
+    @Override
+    public Connection getConnection(String username, String password) throws SQLException {
+        // MemGres doesn't support authentication in test mode
+<span class="nc" id="L50">        return getConnection();</span>
+    }
+    
+    @Override
+    public PrintWriter getLogWriter() throws SQLException {
+<span class="nc" id="L55">        return logWriter;</span>
+    }
+    
+    @Override
+    public void setLogWriter(PrintWriter out) throws SQLException {
+<span class="nc" id="L60">        this.logWriter = out;</span>
+<span class="nc" id="L61">    }</span>
+    
+    @Override
+    public void setLoginTimeout(int seconds) throws SQLException {
+<span class="nc" id="L65">        this.loginTimeout = seconds;</span>
+<span class="nc" id="L66">    }</span>
+    
+    @Override
+    public int getLoginTimeout() throws SQLException {
+<span class="nc" id="L70">        return loginTimeout;</span>
+    }
+    
+    @Override
+    public Logger getParentLogger() throws SQLFeatureNotSupportedException {
+<span class="nc" id="L75">        throw new SQLFeatureNotSupportedException(&quot;getParentLogger not supported&quot;);</span>
+    }
+    
+    @Override
+    public &lt;T&gt; T unwrap(Class&lt;T&gt; iface) throws SQLException {
+<span class="nc bnc" id="L80" title="All 2 branches missed.">        if (iface.isAssignableFrom(MemGresEngine.class)) {</span>
+<span class="nc" id="L81">            return iface.cast(engine);</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">        } else if (iface.isAssignableFrom(SqlExecutionEngine.class)) {</span>
+<span class="nc" id="L83">            return iface.cast(sqlEngine);</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">        } else if (iface.isAssignableFrom(getClass())) {</span>
+<span class="nc" id="L85">            return iface.cast(this);</span>
+        }
+<span class="nc" id="L87">        throw new SQLException(&quot;Cannot unwrap to &quot; + iface.getName());</span>
+    }
+    
+    @Override
+    public boolean isWrapperFor(Class&lt;?&gt; iface) throws SQLException {
+<span class="nc bnc" id="L92" title="All 2 branches missed.">        return iface.isAssignableFrom(MemGresEngine.class) ||</span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">               iface.isAssignableFrom(SqlExecutionEngine.class) ||</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">               iface.isAssignableFrom(getClass());</span>
+    }
+    
+    /**
+     * Gets the underlying MemGres engine.
+     * 
+     * @return the MemGres engine
+     */
+    public MemGresEngine getEngine() {
+<span class="nc" id="L103">        return engine;</span>
+    }
+    
+    /**
+     * Gets the SQL execution engine.
+     * 
+     * @return the SQL execution engine
+     */
+    public SqlExecutionEngine getSqlEngine() {
+<span class="nc" id="L112">        return sqlEngine;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

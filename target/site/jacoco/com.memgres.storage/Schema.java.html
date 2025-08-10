@@ -140,11 +140,11 @@ public class Schema {
      * @return set of table names
      */
     public Set&lt;String&gt; getTableNames() {
-<span class="nc" id="L143">        schemaLock.readLock().lock();</span>
+<span class="fc" id="L143">        schemaLock.readLock().lock();</span>
         try {
-<span class="nc" id="L145">            return Set.copyOf(tables.keySet());</span>
+<span class="fc" id="L145">            return Set.copyOf(tables.keySet());</span>
         } finally {
-<span class="nc" id="L147">            schemaLock.readLock().unlock();</span>
+<span class="fc" id="L147">            schemaLock.readLock().unlock();</span>
         }
     }
     

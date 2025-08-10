@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DateTimeFunctions.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">MemGres Core</a> &gt; <a href="index.source.html" class="el_package">com.memgres.functions</a> &gt; <span class="el_source">DateTimeFunctions.java</span></div><h1>DateTimeFunctions.java</h1><pre class="source lang-java linenums">package com.memgres.functions;
+
+import java.time.*;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoField;
+import java.time.temporal.TemporalAccessor;
+
+/**
+ * Date/Time functions for MemGres database.
+ * Provides PostgreSQL-compatible date and time functions.
+ */
+<span class="nc" id="L12">public class DateTimeFunctions {</span>
+    
+    /**
+     * Get the current timestamp (equivalent to PostgreSQL's NOW()).
+     * @return the current timestamp with timezone
+     */
+    public static ZonedDateTime now() {
+<span class="fc" id="L19">        return ZonedDateTime.now(ZoneOffset.UTC);</span>
+    }
+    
+    /**
+     * Get the current date (equivalent to PostgreSQL's CURRENT_DATE).
+     * @return the current date
+     */
+    public static LocalDate currentDate() {
+<span class="fc" id="L27">        return LocalDate.now(ZoneOffset.UTC);</span>
+    }
+    
+    /**
+     * Get the current time (equivalent to PostgreSQL's CURRENT_TIME).
+     * @return the current time with timezone
+     */
+    public static OffsetTime currentTime() {
+<span class="fc" id="L35">        return OffsetTime.now(ZoneOffset.UTC);</span>
+    }
+    
+    /**
+     * Get the current timestamp (equivalent to PostgreSQL's CURRENT_TIMESTAMP).
+     * @return the current timestamp with timezone
+     */
+    public static ZonedDateTime currentTimestamp() {
+<span class="fc" id="L43">        return ZonedDateTime.now(ZoneOffset.UTC);</span>
+    }
+    
+    /**
+     * Extract a field from a date/time value (equivalent to PostgreSQL's EXTRACT()).
+     * @param field the field to extract (year, month, day, hour, minute, second, etc.)
+     * @param datetime the date/time value to extract from
+     * @return the extracted field value
+     */
+    public static Double extract(String field, TemporalAccessor datetime) {
+<span class="fc bfc" id="L53" title="All 4 branches covered.">        if (field == null || datetime == null) {</span>
+<span class="fc" id="L54">            return null;</span>
+        }
+        
+<span class="fc" id="L57">        String normalizedField = field.toLowerCase().trim();</span>
+        
+<span class="pc bpc" id="L59" title="1 of 15 branches missed.">        switch (normalizedField) {</span>
+            case &quot;year&quot;:
+<span class="fc" id="L61">                return (double) datetime.get(ChronoField.YEAR);</span>
+            case &quot;month&quot;:
+<span class="fc" id="L63">                return (double) datetime.get(ChronoField.MONTH_OF_YEAR);</span>
+            case &quot;day&quot;:
+<span class="fc" id="L65">                return (double) datetime.get(ChronoField.DAY_OF_MONTH);</span>
+            case &quot;hour&quot;:
+<span class="fc" id="L67">                return (double) datetime.get(ChronoField.HOUR_OF_DAY);</span>
+            case &quot;minute&quot;:
+<span class="fc" id="L69">                return (double) datetime.get(ChronoField.MINUTE_OF_HOUR);</span>
+            case &quot;second&quot;:
+<span class="pc bpc" id="L71" title="1 of 2 branches missed.">                if (datetime.isSupported(ChronoField.NANO_OF_SECOND)) {</span>
+<span class="fc" id="L72">                    double seconds = datetime.get(ChronoField.SECOND_OF_MINUTE);</span>
+<span class="fc" id="L73">                    double nanos = datetime.get(ChronoField.NANO_OF_SECOND);</span>
+<span class="fc" id="L74">                    return seconds + (nanos / 1_000_000_000.0);</span>
+                } else {
+<span class="nc" id="L76">                    return (double) datetime.get(ChronoField.SECOND_OF_MINUTE);</span>
+                }
+            case &quot;millisecond&quot;:
+<span class="pc bpc" id="L79" title="1 of 2 branches missed.">                if (datetime.isSupported(ChronoField.MILLI_OF_SECOND)) {</span>
+<span class="fc" id="L80">                    return (double) datetime.get(ChronoField.MILLI_OF_SECOND);</span>
+<span class="nc bnc" id="L81" title="All 2 branches missed.">                } else if (datetime.isSupported(ChronoField.NANO_OF_SECOND)) {</span>
+<span class="nc" id="L82">                    return datetime.get(ChronoField.NANO_OF_SECOND) / 1_000_000.0;</span>
+                } else {
+<span class="nc" id="L84">                    return 0.0;</span>
+                }
+            case &quot;microsecond&quot;:
+<span class="pc bpc" id="L87" title="1 of 2 branches missed.">                if (datetime.isSupported(ChronoField.MICRO_OF_SECOND)) {</span>
+<span class="fc" id="L88">                    return (double) datetime.get(ChronoField.MICRO_OF_SECOND);</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">                } else if (datetime.isSupported(ChronoField.NANO_OF_SECOND)) {</span>
+<span class="nc" id="L90">                    return datetime.get(ChronoField.NANO_OF_SECOND) / 1_000.0;</span>
+                } else {
+<span class="nc" id="L92">                    return 0.0;</span>
+                }
+            case &quot;nanosecond&quot;:
+<span class="pc bpc" id="L95" title="1 of 2 branches missed.">                if (datetime.isSupported(ChronoField.NANO_OF_SECOND)) {</span>
+<span class="fc" id="L96">                    return (double) datetime.get(ChronoField.NANO_OF_SECOND);</span>
+                } else {
+<span class="nc" id="L98">                    return 0.0;</span>
+                }
+            case &quot;quarter&quot;:
+<span class="fc" id="L101">                int month = datetime.get(ChronoField.MONTH_OF_YEAR);</span>
+<span class="fc" id="L102">                return (double) ((month - 1) / 3 + 1);</span>
+            case &quot;week&quot;:
+<span class="nc bnc" id="L104" title="All 2 branches missed.">                if (datetime.isSupported(ChronoField.ALIGNED_WEEK_OF_YEAR)) {</span>
+<span class="nc" id="L105">                    return (double) datetime.get(ChronoField.ALIGNED_WEEK_OF_YEAR);</span>
+                } else {
+<span class="nc" id="L107">                    return null;</span>
+                }
+            case &quot;dow&quot;: case &quot;dayofweek&quot;:
+<span class="pc bpc" id="L110" title="1 of 2 branches missed.">                if (datetime.isSupported(ChronoField.DAY_OF_WEEK)) {</span>
+                    // PostgreSQL: Sunday=0, Monday=1, ... Saturday=6
+<span class="fc" id="L112">                    int isoDayOfWeek = datetime.get(ChronoField.DAY_OF_WEEK); // Monday=1, Sunday=7</span>
+<span class="fc bfc" id="L113" title="All 2 branches covered.">                    return (double) (isoDayOfWeek == 7 ? 0 : isoDayOfWeek);</span>
+                } else {
+<span class="nc" id="L115">                    return null;</span>
+                }
+            case &quot;doy&quot;: case &quot;dayofyear&quot;:
+<span class="pc bpc" id="L118" title="1 of 2 branches missed.">                if (datetime.isSupported(ChronoField.DAY_OF_YEAR)) {</span>
+<span class="fc" id="L119">                    return (double) datetime.get(ChronoField.DAY_OF_YEAR);</span>
+                } else {
+<span class="nc" id="L121">                    return null;</span>
+                }
+            case &quot;epoch&quot;:
+<span class="pc bpc" id="L124" title="1 of 2 branches missed.">                if (datetime instanceof ZonedDateTime) {</span>
+<span class="fc" id="L125">                    return (double) ((ZonedDateTime) datetime).toEpochSecond();</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">                } else if (datetime instanceof OffsetDateTime) {</span>
+<span class="nc" id="L127">                    return (double) ((OffsetDateTime) datetime).toEpochSecond();</span>
+<span class="nc bnc" id="L128" title="All 2 branches missed.">                } else if (datetime instanceof LocalDateTime) {</span>
+<span class="nc" id="L129">                    return (double) ((LocalDateTime) datetime).toEpochSecond(ZoneOffset.UTC);</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">                } else if (datetime instanceof LocalDate) {</span>
+<span class="nc" id="L131">                    return (double) ((LocalDate) datetime).atStartOfDay(ZoneOffset.UTC).toEpochSecond();</span>
+                } else {
+<span class="nc" id="L133">                    return null;</span>
+                }
+            default:
+<span class="fc" id="L136">                throw new IllegalArgumentException(&quot;Unsupported extract field: &quot; + field);</span>
+        }
+    }
+    
+    /**
+     * Add an interval to a date/time value.
+     * @param datetime the base date/time
+     * @param interval the interval to add (e.g., &quot;1 day&quot;, &quot;2 hours&quot;, &quot;3 months&quot;)
+     * @return the resulting date/time
+     */
+    public static TemporalAccessor dateAdd(TemporalAccessor datetime, String interval) {
+<span class="fc bfc" id="L147" title="All 4 branches covered.">        if (datetime == null || interval == null) {</span>
+<span class="fc" id="L148">            return null;</span>
+        }
+        
+        // Simple interval parsing - can be enhanced later
+<span class="fc" id="L152">        String[] parts = interval.trim().toLowerCase().split(&quot;\\s+&quot;);</span>
+<span class="fc bfc" id="L153" title="All 2 branches covered.">        if (parts.length != 2) {</span>
+<span class="fc" id="L154">            throw new IllegalArgumentException(&quot;Invalid interval format: &quot; + interval);</span>
+        }
+        
+        long amount;
+        try {
+<span class="fc" id="L159">            amount = Long.parseLong(parts[0]);</span>
+<span class="fc" id="L160">        } catch (NumberFormatException e) {</span>
+<span class="fc" id="L161">            throw new IllegalArgumentException(&quot;Invalid interval amount: &quot; + parts[0]);</span>
+<span class="fc" id="L162">        }</span>
+        
+<span class="fc" id="L164">        String unit = parts[1];</span>
+        
+<span class="fc bfc" id="L166" title="All 2 branches covered.">        if (datetime instanceof LocalDateTime) {</span>
+<span class="fc" id="L167">            LocalDateTime ldt = (LocalDateTime) datetime;</span>
+<span class="fc bfc" id="L168" title="All 7 branches covered.">            switch (unit) {</span>
+                case &quot;year&quot;: case &quot;years&quot;:
+<span class="fc" id="L170">                    return ldt.plusYears(amount);</span>
+                case &quot;month&quot;: case &quot;months&quot;:
+<span class="fc" id="L172">                    return ldt.plusMonths(amount);</span>
+                case &quot;day&quot;: case &quot;days&quot;:
+<span class="fc" id="L174">                    return ldt.plusDays(amount);</span>
+                case &quot;hour&quot;: case &quot;hours&quot;:
+<span class="fc" id="L176">                    return ldt.plusHours(amount);</span>
+                case &quot;minute&quot;: case &quot;minutes&quot;:
+<span class="fc" id="L178">                    return ldt.plusMinutes(amount);</span>
+                case &quot;second&quot;: case &quot;seconds&quot;:
+<span class="fc" id="L180">                    return ldt.plusSeconds(amount);</span>
+                default:
+<span class="fc" id="L182">                    throw new IllegalArgumentException(&quot;Unsupported interval unit: &quot; + unit);</span>
+            }
+<span class="fc bfc" id="L184" title="All 2 branches covered.">        } else if (datetime instanceof LocalDate) {</span>
+<span class="fc" id="L185">            LocalDate ld = (LocalDate) datetime;</span>
+<span class="fc bfc" id="L186" title="All 4 branches covered.">            switch (unit) {</span>
+                case &quot;year&quot;: case &quot;years&quot;:
+<span class="fc" id="L188">                    return ld.plusYears(amount);</span>
+                case &quot;month&quot;: case &quot;months&quot;:
+<span class="fc" id="L190">                    return ld.plusMonths(amount);</span>
+                case &quot;day&quot;: case &quot;days&quot;:
+<span class="fc" id="L192">                    return ld.plusDays(amount);</span>
+                default:
+<span class="fc" id="L194">                    throw new IllegalArgumentException(&quot;Cannot add time units to date: &quot; + unit);</span>
+            }
+<span class="pc bpc" id="L196" title="1 of 2 branches missed.">        } else if (datetime instanceof ZonedDateTime) {</span>
+<span class="fc" id="L197">            ZonedDateTime zdt = (ZonedDateTime) datetime;</span>
+<span class="pc bpc" id="L198" title="6 of 7 branches missed.">            switch (unit) {</span>
+                case &quot;year&quot;: case &quot;years&quot;:
+<span class="nc" id="L200">                    return zdt.plusYears(amount);</span>
+                case &quot;month&quot;: case &quot;months&quot;:
+<span class="nc" id="L202">                    return zdt.plusMonths(amount);</span>
+                case &quot;day&quot;: case &quot;days&quot;:
+<span class="fc" id="L204">                    return zdt.plusDays(amount);</span>
+                case &quot;hour&quot;: case &quot;hours&quot;:
+<span class="nc" id="L206">                    return zdt.plusHours(amount);</span>
+                case &quot;minute&quot;: case &quot;minutes&quot;:
+<span class="nc" id="L208">                    return zdt.plusMinutes(amount);</span>
+                case &quot;second&quot;: case &quot;seconds&quot;:
+<span class="nc" id="L210">                    return zdt.plusSeconds(amount);</span>
+                default:
+<span class="nc" id="L212">                    throw new IllegalArgumentException(&quot;Unsupported interval unit: &quot; + unit);</span>
+            }
+        }
+        
+<span class="nc" id="L216">        throw new IllegalArgumentException(&quot;Unsupported datetime type: &quot; + datetime.getClass());</span>
+    }
+    
+    /**
+     * Format a date/time value as a string.
+     * @param datetime the date/time to format
+     * @param pattern the format pattern (PostgreSQL-style or Java DateTimeFormatter pattern)
+     * @return the formatted string
+     */
+    public static String formatDateTime(TemporalAccessor datetime, String pattern) {
+<span class="fc bfc" id="L226" title="All 4 branches covered.">        if (datetime == null || pattern == null) {</span>
+<span class="fc" id="L227">            return null;</span>
+        }
+        
+        // Convert some common PostgreSQL patterns to Java patterns
+<span class="fc" id="L231">        String javaPattern = pattern</span>
+<span class="fc" id="L232">            .replace(&quot;YYYY&quot;, &quot;yyyy&quot;)</span>
+<span class="fc" id="L233">            .replace(&quot;MM&quot;, &quot;MM&quot;)</span>
+<span class="fc" id="L234">            .replace(&quot;DD&quot;, &quot;dd&quot;)</span>
+<span class="fc" id="L235">            .replace(&quot;HH24&quot;, &quot;HH&quot;)</span>
+<span class="fc" id="L236">            .replace(&quot;MI&quot;, &quot;mm&quot;)</span>
+<span class="fc" id="L237">            .replace(&quot;SS&quot;, &quot;ss&quot;);</span>
+        
+<span class="fc" id="L239">        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(javaPattern);</span>
+        
+<span class="fc bfc" id="L241" title="All 2 branches covered.">        if (datetime instanceof LocalDateTime) {</span>
+<span class="fc" id="L242">            return ((LocalDateTime) datetime).format(formatter);</span>
+<span class="fc bfc" id="L243" title="All 2 branches covered.">        } else if (datetime instanceof LocalDate) {</span>
+<span class="fc" id="L244">            return ((LocalDate) datetime).format(formatter);</span>
+<span class="pc bpc" id="L245" title="1 of 2 branches missed.">        } else if (datetime instanceof LocalTime) {</span>
+<span class="fc" id="L246">            return ((LocalTime) datetime).format(formatter);</span>
+<span class="nc bnc" id="L247" title="All 2 branches missed.">        } else if (datetime instanceof ZonedDateTime) {</span>
+<span class="nc" id="L248">            return ((ZonedDateTime) datetime).format(formatter);</span>
+<span class="nc bnc" id="L249" title="All 2 branches missed.">        } else if (datetime instanceof OffsetDateTime) {</span>
+<span class="nc" id="L250">            return ((OffsetDateTime) datetime).format(formatter);</span>
+        } else {
+<span class="nc" id="L252">            return datetime.toString();</span>
+        }
+    }
+    
+    /**
+     * Calculate the age between two dates.
+     * @param birthDate the birth date
+     * @param currentDate the current date (can be null for current date)
+     * @return the age in years
+     */
+    public static Period age(LocalDate birthDate, LocalDate currentDate) {
+<span class="fc bfc" id="L263" title="All 2 branches covered.">        if (birthDate == null) {</span>
+<span class="fc" id="L264">            return null;</span>
+        }
+<span class="fc bfc" id="L266" title="All 2 branches covered.">        if (currentDate == null) {</span>
+<span class="fc" id="L267">            currentDate = LocalDate.now(ZoneOffset.UTC);</span>
+        }
+<span class="fc" id="L269">        return Period.between(birthDate, currentDate);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

@@ -143,6 +143,8 @@ columnDefinition
 columnConstraint
     : NOT NULL
     | NULL
+    | PRIMARY KEY
+    | UNIQUE
     ;
 
 // DROP TABLE statement
