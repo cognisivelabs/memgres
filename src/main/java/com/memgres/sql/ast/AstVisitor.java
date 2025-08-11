@@ -18,6 +18,8 @@ public interface AstVisitor<T, C> {
     T visitDeleteStatement(DeleteStatement node, C context) throws Exception;
     T visitCreateTableStatement(CreateTableStatement node, C context) throws Exception;
     T visitDropTableStatement(DropTableStatement node, C context) throws Exception;
+    T visitCreateIndexStatement(CreateIndexStatement node, C context) throws Exception;
+    T visitDropIndexStatement(DropIndexStatement node, C context) throws Exception;
     
     // Expression visitors
     T visitLiteralExpression(LiteralExpression node, C context) throws Exception;

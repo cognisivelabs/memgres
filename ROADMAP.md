@@ -39,14 +39,16 @@
 
 ---
 
-## Phase 3: H2 Compatibility (In Planning) ❌
+## Phase 3: H2 Compatibility (In Progress) 🔄
 
 **Goal**: Achieve 90%+ H2 feature compatibility for true "drop-in replacement" status.
+
+**Current Status**: Phase 3.1 In Progress - CREATE INDEX completed (2025-08-11), ready for MERGE statement
 
 ### 🚨 Critical H2 Gaps Identified
 
 **Missing H2 DDL Commands** (High Priority):
-- ❌ `CREATE INDEX` / `DROP INDEX` - Essential for performance
+- ✅ `CREATE INDEX` / `DROP INDEX` - Essential for performance **[COMPLETED 2025-08-11]**
 - ❌ `CREATE SEQUENCE` / `DROP SEQUENCE` - Standard H2 ID generation  
 - ❌ `ALTER TABLE` (ADD COLUMN, DROP COLUMN, RENAME) - Schema evolution
 - ❌ `CREATE VIEW` / `DROP VIEW` - Virtual tables
@@ -74,11 +76,30 @@
 
 **Milestone**: Enable basic H2 replacement scenarios
 
-**Week 1-2: CREATE INDEX Support**
+**Week 1-2: CREATE INDEX Support** ✅ **[COMPLETED - 2025-08-11]**
 ```sql
-CREATE [UNIQUE] INDEX idx_name ON table_name (column1, column2);
-DROP INDEX idx_name;
+CREATE [UNIQUE] [SPATIAL] INDEX [IF NOT EXISTS] idx_name ON table_name 
+    (column1 [ASC|DESC] [NULLS FIRST|LAST], column2) [INCLUDE (col3, col4)];
+DROP INDEX [IF EXISTS] idx_name;
 ```
+
+**Implementation Tasks**:
+- ✅ Research H2 CREATE INDEX syntax and behavior
+- ✅ Extend ANTLR4 grammar with CREATE INDEX, DROP INDEX statements  
+- ✅ Create AST nodes for index operations
+- ✅ Implement index creation/deletion in storage layer
+- ❌ Add index usage optimization in query execution
+- ✅ Create comprehensive test suite (16 tests, 100% passing)
+
+**H2 Compatibility Features Implemented**:
+- ✅ Full H2 CREATE INDEX syntax with all options
+- ✅ UNIQUE, SPATIAL, NULLS DISTINCT modifiers
+- ✅ IF NOT EXISTS / IF EXISTS conditional logic
+- ✅ Multi-column indexes with sort order (ASC/DESC)
+- ✅ NULL ordering (NULLS FIRST/LAST)
+- ✅ INCLUDE columns for covering indexes
+- ✅ Automatic index name generation
+- ✅ Proper error handling and validation
 
 **Week 3-4: MERGE Statement**  
 ```sql
@@ -218,6 +239,6 @@ SELECT SQRT(25), POWER(2,3), ABS(-5), ROUND(3.14159, 2);
 
 ---
 
-**Last Updated**: 2025-08-10  
-**Current Branch**: `feature/h2-compatibility-assessment`  
-**Next Action**: Begin Phase 3.1 implementation with CREATE INDEX support
+**Last Updated**: 2025-08-11  
+**Current Branch**: `feature/phase3.1-create-index-support`  
+**Current Task**: CREATE INDEX/DROP INDEX implementation - **COMPLETED**

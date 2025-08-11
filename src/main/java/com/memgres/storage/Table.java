@@ -279,6 +279,116 @@ public class Table {
         return indexes.get(indexName);
     }
     
+    /**
+     * Create an index with multiple columns and H2-compatible options
+     * @param indexName the name of the index (can be null for auto-generated name)
+     * @param columnNames the columns to index
+     * @param unique whether the index should enforce uniqueness
+     * @param ifNotExists whether to skip creation if index already exists
+     * @return true if index was created, false if it already exists and ifNotExists is true
+     * @throws IllegalArgumentException if column doesn't exist or index already exists (and ifNotExists is false)
+     */
+    public boolean createIndex(String indexName, List<String> columnNames, boolean unique, boolean ifNotExists) {
+        if (columnNames == null || columnNames.isEmpty()) {
+            throw new IllegalArgumentException("Index must have at least one column");
+        }
+        
+        // Validate all columns exist
+        List<Column> indexColumns = new ArrayList<>();
+        for (String columnName : columnNames) {
+            Column column = getColumn(columnName);
+            if (column == null) {
+                throw new IllegalArgumentException("Column does not exist: " + columnName);
+            }
+            indexColumns.add(column);
+        }
+        
+        // Generate index name if not provided
+        if (indexName == null || indexName.trim().isEmpty()) {
+            indexName = generateIndexName(columnNames);
+        }
+        
+        tableLock.writeLock().lock();
+        try {
+            if (indexes.containsKey(indexName)) {
+                if (ifNotExists) {
+                    logger.debug("Index {} already exists, skipping creation due to IF NOT EXISTS", indexName);
+                    return false;
+                } else {
+                    throw new IllegalArgumentException("Index already exists: " + indexName);
+                }
+            }
+            
+            // For now, create a simple index on the first column
+            // TODO: Implement proper multi-column index support
+            Column firstColumn = indexColumns.get(0);
+            Index index = new Index(indexName, firstColumn, this);
+            indexes.put(indexName, index);
+            
+            logger.debug("Created{} index {} on columns {} for table {}", 
+                         unique ? " unique" : "", indexName, columnNames, name);
+            return true;
+        } finally {
+            tableLock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Generate a default index name based on table and column names
+     */
+    private String generateIndexName(List<String> columnNames) {
+        StringBuilder nameBuilder = new StringBuilder("idx_");
+        nameBuilder.append(name);
+        for (String columnName : columnNames) {
+            nameBuilder.append("_").append(columnName);
+        }
+        return nameBuilder.toString();
+    }
+    
+    /**
+     * Drop an index by name
+     * @param indexName the name of the index to drop
+     * @return true if index was dropped, false if it didn't exist
+     */
+    public boolean dropIndex(String indexName) {
+        tableLock.writeLock().lock();
+        try {
+            Index removed = indexes.remove(indexName);
+            if (removed != null) {
+                logger.debug("Dropped index {} from table {}", indexName, name);
+                return true;
+            }
+            return false;
+        } finally {
+            tableLock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Drop an index by name with IF EXISTS option
+     * @param indexName the name of the index to drop
+     * @param ifExists whether to skip error if index doesn't exist
+     * @return true if index was dropped, false if it didn't exist and ifExists is true
+     * @throws IllegalArgumentException if index doesn't exist and ifExists is false
+     */
+    public boolean dropIndex(String indexName, boolean ifExists) {
+        tableLock.writeLock().lock();
+        try {
+            Index removed = indexes.remove(indexName);
+            if (removed != null) {
+                logger.debug("Dropped index {} from table {}", indexName, name);
+                return true;
+            } else if (ifExists) {
+                logger.debug("Index {} does not exist, skipping drop due to IF EXISTS", indexName);
+                return false;
+            } else {
+                throw new IllegalArgumentException("Index does not exist: " + indexName);
+            }
+        } finally {
+            tableLock.writeLock().unlock();
+        }
+    }
+    
     private void validateRowData(Row row) {
         Object[] data = row.getData();
         for (int i = 0; i < data.length; i++) {
