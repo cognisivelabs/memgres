@@ -43,6 +43,10 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
             return (Statement) visit(ctx.createTableStatement());
         } else if (ctx.dropTableStatement() != null) {
             return (Statement) visit(ctx.dropTableStatement());
+        } else if (ctx.createIndexStatement() != null) {
+            return (Statement) visit(ctx.createIndexStatement());
+        } else if (ctx.dropIndexStatement() != null) {
+            return (Statement) visit(ctx.dropIndexStatement());
         }
         return null;
     }
@@ -578,5 +582,78 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
         if (ctx.JSONB_PATH_EXTRACT_TEXT() != null) return BinaryExpression.Operator.JSONB_PATH_EXTRACT_TEXT;
         
         throw new IllegalArgumentException("Unknown binary operator: " + ctx.getText());
+    }
+    
+    @Override
+    public CreateIndexStatement visitCreateIndexStatement(MemGresParser.CreateIndexStatementContext ctx) {
+        boolean unique = false;
+        boolean nullsDistinct = true;  // H2 default
+        boolean spatial = false;
+        
+        // Parse index type options
+        if (ctx.UNIQUE() != null) {
+            unique = true;
+            if (ctx.NULLS() != null && ctx.DISTINCT() != null) {
+                nullsDistinct = true; // NULLS DISTINCT (default)
+            }
+        } else if (ctx.SPATIAL() != null) {
+            spatial = true;
+        }
+        
+        // Parse IF NOT EXISTS
+        boolean ifNotExists = ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null;
+        
+        // Parse index name (optional in H2)
+        String indexName = null;
+        if (ctx.indexName() != null) {
+            indexName = ctx.indexName().identifier().getText();
+        }
+        
+        // Parse table name
+        String tableName = ctx.tableName().identifier().getText();
+        
+        // Parse index columns
+        List<CreateIndexStatement.IndexColumn> indexColumns = new ArrayList<>();
+        for (MemGresParser.IndexColumnContext colCtx : ctx.indexColumnList(0).indexColumn()) {
+            String columnName = colCtx.columnName().identifier().getText();
+            
+            CreateIndexStatement.SortOrder sortOrder = CreateIndexStatement.SortOrder.ASC;
+            if (colCtx.DESC() != null) {
+                sortOrder = CreateIndexStatement.SortOrder.DESC;
+            }
+            
+            CreateIndexStatement.NullsOrdering nullsOrdering = null;
+            if (colCtx.NULLS() != null) {
+                if (colCtx.FIRST() != null) {
+                    nullsOrdering = CreateIndexStatement.NullsOrdering.FIRST;
+                } else if (colCtx.LAST() != null) {
+                    nullsOrdering = CreateIndexStatement.NullsOrdering.LAST;
+                }
+            }
+            
+            indexColumns.add(new CreateIndexStatement.IndexColumn(columnName, sortOrder, nullsOrdering));
+        }
+        
+        // Parse INCLUDE columns (optional)
+        List<CreateIndexStatement.IndexColumn> includeColumns = new ArrayList<>();
+        if (ctx.INCLUDE() != null && ctx.indexColumnList().size() > 1) {
+            MemGresParser.IndexColumnListContext includeCtx = ctx.indexColumnList(1);
+            for (MemGresParser.IndexColumnContext colCtx : includeCtx.indexColumn()) {
+                String columnName = colCtx.columnName().identifier().getText();
+                includeColumns.add(new CreateIndexStatement.IndexColumn(columnName, 
+                    CreateIndexStatement.SortOrder.ASC, null));
+            }
+        }
+        
+        return new CreateIndexStatement(unique, nullsDistinct, spatial, ifNotExists, 
+                                       indexName, tableName, indexColumns, includeColumns);
+    }
+    
+    @Override
+    public DropIndexStatement visitDropIndexStatement(MemGresParser.DropIndexStatementContext ctx) {
+        boolean ifExists = ctx.IF() != null && ctx.EXISTS() != null;
+        String indexName = ctx.indexName().identifier().getText();
+        
+        return new DropIndexStatement(ifExists, indexName);
     }
 }

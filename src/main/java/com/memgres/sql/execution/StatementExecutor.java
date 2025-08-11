@@ -5,6 +5,7 @@ import com.memgres.functions.UuidFunctions;
 import com.memgres.sql.ast.AstVisitor;
 import com.memgres.sql.ast.expression.*;
 import com.memgres.sql.ast.statement.*;
+import com.memgres.storage.Schema;
 import com.memgres.storage.Table;
 import com.memgres.types.Column;
 import com.memgres.types.DataType;
@@ -1558,5 +1559,86 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             }
         }
         return a.toString().compareTo(b.toString());
+    }
+    
+    @Override
+    public SqlExecutionResult visitCreateIndexStatement(CreateIndexStatement node, ExecutionContext context) throws Exception {
+        String tableName = node.getTableName();
+        String indexName = node.getIndexName();
+        List<String> columnNames = new ArrayList<>();
+        
+        // Extract column names from IndexColumn objects
+        for (CreateIndexStatement.IndexColumn indexCol : node.getIndexColumns()) {
+            columnNames.add(indexCol.getColumnName());
+        }
+        
+        // Get the table from the engine
+        Table table = engine.getTable("public", tableName);
+        if (table == null) {
+            throw new IllegalArgumentException("Table does not exist: " + tableName);
+        }
+        
+        try {
+            // Create the index with H2-compatible options
+            boolean created = table.createIndex(indexName, columnNames, node.isUnique(), node.isIfNotExists());
+            
+            String message;
+            if (created) {
+                message = "Index " + (indexName != null ? indexName : "unnamed") + " created successfully";
+                logger.info("Created index on table {}: {}", tableName, message);
+            } else {
+                message = "Index " + indexName + " already exists, creation skipped";
+                logger.info("Skipped index creation on table {}: {}", tableName, message);
+            }
+            
+            return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, message);
+        } catch (Exception e) {
+            logger.error("Failed to create index on table {}: {}", tableName, e.getMessage());
+            return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, false, "Failed to create index: " + e.getMessage());
+        }
+    }
+    
+    @Override
+    public SqlExecutionResult visitDropIndexStatement(DropIndexStatement node, ExecutionContext context) throws Exception {
+        String indexName = node.getIndexName();
+        
+        // Note: In H2, DROP INDEX only requires the index name, not the table name
+        // For now, we'll search through all tables to find the index
+        // TODO: Implement schema-level index registry for better performance
+        
+        // Search for the index across all tables in the public schema
+        Schema publicSchema = engine.getSchema("public");
+        if (publicSchema == null) {
+            throw new IllegalArgumentException("Default schema 'public' not found");
+        }
+        
+        try {
+            boolean found = false;
+            for (String tableName : publicSchema.getTableNames()) {
+                Table table = publicSchema.getTable(tableName);
+                if (table != null && table.getIndex(indexName) != null) {
+                    boolean dropped = table.dropIndex(indexName, node.isIfExists());
+                    if (dropped) {
+                        String message = "Index " + indexName + " dropped successfully";
+                        logger.info("Dropped index {} from table {}", indexName, tableName);
+                        return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, message);
+                    }
+                    found = true;
+                    break;
+                }
+            }
+            
+            if (!found && !node.isIfExists()) {
+                throw new IllegalArgumentException("Index does not exist: " + indexName);
+            }
+            
+            String message = "Index " + indexName + (found ? " already dropped" : " does not exist, drop skipped");
+            logger.info("Drop index {}: {}", indexName, message);
+            return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, message);
+            
+        } catch (Exception e) {
+            logger.error("Failed to drop index {}: {}", indexName, e.getMessage());
+            return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, false, "Failed to drop index: " + e.getMessage());
+        }
     }
 }

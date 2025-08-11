@@ -14,6 +14,8 @@ statement
     | deleteStatement
     | createTableStatement
     | dropTableStatement
+    | createIndexStatement
+    | dropIndexStatement
     ;
 
 // SELECT statement
@@ -150,6 +152,28 @@ columnConstraint
 // DROP TABLE statement
 dropTableStatement
     : DROP TABLE tableName
+    ;
+
+// CREATE INDEX statement
+createIndexStatement
+    : CREATE (UNIQUE (NULLS DISTINCT)? | SPATIAL)? INDEX (IF NOT EXISTS)? indexName? ON tableName LPAREN indexColumnList RPAREN (INCLUDE LPAREN indexColumnList RPAREN)?
+    ;
+
+// DROP INDEX statement
+dropIndexStatement
+    : DROP INDEX (IF EXISTS)? indexName
+    ;
+
+indexName
+    : identifier
+    ;
+
+indexColumnList
+    : indexColumn (COMMA indexColumn)*
+    ;
+
+indexColumn
+    : columnName (ASC | DESC)? (NULLS (FIRST | LAST))?
     ;
 
 // Expressions
