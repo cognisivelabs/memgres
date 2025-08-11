@@ -16,6 +16,7 @@ public class SqlExecutionResult {
         INSERT,    // INSERT statement - returns affected rows count
         UPDATE,    // UPDATE statement - returns affected rows count  
         DELETE,    // DELETE statement - returns affected rows count
+        MERGE,     // MERGE statement - returns affected rows count
         DDL,       // CREATE/DROP statement - returns success/failure
         EMPTY      // No result
     }

@@ -1599,6 +1599,327 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
     }
     
     @Override
+    public SqlExecutionResult visitMergeStatement(MergeStatement node, ExecutionContext context) throws Exception {
+        try {
+            if (node.isSimple()) {
+                return executeSimpleMerge(node, context);
+            } else {
+                return executeAdvancedMerge(node, context);
+            }
+        } catch (Exception e) {
+            throw new SqlExecutionException("Failed to execute MERGE statement", e);
+        }
+    }
+    
+    /**
+     * Execute simple MERGE statement: MERGE INTO table KEY(columns) VALUES(...)
+     */
+    private SqlExecutionResult executeSimpleMerge(MergeStatement node, ExecutionContext context) throws Exception {
+        String tableName = node.getTableName();
+        Table table = engine.getTable("public", tableName);
+        if (table == null) {
+            throw new SqlExecutionException("Table not found: " + tableName);
+        }
+        
+        List<Column> tableColumns = table.getColumns();
+        List<String> keyColumns = node.getKeyColumns();
+        int insertedRows = 0;
+        int updatedRows = 0;
+        
+        // Validate key columns exist
+        Map<String, Integer> columnIndexMap = new HashMap<>();
+        for (int i = 0; i < tableColumns.size(); i++) {
+            columnIndexMap.put(tableColumns.get(i).getName().toLowerCase(), i);
+        }
+        
+        List<Integer> keyColumnIndices = new ArrayList<>();
+        for (String keyColumn : keyColumns) {
+            Integer index = columnIndexMap.get(keyColumn.toLowerCase());
+            if (index == null) {
+                throw new SqlExecutionException("Key column not found: " + keyColumn);
+            }
+            keyColumnIndices.add(index);
+        }
+        
+        // Process each set of values
+        for (List<Expression> values : node.getValuesList()) {
+            if (values.size() != tableColumns.size()) {
+                throw new SqlExecutionException("Column count mismatch: expected " + 
+                    tableColumns.size() + ", got " + values.size());
+            }
+            
+            // Evaluate values
+            Object[] rowData = new Object[values.size()];
+            for (int i = 0; i < values.size(); i++) {
+                rowData[i] = expressionEvaluator.evaluate(values.get(i), context);
+                
+                // Convert and validate data type
+                Column column = tableColumns.get(i);
+                rowData[i] = column.getDataType().convertValue(rowData[i]);
+                
+                if (!column.getDataType().isValidValue(rowData[i])) {
+                    throw new SqlExecutionException("Invalid value for column " + 
+                        column.getName() + ": " + rowData[i]);
+                }
+            }
+            
+            // Find existing row by key columns
+            Row existingRow = findRowByKeys(table, keyColumnIndices, rowData);
+            
+            if (existingRow != null) {
+                // Update existing row
+                table.updateRow(existingRow.getId(), rowData);
+                updatedRows++;
+            } else {
+                // Insert new row
+                table.insertRow(rowData);
+                insertedRows++;
+            }
+        }
+        
+        String message = String.format("MERGE completed: %d rows inserted, %d rows updated", 
+                                     insertedRows, updatedRows);
+        logger.debug("Simple MERGE executed on {}: {}", tableName, message);
+        
+        return new SqlExecutionResult(SqlExecutionResult.ResultType.MERGE, 
+                                    insertedRows + updatedRows);
+    }
+    
+    /**
+     * Execute advanced MERGE statement: MERGE INTO target USING source ON condition WHEN...
+     */
+    private SqlExecutionResult executeAdvancedMerge(MergeStatement node, ExecutionContext context) throws Exception {
+        String tableName = node.getTableName();
+        Table targetTable = engine.getTable("public", tableName);
+        if (targetTable == null) {
+            throw new SqlExecutionException("Target table not found: " + tableName);
+        }
+        
+        // Get source rows
+        List<Row> sourceRows = getSourceRows(node.getSource(), context);
+        List<Row> targetRows = targetTable.getAllRows();
+        
+        int insertedRows = 0;
+        int updatedRows = 0;
+        int deletedRows = 0;
+        
+        List<Column> targetColumns = targetTable.getColumns();
+        Map<String, Integer> targetColumnIndexMap = new HashMap<>();
+        for (int i = 0; i < targetColumns.size(); i++) {
+            targetColumnIndexMap.put(targetColumns.get(i).getName().toLowerCase(), i);
+        }
+        
+        // Process each source row
+        for (Row sourceRow : sourceRows) {
+            context.setCurrentRow(sourceRow);
+            
+            // Find matching target row based on ON condition
+            Row matchedTargetRow = null;
+            for (Row targetRow : targetRows) {
+                context.setCurrentRow(targetRow);
+                context.setCurrentTable(targetTable);
+                
+                // Evaluate ON condition with both source and target context
+                Object onResult = evaluateOnCondition(node.getOnCondition(), sourceRow, targetRow, context);
+                if (Boolean.TRUE.equals(onResult)) {
+                    matchedTargetRow = targetRow;
+                    break;
+                }
+            }
+            
+            // Process WHEN clauses
+            for (MergeStatement.WhenClause whenClause : node.getWhenClauses()) {
+                boolean shouldApplyClause = (whenClause.isMatched() && matchedTargetRow != null) ||
+                                          (!whenClause.isMatched() && matchedTargetRow == null);
+                
+                if (shouldApplyClause) {
+                    // Check additional condition if present
+                    boolean conditionMet = true;
+                    if (whenClause.getAdditionalCondition() != null) {
+                        Object conditionResult = expressionEvaluator.evaluate(
+                            whenClause.getAdditionalCondition(), context);
+                        conditionMet = Boolean.TRUE.equals(conditionResult);
+                    }
+                    
+                    if (conditionMet) {
+                        // Execute the action
+                        MergeStatement.MergeAction action = whenClause.getAction();
+                        if (action instanceof MergeStatement.UpdateAction) {
+                            executeUpdateAction((MergeStatement.UpdateAction) action, 
+                                             matchedTargetRow, targetTable, targetColumnIndexMap, context);
+                            updatedRows++;
+                        } else if (action instanceof MergeStatement.DeleteAction) {
+                            targetTable.deleteRow(matchedTargetRow.getId());
+                            deletedRows++;
+                        } else if (action instanceof MergeStatement.InsertAction) {
+                            executeInsertAction((MergeStatement.InsertAction) action, 
+                                             targetTable, targetColumns, context);
+                            insertedRows++;
+                        }
+                        break; // Only execute first matching WHEN clause
+                    }
+                }
+            }
+        }
+        
+        String message = String.format("MERGE completed: %d rows inserted, %d rows updated, %d rows deleted", 
+                                     insertedRows, updatedRows, deletedRows);
+        logger.debug("Advanced MERGE executed on {}: {}", tableName, message);
+        
+        return new SqlExecutionResult(SqlExecutionResult.ResultType.MERGE, 
+                                    insertedRows + updatedRows + deletedRows);
+    }
+    
+    /**
+     * Find a row in the table by matching key column values.
+     */
+    private Row findRowByKeys(Table table, List<Integer> keyColumnIndices, Object[] values) {
+        List<Row> allRows = table.getAllRows();
+        
+        for (Row row : allRows) {
+            boolean matches = true;
+            Object[] rowData = row.getData();
+            
+            for (Integer keyIndex : keyColumnIndices) {
+                Object keyValue = values[keyIndex];
+                Object rowValue = rowData[keyIndex];
+                
+                if (!Objects.equals(keyValue, rowValue)) {
+                    matches = false;
+                    break;
+                }
+            }
+            
+            if (matches) {
+                return row;
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Get source rows for advanced MERGE.
+     */
+    private List<Row> getSourceRows(MergeStatement.MergeSource source, ExecutionContext context) throws Exception {
+        if (source instanceof MergeStatement.TableSource) {
+            MergeStatement.TableSource tableSource = (MergeStatement.TableSource) source;
+            Table sourceTable = engine.getTable("public", tableSource.getTableName());
+            if (sourceTable == null) {
+                throw new SqlExecutionException("Source table not found: " + tableSource.getTableName());
+            }
+            return sourceTable.getAllRows();
+        } else if (source instanceof MergeStatement.SubquerySource) {
+            MergeStatement.SubquerySource subquerySource = (MergeStatement.SubquerySource) source;
+            SqlExecutionResult subqueryResult = (SqlExecutionResult) subquerySource.getSelectStatement().accept(this, context);
+            return subqueryResult.getRows();
+        } else {
+            throw new SqlExecutionException("Unknown source type: " + source.getClass().getSimpleName());
+        }
+    }
+    
+    /**
+     * Evaluate ON condition with source and target row context.
+     */
+    private Object evaluateOnCondition(Expression onCondition, Row sourceRow, Row targetRow, 
+                                     ExecutionContext context) throws Exception {
+        // This is simplified - in a full implementation, we'd need to handle 
+        // source/target column references properly
+        context.setCurrentRow(targetRow);
+        return expressionEvaluator.evaluate(onCondition, context);
+    }
+    
+    /**
+     * Execute UPDATE action in WHEN MATCHED clause.
+     */
+    private void executeUpdateAction(MergeStatement.UpdateAction action, Row targetRow, Table targetTable,
+                                   Map<String, Integer> columnIndexMap, ExecutionContext context) throws Exception {
+        Object[] newData = targetRow.getData().clone();
+        List<Column> columns = targetTable.getColumns();
+        
+        for (MergeStatement.UpdateItem updateItem : action.getUpdateItems()) {
+            String columnName = updateItem.getColumnName().toLowerCase();
+            Integer columnIndex = columnIndexMap.get(columnName);
+            if (columnIndex == null) {
+                throw new SqlExecutionException("Column not found: " + columnName);
+            }
+            
+            Object newValue = expressionEvaluator.evaluate(updateItem.getExpression(), context);
+            Column column = columns.get(columnIndex);
+            
+            // Convert and validate value
+            newValue = column.getDataType().convertValue(newValue);
+            if (!column.getDataType().isValidValue(newValue)) {
+                throw new SqlExecutionException("Invalid value for column " + columnName + ": " + newValue);
+            }
+            
+            newData[columnIndex] = newValue;
+        }
+        
+        targetTable.updateRow(targetRow.getId(), newData);
+    }
+    
+    /**
+     * Execute INSERT action in WHEN NOT MATCHED clause.
+     */
+    private void executeInsertAction(MergeStatement.InsertAction action, Table targetTable, 
+                                   List<Column> targetColumns, ExecutionContext context) throws Exception {
+        List<Expression> values = action.getValues();
+        List<String> specifiedColumns = action.getColumns();
+        
+        Object[] rowData;
+        
+        if (specifiedColumns != null && !specifiedColumns.isEmpty()) {
+            // Insert into specific columns
+            rowData = new Object[targetColumns.size()];
+            
+            Map<String, Integer> columnIndexMap = new HashMap<>();
+            for (int i = 0; i < targetColumns.size(); i++) {
+                columnIndexMap.put(targetColumns.get(i).getName().toLowerCase(), i);
+            }
+            
+            for (int i = 0; i < specifiedColumns.size(); i++) {
+                String columnName = specifiedColumns.get(i).toLowerCase();
+                Integer columnIndex = columnIndexMap.get(columnName);
+                if (columnIndex == null) {
+                    throw new SqlExecutionException("Column not found: " + columnName);
+                }
+                
+                Object value = expressionEvaluator.evaluate(values.get(i), context);
+                Column column = targetColumns.get(columnIndex);
+                value = column.getDataType().convertValue(value);
+                
+                if (!column.getDataType().isValidValue(value)) {
+                    throw new SqlExecutionException("Invalid value for column " + columnName + ": " + value);
+                }
+                
+                rowData[columnIndex] = value;
+            }
+        } else {
+            // Insert into all columns
+            if (values.size() != targetColumns.size()) {
+                throw new SqlExecutionException("Column count mismatch: expected " + 
+                    targetColumns.size() + ", got " + values.size());
+            }
+            
+            rowData = new Object[values.size()];
+            for (int i = 0; i < values.size(); i++) {
+                rowData[i] = expressionEvaluator.evaluate(values.get(i), context);
+                
+                Column column = targetColumns.get(i);
+                rowData[i] = column.getDataType().convertValue(rowData[i]);
+                
+                if (!column.getDataType().isValidValue(rowData[i])) {
+                    throw new SqlExecutionException("Invalid value for column " + 
+                        column.getName() + ": " + rowData[i]);
+                }
+            }
+        }
+        
+        targetTable.insertRow(rowData);
+    }
+    
+    @Override
     public SqlExecutionResult visitDropIndexStatement(DropIndexStatement node, ExecutionContext context) throws Exception {
         String indexName = node.getIndexName();
         

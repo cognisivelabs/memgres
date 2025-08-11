@@ -12,6 +12,7 @@ statement
     | insertStatement
     | updateStatement
     | deleteStatement
+    | mergeStatement
     | createTableStatement
     | dropTableStatement
     | createIndexStatement
@@ -279,6 +280,48 @@ dataType
     | UUID                                              # uuidType
     | JSONB                                             # jsonbType
     | BYTEA                                             # byteaType
+    ;
+
+// MERGE statement - supports both simple and advanced H2 MERGE syntax
+mergeStatement
+    : simpleMergeStatement
+    | advancedMergeStatement
+    ;
+
+// Simple MERGE: MERGE INTO table KEY(columns) VALUES(values)
+simpleMergeStatement
+    : MERGE INTO tableName KEY LPAREN keyColumnList RPAREN VALUES valuesClause (COMMA valuesClause)*
+    ;
+
+// Advanced MERGE: MERGE INTO target USING source ON condition WHEN...
+advancedMergeStatement
+    : MERGE INTO tableName (AS? alias)? 
+      USING mergeSource (AS? alias)?
+      ON expression
+      mergeWhenClause+
+    ;
+
+mergeSource
+    : tableName                           # tableSource
+    | LPAREN selectStatement RPAREN       # subquerySource
+    ;
+
+mergeWhenClause
+    : WHEN MATCHED (AND expression)? THEN mergeAction
+    | WHEN NOT MATCHED (AND expression)? THEN mergeInsertAction
+    ;
+
+mergeAction
+    : UPDATE SET updateItem (COMMA updateItem)*
+    | DELETE
+    ;
+
+mergeInsertAction
+    : INSERT (LPAREN columnList RPAREN)? VALUES valuesClause
+    ;
+
+keyColumnList
+    : identifier (COMMA identifier)*
     ;
 
 // Identifiers (case-insensitive)
