@@ -480,7 +480,8 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
         // Parse WHEN clauses
         List<MergeStatement.WhenClause> whenClauses = new ArrayList<>();
         for (MemGresParser.MergeWhenClauseContext whenCtx : ctx.mergeWhenClause()) {
-            boolean matched = whenCtx.MATCHED() != null;
+            // Check if it's WHEN MATCHED (no NOT) or WHEN NOT MATCHED (has NOT)
+            boolean matched = whenCtx.MATCHED() != null && whenCtx.NOT() == null;
             Expression additionalCondition = null;
             
             // Check for additional AND condition
@@ -488,38 +489,47 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
                 additionalCondition = (Expression) visit(whenCtx.expression());
             }
             
-            // Parse action
+            // Parse action based on the WHEN clause type
             MergeStatement.MergeAction action;
             if (matched) {
-                if (whenCtx.mergeAction().UPDATE() != null) {
-                    // UPDATE action
-                    List<MergeStatement.UpdateItem> updateItems = new ArrayList<>();
-                    for (MemGresParser.UpdateItemContext updateCtx : whenCtx.mergeAction().updateItem()) {
-                        String columnName = updateCtx.columnName().getText();
-                        Expression expression = (Expression) visit(updateCtx.expression());
-                        updateItems.add(new MergeStatement.UpdateItem(columnName, expression));
+                // WHEN MATCHED - can have UPDATE or DELETE action
+                if (whenCtx.mergeAction() != null) {
+                    if (whenCtx.mergeAction().UPDATE() != null) {
+                        // UPDATE action
+                        List<MergeStatement.UpdateItem> updateItems = new ArrayList<>();
+                        for (MemGresParser.UpdateItemContext updateCtx : whenCtx.mergeAction().updateItem()) {
+                            String columnName = updateCtx.columnName().getText();
+                            Expression expression = (Expression) visit(updateCtx.expression());
+                            updateItems.add(new MergeStatement.UpdateItem(columnName, expression));
+                        }
+                        action = new MergeStatement.UpdateAction(updateItems);
+                    } else {
+                        // DELETE action
+                        action = new MergeStatement.DeleteAction();
                     }
-                    action = new MergeStatement.UpdateAction(updateItems);
                 } else {
-                    // DELETE action
-                    action = new MergeStatement.DeleteAction();
+                    throw new IllegalStateException("WHEN MATCHED clause must have an action");
                 }
             } else {
-                // INSERT action
-                List<String> columns = null;
-                if (whenCtx.mergeInsertAction().columnList() != null) {
-                    columns = new ArrayList<>();
-                    for (MemGresParser.ColumnNameContext colCtx : whenCtx.mergeInsertAction().columnList().columnName()) {
-                        columns.add(colCtx.getText());
+                // WHEN NOT MATCHED - can only have INSERT action
+                if (whenCtx.mergeInsertAction() != null) {
+                    List<String> columns = null;
+                    if (whenCtx.mergeInsertAction().columnList() != null) {
+                        columns = new ArrayList<>();
+                        for (MemGresParser.ColumnNameContext colCtx : whenCtx.mergeInsertAction().columnList().columnName()) {
+                            columns.add(colCtx.getText());
+                        }
                     }
+                    
+                    List<Expression> values = new ArrayList<>();
+                    for (MemGresParser.ExpressionContext exprCtx : whenCtx.mergeInsertAction().valuesClause().expression()) {
+                        values.add((Expression) visit(exprCtx));
+                    }
+                    
+                    action = new MergeStatement.InsertAction(columns, values);
+                } else {
+                    throw new IllegalStateException("WHEN NOT MATCHED clause must have an INSERT action");
                 }
-                
-                List<Expression> values = new ArrayList<>();
-                for (MemGresParser.ExpressionContext exprCtx : whenCtx.mergeInsertAction().valuesClause().expression()) {
-                    values.add((Expression) visit(exprCtx));
-                }
-                
-                action = new MergeStatement.InsertAction(columns, values);
             }
             
             whenClauses.add(new MergeStatement.WhenClause(matched, additionalCondition, action));

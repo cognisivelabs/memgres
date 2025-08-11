@@ -101,7 +101,7 @@ DROP INDEX [IF EXISTS] idx_name;
 - ✅ Automatic index name generation
 - ✅ Proper error handling and validation
 
-**Week 3-4: MERGE Statement** 🔄 **[PARSING IMPLEMENTED - 2025-08-11]**
+**Week 3-4: MERGE Statement** ✅ **[FULLY COMPLETE - 2025-08-11]**
 ```sql
 -- Simple MERGE (H2 style)
 MERGE INTO table KEY(column) VALUES(value1), (value2);
@@ -116,9 +116,10 @@ WHEN NOT MATCHED [AND condition] THEN INSERT VALUES (val1, val2);
 - ✅ Research H2 MERGE statement syntax and behavior
 - ✅ Extend ANTLR4 grammar with MERGE statement (both simple and advanced)
 - ✅ Create AST node for MERGE operations (comprehensive class hierarchy)
-- 🔄 Implement MERGE execution in StatementExecutor (placeholder complete)
-- ❌ Create comprehensive test suite for MERGE
-- ❌ Implement actual MERGE logic (upsert operations)
+- ✅ Debug and fix advanced MERGE statement parsing issues
+- ✅ Create comprehensive test suite for MERGE (14/14 tests passing - 100%)
+- ✅ Implement MERGE execution in StatementExecutor (complete with upsert logic)
+- ✅ Implement actual MERGE logic (both simple and advanced MERGE operations)
 
 **H2 Compatibility Features Implemented**:
 - ✅ Simple MERGE syntax: `MERGE INTO table KEY(columns) VALUES(...)`
@@ -128,6 +129,10 @@ WHEN NOT MATCHED [AND condition] THEN INSERT VALUES (val1, val2);
 - ✅ Subquery sources and table sources
 - ✅ Column-level specifications for INSERT
 - ✅ Complete parser integration and AST representation
+- ✅ Full execution logic with upsert operations
+- ✅ Complex expressions and conditional actions
+- ✅ Table aliases and case insensitive syntax
+- ✅ Comprehensive error handling and validation
 
 **Week 5-6: Sequence Support**
 ```sql
@@ -262,4 +267,4 @@ SELECT SQRT(25), POWER(2,3), ABS(-5), ROUND(3.14159, 2);
 
 **Last Updated**: 2025-08-11  
 **Current Branch**: `feature/phase3.1-merge-statement`  
-**Current Task**: MERGE statement implementation - **PARSING COMPLETE, EXECUTION IN PROGRESS**
+**Current Task**: MERGE statement implementation - **FULLY COMPLETE (14/14 tests passing - 100%)**
