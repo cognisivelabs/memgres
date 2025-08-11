@@ -43,7 +43,7 @@
 
 **Goal**: Achieve 90%+ H2 feature compatibility for true "drop-in replacement" status.
 
-**Current Status**: Phase 3.1 In Progress - CREATE INDEX completed (2025-08-11), ready for MERGE statement
+**Current Status**: Phase 3.1 In Progress - CREATE INDEX completed, MERGE statement parsing implemented (2025-08-11)
 
 ### 🚨 Critical H2 Gaps Identified
 
@@ -55,7 +55,7 @@
 - ❌ `TRUNCATE TABLE` - Fast table clearing
 
 **Missing H2 DML Features** (High Priority):
-- ❌ `MERGE` statement - Critical H2 upsert operation
+- 🔄 `MERGE` statement - Critical H2 upsert operation **[PARSING IMPLEMENTED 2025-08-11]**
 - ❌ Window Functions - `ROW_NUMBER()`, `RANK()`, `OVER()` clause
 - ❌ Common Table Expressions - `WITH` clause  
 - ❌ Set Operations - `UNION`, `INTERSECT`, `EXCEPT`
@@ -101,12 +101,33 @@ DROP INDEX [IF EXISTS] idx_name;
 - ✅ Automatic index name generation
 - ✅ Proper error handling and validation
 
-**Week 3-4: MERGE Statement**  
+**Week 3-4: MERGE Statement** 🔄 **[PARSING IMPLEMENTED - 2025-08-11]**
 ```sql
+-- Simple MERGE (H2 style)
+MERGE INTO table KEY(column) VALUES(value1), (value2);
+
+-- Advanced MERGE (Standard SQL)
 MERGE INTO target USING source ON condition
-WHEN MATCHED THEN UPDATE SET col = val
-WHEN NOT MATCHED THEN INSERT VALUES (val1, val2);
+WHEN MATCHED [AND condition] THEN UPDATE SET col = val | DELETE
+WHEN NOT MATCHED [AND condition] THEN INSERT VALUES (val1, val2);
 ```
+
+**Implementation Tasks**:
+- ✅ Research H2 MERGE statement syntax and behavior
+- ✅ Extend ANTLR4 grammar with MERGE statement (both simple and advanced)
+- ✅ Create AST node for MERGE operations (comprehensive class hierarchy)
+- 🔄 Implement MERGE execution in StatementExecutor (placeholder complete)
+- ❌ Create comprehensive test suite for MERGE
+- ❌ Implement actual MERGE logic (upsert operations)
+
+**H2 Compatibility Features Implemented**:
+- ✅ Simple MERGE syntax: `MERGE INTO table KEY(columns) VALUES(...)`
+- ✅ Advanced MERGE syntax: `MERGE INTO target USING source ON condition`
+- ✅ Multiple WHEN clauses with conditions
+- ✅ UPDATE, DELETE, and INSERT actions
+- ✅ Subquery sources and table sources
+- ✅ Column-level specifications for INSERT
+- ✅ Complete parser integration and AST representation
 
 **Week 5-6: Sequence Support**
 ```sql
@@ -240,5 +261,5 @@ SELECT SQRT(25), POWER(2,3), ABS(-5), ROUND(3.14159, 2);
 ---
 
 **Last Updated**: 2025-08-11  
-**Current Branch**: `feature/phase3.1-create-index-support`  
-**Current Task**: CREATE INDEX/DROP INDEX implementation - **COMPLETED**
+**Current Branch**: `feature/phase3.1-merge-statement`  
+**Current Task**: MERGE statement implementation - **PARSING COMPLETE, EXECUTION IN PROGRESS**

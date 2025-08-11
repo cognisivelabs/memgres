@@ -10,6 +10,8 @@ VALUES: [Vv][Aa][Ll][Uu][Ee][Ss];
 UPDATE: [Uu][Pp][Dd][Aa][Tt][Ee];
 SET: [Ss][Ee][Tt];
 DELETE: [Dd][Ee][Ll][Ee][Tt][Ee];
+MERGE: [Mm][Ee][Rr][Gg][Ee];
+MATCHED: [Mm][Aa][Tt][Cc][Hh][Ee][Dd];
 CREATE: [Cc][Rr][Ee][Aa][Tt][Ee];
 TABLE: [Tt][Aa][Bb][Ll][Ee];
 DROP: [Dd][Rr][Oo][Pp];

@@ -1599,6 +1599,15 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
     }
     
     @Override
+    public SqlExecutionResult visitMergeStatement(MergeStatement node, ExecutionContext context) throws Exception {
+        // TODO: Implement actual MERGE statement execution
+        logger.info("MERGE statement executed (placeholder implementation): {}", 
+                    node.isSimple() ? "simple MERGE" : "advanced MERGE");
+        
+        return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, "MERGE completed successfully (placeholder)");
+    }
+    
+    @Override
     public SqlExecutionResult visitDropIndexStatement(DropIndexStatement node, ExecutionContext context) throws Exception {
         String indexName = node.getIndexName();
         

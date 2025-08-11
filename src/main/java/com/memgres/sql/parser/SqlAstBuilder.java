@@ -39,6 +39,8 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
             return (Statement) visit(ctx.updateStatement());
         } else if (ctx.deleteStatement() != null) {
             return (Statement) visit(ctx.deleteStatement());
+        } else if (ctx.mergeStatement() != null) {
+            return (Statement) visit(ctx.mergeStatement());
         } else if (ctx.createTableStatement() != null) {
             return (Statement) visit(ctx.createTableStatement());
         } else if (ctx.dropTableStatement() != null) {
@@ -425,6 +427,117 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
             Optional.of((WhereClause) visit(ctx.whereClause())) : Optional.empty();
         
         return new DeleteStatement(tableName, whereClause);
+    }
+    
+    // MERGE statement - supports both simple and advanced syntax
+    @Override
+    public MergeStatement visitMergeStatement(MemGresParser.MergeStatementContext ctx) {
+        if (ctx.simpleMergeStatement() != null) {
+            return visitSimpleMergeStatement(ctx.simpleMergeStatement());
+        } else {
+            return visitAdvancedMergeStatement(ctx.advancedMergeStatement());
+        }
+    }
+    
+    @Override
+    public MergeStatement visitSimpleMergeStatement(MemGresParser.SimpleMergeStatementContext ctx) {
+        String tableName = ctx.tableName().getText();
+        
+        // Parse key columns
+        List<String> keyColumns = new ArrayList<>();
+        for (MemGresParser.IdentifierContext keyCol : ctx.keyColumnList().identifier()) {
+            keyColumns.add(keyCol.getText());
+        }
+        
+        // Parse values clauses
+        List<List<Expression>> valuesList = new ArrayList<>();
+        for (MemGresParser.ValuesClauseContext valuesCtx : ctx.valuesClause()) {
+            List<Expression> values = new ArrayList<>();
+            if (valuesCtx.expression() != null) {
+                for (MemGresParser.ExpressionContext exprCtx : valuesCtx.expression()) {
+                    values.add((Expression) visit(exprCtx));
+                }
+            }
+            valuesList.add(values);
+        }
+        
+        return new MergeStatement(tableName, keyColumns, valuesList);
+    }
+    
+    @Override
+    public MergeStatement visitAdvancedMergeStatement(MemGresParser.AdvancedMergeStatementContext ctx) {
+        String tableName = ctx.tableName().getText();
+        String tableAlias = ctx.alias() != null && ctx.alias().size() > 0 ? ctx.alias(0).getText() : null;
+        
+        // Parse source - delegate to the mergeSource visitor
+        MergeStatement.MergeSource source = (MergeStatement.MergeSource) visit(ctx.mergeSource());
+        
+        String sourceAlias = ctx.alias() != null && ctx.alias().size() > 1 ? ctx.alias(1).getText() : null;
+        
+        // Parse ON condition
+        Expression onCondition = (Expression) visit(ctx.expression());
+        
+        // Parse WHEN clauses
+        List<MergeStatement.WhenClause> whenClauses = new ArrayList<>();
+        for (MemGresParser.MergeWhenClauseContext whenCtx : ctx.mergeWhenClause()) {
+            boolean matched = whenCtx.MATCHED() != null;
+            Expression additionalCondition = null;
+            
+            // Check for additional AND condition
+            if (whenCtx.expression() != null) {
+                additionalCondition = (Expression) visit(whenCtx.expression());
+            }
+            
+            // Parse action
+            MergeStatement.MergeAction action;
+            if (matched) {
+                if (whenCtx.mergeAction().UPDATE() != null) {
+                    // UPDATE action
+                    List<MergeStatement.UpdateItem> updateItems = new ArrayList<>();
+                    for (MemGresParser.UpdateItemContext updateCtx : whenCtx.mergeAction().updateItem()) {
+                        String columnName = updateCtx.columnName().getText();
+                        Expression expression = (Expression) visit(updateCtx.expression());
+                        updateItems.add(new MergeStatement.UpdateItem(columnName, expression));
+                    }
+                    action = new MergeStatement.UpdateAction(updateItems);
+                } else {
+                    // DELETE action
+                    action = new MergeStatement.DeleteAction();
+                }
+            } else {
+                // INSERT action
+                List<String> columns = null;
+                if (whenCtx.mergeInsertAction().columnList() != null) {
+                    columns = new ArrayList<>();
+                    for (MemGresParser.ColumnNameContext colCtx : whenCtx.mergeInsertAction().columnList().columnName()) {
+                        columns.add(colCtx.getText());
+                    }
+                }
+                
+                List<Expression> values = new ArrayList<>();
+                for (MemGresParser.ExpressionContext exprCtx : whenCtx.mergeInsertAction().valuesClause().expression()) {
+                    values.add((Expression) visit(exprCtx));
+                }
+                
+                action = new MergeStatement.InsertAction(columns, values);
+            }
+            
+            whenClauses.add(new MergeStatement.WhenClause(matched, additionalCondition, action));
+        }
+        
+        return new MergeStatement(tableName, tableAlias, source, sourceAlias, onCondition, whenClauses);
+    }
+    
+    @Override
+    public MergeStatement.MergeSource visitTableSource(MemGresParser.TableSourceContext ctx) {
+        String tableName = ctx.tableName().getText();
+        return new MergeStatement.TableSource(tableName);
+    }
+    
+    @Override
+    public MergeStatement.MergeSource visitSubquerySource(MemGresParser.SubquerySourceContext ctx) {
+        SelectStatement selectStatement = visitSelectStatement(ctx.selectStatement());
+        return new MergeStatement.SubquerySource(selectStatement);
     }
     
     // CREATE TABLE statement
