@@ -8,8 +8,8 @@
 
 ## Current Status: **Phase 2 Complete** ✅
 
-**Overall Progress**: 417/417 tests passing (100%)  
-**H2 Compatibility**: ~40% (basic SQL operations complete)  
+**Overall Progress**: 431/431 tests passing (100%)  
+**H2 Compatibility**: ~50% (basic SQL + CREATE INDEX + MERGE complete)  
 **PostgreSQL JSONB**: 100% (full operator and function support)  
 **Testing Integration**: 100% (JUnit 5, TestNG, Spring Test)
 
@@ -43,7 +43,7 @@
 
 **Goal**: Achieve 90%+ H2 feature compatibility for true "drop-in replacement" status.
 
-**Current Status**: Phase 3.1 In Progress - CREATE INDEX completed, MERGE statement parsing implemented (2025-08-11)
+**Current Status**: Phase 3.1 In Progress - CREATE INDEX completed, MERGE statement fully implemented (2025-08-11)
 
 ### 🚨 Critical H2 Gaps Identified
 
@@ -55,7 +55,7 @@
 - ❌ `TRUNCATE TABLE` - Fast table clearing
 
 **Missing H2 DML Features** (High Priority):
-- 🔄 `MERGE` statement - Critical H2 upsert operation **[PARSING IMPLEMENTED 2025-08-11]**
+- ✅ `MERGE` statement - Critical H2 upsert operation **[FULLY COMPLETE 2025-08-11]**
 - ❌ Window Functions - `ROW_NUMBER()`, `RANK()`, `OVER()` clause
 - ❌ Common Table Expressions - `WITH` clause  
 - ❌ Set Operations - `UNION`, `INTERSECT`, `EXCEPT`
