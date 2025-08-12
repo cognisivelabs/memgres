@@ -49,6 +49,10 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
             return (Statement) visit(ctx.createIndexStatement());
         } else if (ctx.dropIndexStatement() != null) {
             return (Statement) visit(ctx.dropIndexStatement());
+        } else if (ctx.createSequenceStatement() != null) {
+            return (Statement) visit(ctx.createSequenceStatement());
+        } else if (ctx.dropSequenceStatement() != null) {
+            return (Statement) visit(ctx.dropSequenceStatement());
         }
         return null;
     }
@@ -778,5 +782,96 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
         String indexName = ctx.indexName().identifier().getText();
         
         return new DropIndexStatement(ifExists, indexName);
+    }
+    
+    // CREATE SEQUENCE statement
+    @Override
+    public CreateSequenceStatement visitCreateSequenceStatement(MemGresParser.CreateSequenceStatementContext ctx) {
+        boolean ifNotExists = ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null;
+        String sequenceName = ctx.sequenceName().identifier().getText();
+        
+        // Parse optional data type
+        DataTypeNode dataType = null;
+        if (ctx.AS() != null && ctx.dataType() != null) {
+            dataType = (DataTypeNode) visit(ctx.dataType());
+        }
+        
+        // Parse sequence options
+        List<CreateSequenceStatement.SequenceOption> options = new ArrayList<>();
+        for (MemGresParser.SequenceOptionContext optionCtx : ctx.sequenceOption()) {
+            CreateSequenceStatement.SequenceOption option = parseSequenceOption(optionCtx);
+            if (option != null) {
+                options.add(option);
+            }
+        }
+        
+        return new CreateSequenceStatement(ifNotExists, sequenceName, dataType, options);
+    }
+    
+    private CreateSequenceStatement.SequenceOption parseSequenceOption(MemGresParser.SequenceOptionContext ctx) {
+        if (ctx.START() != null && ctx.WITH() != null) {
+            long startValue = parseSignedIntegerLiteral(ctx.signedIntegerLiteral());
+            return new CreateSequenceStatement.StartWithOption(startValue);
+        } else if (ctx.INCREMENT() != null && ctx.BY() != null) {
+            long incrementValue = parseSignedIntegerLiteral(ctx.signedIntegerLiteral());
+            return new CreateSequenceStatement.IncrementByOption(incrementValue);
+        } else if (ctx.MINVALUE() != null) {
+            long minValue = parseSignedIntegerLiteral(ctx.signedIntegerLiteral());
+            return new CreateSequenceStatement.MinValueOption(minValue);
+        } else if (ctx.MAXVALUE() != null) {
+            long maxValue = parseSignedIntegerLiteral(ctx.signedIntegerLiteral());
+            return new CreateSequenceStatement.MaxValueOption(maxValue);
+        } else if (ctx.NOMINVALUE() != null) {
+            return new CreateSequenceStatement.NoMinValueOption();
+        } else if (ctx.NOMAXVALUE() != null) {
+            return new CreateSequenceStatement.NoMaxValueOption();
+        } else if (ctx.CYCLE() != null) {
+            return new CreateSequenceStatement.CycleOption();
+        } else if (ctx.NOCYCLE() != null) {
+            return new CreateSequenceStatement.NoCycleOption();
+        } else if (ctx.CACHE() != null) {
+            long cacheSize = parseSignedIntegerLiteral(ctx.signedIntegerLiteral());
+            return new CreateSequenceStatement.CacheOption(cacheSize);
+        } else if (ctx.NOCACHE() != null) {
+            return new CreateSequenceStatement.NoCacheOption();
+        }
+        
+        return null; // Unknown option
+    }
+    
+    private long parseSignedIntegerLiteral(MemGresParser.SignedIntegerLiteralContext ctx) {
+        String integerText = ctx.INTEGER_LITERAL().getText();
+        long value = Long.parseLong(integerText);
+        
+        // Check if there's a MINUS token before the integer
+        if (ctx.MINUS() != null) {
+            value = -value;
+        }
+        // PLUS is optional and doesn't change the value
+        
+        return value;
+    }
+    
+    // DROP SEQUENCE statement  
+    @Override
+    public DropSequenceStatement visitDropSequenceStatement(MemGresParser.DropSequenceStatementContext ctx) {
+        boolean ifExists = ctx.IF() != null && ctx.EXISTS() != null;
+        String sequenceName = ctx.sequenceName().identifier().getText();
+        
+        return new DropSequenceStatement(ifExists, sequenceName);
+    }
+    
+    // NEXT VALUE FOR function
+    @Override
+    public NextValueForExpression visitNextValueForFunction(MemGresParser.NextValueForFunctionContext ctx) {
+        String sequenceName = ctx.sequenceName().identifier().getText();
+        return new NextValueForExpression(sequenceName);
+    }
+    
+    // CURRENT VALUE FOR function
+    @Override
+    public CurrentValueForExpression visitCurrentValueForFunction(MemGresParser.CurrentValueForFunctionContext ctx) {
+        String sequenceName = ctx.sequenceName().identifier().getText();
+        return new CurrentValueForExpression(sequenceName);
     }
 }

@@ -17,6 +17,8 @@ statement
     | dropTableStatement
     | createIndexStatement
     | dropIndexStatement
+    | createSequenceStatement
+    | dropSequenceStatement
     ;
 
 // SELECT statement
@@ -249,6 +251,8 @@ functionCall
     | MIN LPAREN expression RPAREN                     # minFunction
     | MAX LPAREN expression RPAREN                     # maxFunction
     | COUNT LPAREN DISTINCT expression RPAREN          # countDistinctFunction
+    | NEXT VALUE FOR sequenceName                      # nextValueForFunction
+    | CURRENT VALUE FOR sequenceName                   # currentValueForFunction
     | identifier LPAREN (expressionList)? RPAREN       # genericFunction
     ;
 
@@ -322,6 +326,38 @@ mergeInsertAction
 
 keyColumnList
     : identifier (COMMA identifier)*
+    ;
+
+// CREATE SEQUENCE statement
+createSequenceStatement
+    : CREATE SEQUENCE (IF NOT EXISTS)? sequenceName (AS dataType)? sequenceOption*
+    ;
+
+// DROP SEQUENCE statement
+dropSequenceStatement
+    : DROP SEQUENCE (IF EXISTS)? sequenceName
+    ;
+
+sequenceName
+    : identifier
+    ;
+
+sequenceOption
+    : START WITH signedIntegerLiteral
+    | INCREMENT BY signedIntegerLiteral
+    | MINVALUE signedIntegerLiteral
+    | MAXVALUE signedIntegerLiteral
+    | NOMINVALUE
+    | NOMAXVALUE
+    | CYCLE
+    | NOCYCLE
+    | CACHE signedIntegerLiteral
+    | NOCACHE
+    ;
+
+// Signed integer literal
+signedIntegerLiteral
+    : (PLUS | MINUS)? INTEGER_LITERAL
     ;
 
 // Identifiers (case-insensitive)

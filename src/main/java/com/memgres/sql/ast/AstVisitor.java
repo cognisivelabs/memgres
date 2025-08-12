@@ -21,6 +21,8 @@ public interface AstVisitor<T, C> {
     T visitDropTableStatement(DropTableStatement node, C context) throws Exception;
     T visitCreateIndexStatement(CreateIndexStatement node, C context) throws Exception;
     T visitDropIndexStatement(DropIndexStatement node, C context) throws Exception;
+    T visitCreateSequenceStatement(CreateSequenceStatement node, C context) throws Exception;
+    T visitDropSequenceStatement(DropSequenceStatement node, C context) throws Exception;
     
     // Expression visitors
     T visitLiteralExpression(LiteralExpression node, C context) throws Exception;
@@ -33,6 +35,8 @@ public interface AstVisitor<T, C> {
     T visitExistsExpression(ExistsExpression node, C context) throws Exception;
     T visitInSubqueryExpression(InSubqueryExpression node, C context) throws Exception;
     T visitAggregateFunction(AggregateFunction node, C context) throws Exception;
+    T visitNextValueForExpression(NextValueForExpression node, C context) throws Exception;
+    T visitCurrentValueForExpression(CurrentValueForExpression node, C context) throws Exception;
     
     // Clause visitors
     T visitFromClause(FromClause node, C context) throws Exception;

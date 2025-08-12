@@ -63,12 +63,13 @@ void testWithMemGres(SqlExecutionEngine sql) {
 
 ## Status
 
-**Current**: Phase 1 & 2 Complete (417/417 tests passing)
+**Current**: Phase 1, 2 & 3.1 Complete (476/476 tests passing)
 - ✅ H2-compatible SQL operations (DDL, DML, joins, subqueries, aggregation)  
 - ✅ PostgreSQL JSONB with all operators and functions
 - ✅ Testing framework integration (JUnit 5, TestNG, Spring Test)
+- ✅ Essential H2 features (CREATE INDEX, MERGE statements, SEQUENCE support)
 
-**Next**: Phase 3 - Full H2 compatibility (CREATE INDEX, MERGE, TRUNCATE, sequences)
+**Next**: Phase 3.2 - Advanced H2 features (Window functions, CTEs, ALTER TABLE, TRUNCATE)
 
 ## License
 

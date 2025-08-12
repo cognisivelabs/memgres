@@ -5,11 +5,13 @@ import com.memgres.functions.UuidFunctions;
 import com.memgres.sql.ast.expression.AggregateFunction;
 import com.memgres.sql.ast.expression.BinaryExpression;
 import com.memgres.sql.ast.expression.ColumnReference;
+import com.memgres.sql.ast.expression.CurrentValueForExpression;
 import com.memgres.sql.ast.expression.Expression;
 import com.memgres.sql.ast.expression.ExistsExpression;
 import com.memgres.sql.ast.expression.FunctionCall;
 import com.memgres.sql.ast.expression.InSubqueryExpression;
 import com.memgres.sql.ast.expression.LiteralExpression;
+import com.memgres.sql.ast.expression.NextValueForExpression;
 import com.memgres.sql.ast.expression.SubqueryExpression;
 import com.memgres.sql.ast.expression.UnaryExpression;
 import com.memgres.storage.Table;
@@ -67,6 +69,12 @@ public class ExpressionEvaluator {
         else if (expression instanceof AggregateFunction) {
             throw new IllegalStateException("Aggregate functions must be handled at the SELECT statement level");
         }
+        else if (expression instanceof NextValueForExpression) {
+            return evaluateNextValueForExpression((NextValueForExpression) expression, context);
+        }
+        else if (expression instanceof CurrentValueForExpression) {
+            return evaluateCurrentValueForExpression((CurrentValueForExpression) expression, context);
+        }
         else {
             throw new IllegalArgumentException("Unsupported expression type: " + expression.getClass());
         }
@@ -110,6 +118,10 @@ public class ExpressionEvaluator {
             if (tableColumns != null && tableColumns.containsKey(tableName)) {
                 List<Column> targetTableColumns = tableColumns.get(tableName);
                 
+                logger.debug("Looking for column '{}' in table '{}', available columns: {}", 
+                    columnName, tableName, 
+                    targetTableColumns.stream().map(c -> c.getName()).collect(java.util.stream.Collectors.toList()));
+                
                 // Find the column within the specific table
                 for (int i = 0; i < targetTableColumns.size(); i++) {
                     if (targetTableColumns.get(i).getName().toLowerCase().equals(columnName)) {
@@ -119,6 +131,11 @@ public class ExpressionEvaluator {
                     }
                 }
             } else {
+                logger.debug("Table '{}' not found in tableColumns. Available tables: {}", 
+                    tableName, tableColumns != null ? tableColumns.keySet() : "null");
+            }
+            
+            if (columnIndex == null) {
                 // Fallback: search all columns but prefer exact matches first
                 for (int i = 0; i < columns.size(); i++) {
                     Column col = columns.get(i);
@@ -514,5 +531,61 @@ public class ExpressionEvaluator {
             .replace("%", ".*")
             .replace("_", ".");
         return text.matches(regexPattern);
+    }
+    
+    /**
+     * Evaluate NEXT VALUE FOR sequence_name expression.
+     */
+    private Object evaluateNextValueForExpression(NextValueForExpression expr, ExecutionContext context) {
+        try {
+            String sequenceName = expr.getSequenceName();
+            logger.debug("Evaluating NEXT VALUE FOR: {}", sequenceName);
+            
+            // Get the sequence from the engine
+            com.memgres.storage.Sequence sequence = engine.getSequence("public", sequenceName);
+            if (sequence == null) {
+                throw new IllegalArgumentException("Sequence does not exist: " + sequenceName);
+            }
+            
+            // Get the next value
+            long nextValue = sequence.nextValue();
+            logger.debug("NEXT VALUE FOR {} returned: {}", sequenceName, nextValue);
+            
+            return nextValue;
+            
+        } catch (com.memgres.storage.Sequence.SequenceException e) {
+            throw new IllegalStateException("Sequence error for " + expr.getSequenceName() + ": " + e.getMessage(), e);
+        } catch (Exception e) {
+            logger.error("Failed to evaluate NEXT VALUE FOR {}: {}", expr.getSequenceName(), e.getMessage());
+            throw new IllegalStateException("Failed to evaluate NEXT VALUE FOR: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Evaluate CURRENT VALUE FOR sequence_name expression.
+     */
+    private Object evaluateCurrentValueForExpression(CurrentValueForExpression expr, ExecutionContext context) {
+        try {
+            String sequenceName = expr.getSequenceName();
+            logger.debug("Evaluating CURRENT VALUE FOR: {}", sequenceName);
+            
+            // Get the sequence from the engine
+            com.memgres.storage.Sequence sequence = engine.getSequence("public", sequenceName);
+            if (sequence == null) {
+                throw new IllegalArgumentException("Sequence does not exist: " + sequenceName);
+            }
+            
+            // Get the current value
+            long currentValue = sequence.currentValue();
+            logger.debug("CURRENT VALUE FOR {} returned: {}", sequenceName, currentValue);
+            
+            return currentValue;
+            
+        } catch (com.memgres.storage.Sequence.SequenceException e) {
+            throw new IllegalStateException("Sequence error for " + expr.getSequenceName() + ": " + e.getMessage(), e);
+        } catch (Exception e) {
+            logger.error("Failed to evaluate CURRENT VALUE FOR {}: {}", expr.getSequenceName(), e.getMessage());
+            throw new IllegalStateException("Failed to evaluate CURRENT VALUE FOR: " + e.getMessage(), e);
+        }
     }
 }

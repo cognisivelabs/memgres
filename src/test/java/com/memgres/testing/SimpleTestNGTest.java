@@ -58,10 +58,10 @@ public class SimpleTestNGTest {
         
         SqlExecutionEngine sqlEngine = new SqlExecutionEngine(engine);
         SqlExecutionResult sqlResult = sqlEngine.execute(
-            "CREATE TABLE testng_transactional (id INTEGER, value VARCHAR(50))");
+            "CREATE TABLE testng_transactional (id INTEGER, data_value VARCHAR(50))");
         Assert.assertTrue(sqlResult.isSuccess(), "CREATE TABLE should succeed");
         
-        sqlResult = sqlEngine.execute("INSERT INTO testng_transactional (id, value) VALUES (1, 'will rollback')");
+        sqlResult = sqlEngine.execute("INSERT INTO testng_transactional (id, data_value) VALUES (1, 'will rollback')");
         Assert.assertTrue(sqlResult.isSuccess(), "INSERT should succeed");
         
         // Verify data exists during test

@@ -17,6 +17,7 @@ public class Schema {
     
     private final String name;
     private final ConcurrentMap<String, Table> tables;
+    private final ConcurrentMap<String, Sequence> sequences;
     private final ReadWriteLock schemaLock;
     
     public Schema(String name) {
@@ -26,6 +27,7 @@ public class Schema {
         
         this.name = name.toLowerCase(); // PostgreSQL converts schema names to lowercase
         this.tables = new ConcurrentHashMap<>();
+        this.sequences = new ConcurrentHashMap<>();
         this.schemaLock = new ReentrantReadWriteLock();
         
         logger.debug("Created schema: {}", this.name);
@@ -143,6 +145,104 @@ public class Schema {
         schemaLock.readLock().lock();
         try {
             return Set.copyOf(tables.keySet());
+        } finally {
+            schemaLock.readLock().unlock();
+        }
+    }
+    
+    // ===== SEQUENCE MANAGEMENT METHODS =====
+    
+    /**
+     * Create a sequence in this schema
+     * @param sequence the sequence to create
+     * @return true if sequence was created, false if it already exists
+     */
+    public boolean createSequence(Sequence sequence) {
+        if (sequence == null) {
+            throw new IllegalArgumentException("Sequence cannot be null");
+        }
+        
+        String sequenceName = sequence.getName().toLowerCase();
+        
+        schemaLock.writeLock().lock();
+        try {
+            if (sequences.containsKey(sequenceName)) {
+                logger.warn("Sequence already exists in schema {}: {}", name, sequenceName);
+                return false;
+            }
+            
+            sequences.put(sequenceName, sequence);
+            logger.debug("Created sequence {} in schema {}", sequenceName, name);
+            return true;
+        } finally {
+            schemaLock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Drop a sequence from this schema
+     * @param sequenceName the name of the sequence to drop
+     * @return true if sequence was dropped, false if it didn't exist
+     */
+    public boolean dropSequence(String sequenceName) {
+        if (sequenceName == null || sequenceName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Sequence name cannot be null or empty");
+        }
+        
+        String normalizedName = sequenceName.toLowerCase();
+        
+        schemaLock.writeLock().lock();
+        try {
+            Sequence removedSequence = sequences.remove(normalizedName);
+            if (removedSequence != null) {
+                logger.debug("Dropped sequence {} from schema {}", normalizedName, name);
+                return true;
+            } else {
+                logger.warn("Sequence does not exist in schema {}: {}", name, normalizedName);
+                return false;
+            }
+        } finally {
+            schemaLock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Get a sequence by name
+     * @param sequenceName the sequence name
+     * @return the sequence or null if not found
+     */
+    public Sequence getSequence(String sequenceName) {
+        if (sequenceName == null || sequenceName.trim().isEmpty()) {
+            return null;
+        }
+        
+        String normalizedName = sequenceName.toLowerCase();
+        
+        schemaLock.readLock().lock();
+        try {
+            return sequences.get(normalizedName);
+        } finally {
+            schemaLock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Check if a sequence exists in this schema
+     * @param sequenceName the sequence name
+     * @return true if the sequence exists
+     */
+    public boolean hasSequence(String sequenceName) {
+        return getSequence(sequenceName) != null;
+    }
+    
+    /**
+     * Get all sequence names in this schema
+     * @return set of sequence names
+     */
+    public Set<String> getSequenceNames() {
+        schemaLock.readLock().lock();
+        try {
+            return Set.copyOf(sequences.keySet());
         } finally {
             schemaLock.readLock().unlock();
         }
