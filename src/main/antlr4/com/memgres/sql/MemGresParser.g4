@@ -14,6 +14,7 @@ statement
     | deleteStatement
     | mergeStatement
     | createTableStatement
+    | alterTableStatement
     | dropTableStatement
     | createIndexStatement
     | dropIndexStatement
@@ -150,6 +151,18 @@ columnConstraint
     | NULL
     | PRIMARY KEY
     | UNIQUE
+    ;
+
+// ALTER TABLE statement
+alterTableStatement
+    : ALTER TABLE (IF EXISTS)? tableName alterTableAction
+    ;
+
+alterTableAction
+    : ADD (COLUMN)? columnDefinition (BEFORE columnName | AFTER columnName)?     # addColumnAction
+    | DROP (COLUMN)? (IF EXISTS)? columnName                                     # dropColumnAction
+    | ALTER COLUMN columnName RENAME TO columnName                               # renameColumnAction
+    | RENAME TO tableName                                                        # renameTableAction
     ;
 
 // DROP TABLE statement

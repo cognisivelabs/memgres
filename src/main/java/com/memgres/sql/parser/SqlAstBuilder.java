@@ -43,6 +43,8 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
             return (Statement) visit(ctx.mergeStatement());
         } else if (ctx.createTableStatement() != null) {
             return (Statement) visit(ctx.createTableStatement());
+        } else if (ctx.alterTableStatement() != null) {
+            return (Statement) visit(ctx.alterTableStatement());
         } else if (ctx.dropTableStatement() != null) {
             return (Statement) visit(ctx.dropTableStatement());
         } else if (ctx.createIndexStatement() != null) {
@@ -584,6 +586,59 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
     }
     
     // DROP TABLE statement
+    @Override
+    public AlterTableStatement visitAlterTableStatement(MemGresParser.AlterTableStatementContext ctx) {
+        String tableName = ctx.tableName().getText();
+        boolean ifExists = ctx.IF() != null && ctx.EXISTS() != null;
+        
+        AlterTableAction action = (AlterTableAction) visit(ctx.alterTableAction());
+        
+        return new AlterTableStatement(tableName, ifExists, action);
+    }
+    
+    @Override
+    public AlterTableAction visitAddColumnAction(MemGresParser.AddColumnActionContext ctx) {
+        ColumnDefinition columnDefinition = (ColumnDefinition) visit(ctx.columnDefinition());
+        
+        AddColumnAction.Position position = AddColumnAction.Position.DEFAULT;
+        String referenceColumnName = null;
+        
+        if (ctx.BEFORE() != null) {
+            position = AddColumnAction.Position.BEFORE;
+            referenceColumnName = ctx.columnName().getText();
+        } else if (ctx.AFTER() != null) {
+            position = AddColumnAction.Position.AFTER;
+            referenceColumnName = ctx.columnName().getText();
+        }
+        
+        return new AddColumnAction(columnDefinition, position, referenceColumnName);
+    }
+    
+    @Override
+    public AlterTableAction visitDropColumnAction(MemGresParser.DropColumnActionContext ctx) {
+        String columnName = ctx.columnName().getText();
+        boolean ifExists = ctx.IF() != null && ctx.EXISTS() != null;
+        
+        return new DropColumnAction(columnName, ifExists);
+    }
+    
+    @Override
+    public AlterTableAction visitRenameColumnAction(MemGresParser.RenameColumnActionContext ctx) {
+        // ALTER COLUMN oldName RENAME TO newName
+        List<MemGresParser.ColumnNameContext> columnNames = ctx.columnName();
+        String oldColumnName = columnNames.get(0).getText();
+        String newColumnName = columnNames.get(1).getText();
+        
+        return new RenameColumnAction(oldColumnName, newColumnName);
+    }
+    
+    @Override
+    public AlterTableAction visitRenameTableAction(MemGresParser.RenameTableActionContext ctx) {
+        String newTableName = ctx.tableName().getText();
+        
+        return new RenameTableAction(newTableName);
+    }
+
     @Override
     public DropTableStatement visitDropTableStatement(MemGresParser.DropTableStatementContext ctx) {
         String tableName = ctx.tableName().getText();

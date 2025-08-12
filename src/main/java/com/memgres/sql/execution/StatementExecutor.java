@@ -2314,4 +2314,61 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
         }
     }
     
+    @Override
+    public SqlExecutionResult visitAlterTableStatement(AlterTableStatement node, ExecutionContext context) throws Exception {
+        try {
+            String tableName = node.getTableName();
+            boolean ifExists = node.isIfExists();
+            
+            logger.debug("Altering table: {}", tableName);
+            
+            // Check if table exists
+            Schema schema = engine.getSchema("public");
+            if (schema == null) {
+                throw new SqlExecutionException("Schema 'public' does not exist");
+            }
+            
+            Table existingTable = schema.getTable(tableName);
+            if (existingTable == null) {
+                if (ifExists) {
+                    logger.info("Table does not exist (IF EXISTS): {}", tableName);
+                    return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, "Table does not exist");
+                } else {
+                    throw new SqlExecutionException("Table does not exist: " + tableName);
+                }
+            }
+            
+            // Execute the specific action
+            return node.getAction().accept(this, context);
+            
+        } catch (Exception e) {
+            logger.error("Failed to alter table {}: {}", node.getTableName(), e.getMessage());
+            throw new SqlExecutionException("Failed to alter table: " + e.getMessage(), e);
+        }
+    }
+    
+    @Override
+    public SqlExecutionResult visitAddColumnAction(AddColumnAction node, ExecutionContext context) throws Exception {
+        // TODO: Implement ADD COLUMN logic
+        throw new UnsupportedOperationException("ADD COLUMN not yet implemented");
+    }
+    
+    @Override
+    public SqlExecutionResult visitDropColumnAction(DropColumnAction node, ExecutionContext context) throws Exception {
+        // TODO: Implement DROP COLUMN logic
+        throw new UnsupportedOperationException("DROP COLUMN not yet implemented");
+    }
+    
+    @Override
+    public SqlExecutionResult visitRenameColumnAction(RenameColumnAction node, ExecutionContext context) throws Exception {
+        // TODO: Implement RENAME COLUMN logic
+        throw new UnsupportedOperationException("RENAME COLUMN not yet implemented");
+    }
+    
+    @Override
+    public SqlExecutionResult visitRenameTableAction(RenameTableAction node, ExecutionContext context) throws Exception {
+        // TODO: Implement RENAME TABLE logic
+        throw new UnsupportedOperationException("RENAME TABLE not yet implemented");
+    }
+    
 }
