@@ -45,6 +45,12 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
             return (Statement) visit(ctx.createTableStatement());
         } else if (ctx.dropTableStatement() != null) {
             return (Statement) visit(ctx.dropTableStatement());
+        } else if (ctx.truncateTableStatement() != null) {
+            return (Statement) visit(ctx.truncateTableStatement());
+        } else if (ctx.createViewStatement() != null) {
+            return (Statement) visit(ctx.createViewStatement());
+        } else if (ctx.dropViewStatement() != null) {
+            return (Statement) visit(ctx.dropViewStatement());
         } else if (ctx.createIndexStatement() != null) {
             return (Statement) visit(ctx.createIndexStatement());
         } else if (ctx.dropIndexStatement() != null) {
@@ -588,6 +594,61 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
     public DropTableStatement visitDropTableStatement(MemGresParser.DropTableStatementContext ctx) {
         String tableName = ctx.tableName().getText();
         return new DropTableStatement(tableName);
+    }
+    
+    @Override
+    public TruncateTableStatement visitTruncateTableStatement(MemGresParser.TruncateTableStatementContext ctx) {
+        String tableName = ctx.tableName().getText();
+        
+        TruncateTableStatement.IdentityOption identityOption = null;
+        if (ctx.identityOption() != null) {
+            if (ctx.identityOption() instanceof MemGresParser.RestartIdentityOptionContext) {
+                identityOption = TruncateTableStatement.IdentityOption.RESTART_IDENTITY;
+            } else if (ctx.identityOption() instanceof MemGresParser.ContinueIdentityOptionContext) {
+                identityOption = TruncateTableStatement.IdentityOption.CONTINUE_IDENTITY;
+            }
+        }
+        
+        return new TruncateTableStatement(tableName, identityOption);
+    }
+    
+    @Override
+    public CreateViewStatement visitCreateViewStatement(MemGresParser.CreateViewStatementContext ctx) {
+        boolean orReplace = ctx.OR() != null && ctx.REPLACE() != null;
+        boolean force = ctx.FORCE() != null;
+        boolean ifNotExists = ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null;
+        String viewName = ctx.viewName().getText();
+        
+        // Extract column names if specified
+        List<String> columnNames = null;
+        if (ctx.columnNameList() != null) {
+            columnNames = new ArrayList<>();
+            for (MemGresParser.ColumnNameContext colCtx : ctx.columnNameList().columnName()) {
+                columnNames.add(colCtx.getText());
+            }
+        }
+        
+        // Get the SELECT statement
+        SelectStatement selectStatement = (SelectStatement) visit(ctx.selectStatement());
+        
+        return new CreateViewStatement(orReplace, force, ifNotExists, viewName, columnNames, selectStatement);
+    }
+    
+    @Override
+    public DropViewStatement visitDropViewStatement(MemGresParser.DropViewStatementContext ctx) {
+        boolean ifExists = ctx.IF() != null && ctx.EXISTS() != null;
+        String viewName = ctx.viewName().getText();
+        
+        DropViewStatement.DropOption dropOption = null;
+        if (ctx.restrictOrCascade() != null) {
+            if (ctx.restrictOrCascade() instanceof MemGresParser.RestrictOptionContext) {
+                dropOption = DropViewStatement.DropOption.RESTRICT;
+            } else if (ctx.restrictOrCascade() instanceof MemGresParser.CascadeOptionContext) {
+                dropOption = DropViewStatement.DropOption.CASCADE;
+            }
+        }
+        
+        return new DropViewStatement(ifExists, viewName, dropOption);
     }
     
     // Data type visitors

@@ -15,6 +15,9 @@ statement
     | mergeStatement
     | createTableStatement
     | dropTableStatement
+    | truncateTableStatement
+    | createViewStatement
+    | dropViewStatement
     | createIndexStatement
     | dropIndexStatement
     | createSequenceStatement
@@ -157,6 +160,31 @@ dropTableStatement
     : DROP TABLE tableName
     ;
 
+// TRUNCATE TABLE statement  
+truncateTableStatement
+    : TRUNCATE TABLE tableName (identityOption)?
+    ;
+
+identityOption
+    : CONTINUE IDENTITY     # continueIdentityOption
+    | RESTART IDENTITY      # restartIdentityOption
+    ;
+
+// CREATE VIEW statement
+createViewStatement
+    : CREATE (OR REPLACE)? (FORCE)? VIEW (IF NOT EXISTS)? viewName (LPAREN columnNameList RPAREN)? AS selectStatement
+    ;
+
+// DROP VIEW statement
+dropViewStatement
+    : DROP VIEW (IF EXISTS)? viewName (restrictOrCascade)?
+    ;
+
+restrictOrCascade
+    : RESTRICT     # restrictOption
+    | CASCADE      # cascadeOption
+    ;
+
 // CREATE INDEX statement
 createIndexStatement
     : CREATE (UNIQUE (NULLS DISTINCT)? | SPATIAL)? INDEX (IF NOT EXISTS)? indexName? ON tableName LPAREN indexColumnList RPAREN (INCLUDE LPAREN indexColumnList RPAREN)?
@@ -232,6 +260,10 @@ tableName
     : identifier
     ;
 
+viewName
+    : identifier
+    ;
+
 columnName
     : identifier
     ;
@@ -261,6 +293,10 @@ expressionList
     ;
 
 columnList
+    : columnName (COMMA columnName)*
+    ;
+
+columnNameList
     : columnName (COMMA columnName)*
     ;
 

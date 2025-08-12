@@ -80,6 +80,15 @@ VALUE: [Vv][Aa][Ll][Uu][Ee];
 FOR: [Ff][Oo][Rr];
 CURRENT: [Cc][Uu][Rr][Rr][Ee][Nn][Tt];
 NEXT: [Nn][Ee][Xx][Tt];
+TRUNCATE: [Tt][Rr][Uu][Nn][Cc][Aa][Tt][Ee];
+RESTART: [Rr][Ee][Ss][Tt][Aa][Rr][Tt];
+CONTINUE: [Cc][Oo][Nn][Tt][Ii][Nn][Uu][Ee];
+IDENTITY: [Ii][Dd][Ee][Nn][Tt][Ii][Tt][Yy];
+VIEW: [Vv][Ii][Ee][Ww];
+REPLACE: [Rr][Ee][Pp][Ll][Aa][Cc][Ee];
+FORCE: [Ff][Oo][Rr][Cc][Ee];
+RESTRICT: [Rr][Ee][Ss][Tt][Rr][Ii][Cc][Tt];
+CASCADE: [Cc][Aa][Ss][Cc][Aa][Dd][Ee];
 
 // Data types
 SMALLINT: [Ss][Mm][Aa][Ll][Ll][Ii][Nn][Tt];

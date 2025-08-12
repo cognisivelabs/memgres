@@ -460,6 +460,38 @@ public class Table {
         }
     }
     
+    /**
+     * Truncate the table by removing all rows
+     * @return the number of rows that were removed
+     */
+    public int truncate() {
+        tableLock.writeLock().lock();
+        try {
+            int rowCount = rows.size();
+            
+            // Clear all rows
+            rows.clear();
+            
+            // Clear all indexes by removing and recreating them
+            // This is a simple approach since Index doesn't have a clear method
+            Map<String, Index> indexesCopy = new HashMap<>(indexes);
+            indexes.clear();
+            for (Map.Entry<String, Index> entry : indexesCopy.entrySet()) {
+                Index oldIndex = entry.getValue();
+                Index newIndex = new Index(oldIndex.getName(), oldIndex.getIndexedColumn(), this);
+                indexes.put(entry.getKey(), newIndex);
+            }
+            
+            // Reset row ID generator
+            rowIdGenerator.set(0);
+            
+            logger.info("Truncated table {}: {} rows removed", name, rowCount);
+            return rowCount;
+        } finally {
+            tableLock.writeLock().unlock();
+        }
+    }
+    
     @Override
     public String toString() {
         return "Table{" +
