@@ -328,4 +328,18 @@ public class Index {
                 ", totalRows=" + getTotalRowCount() +
                 '}';
     }
+    
+    /**
+     * Clear all entries from the index.
+     * Used during TRUNCATE TABLE operations.
+     */
+    public void clear() {
+        indexLock.writeLock().lock();
+        try {
+            indexMap.clear();
+            logger.debug("Cleared index {} on column {}", name, indexedColumn.getName());
+        } finally {
+            indexLock.writeLock().unlock();
+        }
+    }
 }

@@ -47,6 +47,8 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
             return (Statement) visit(ctx.alterTableStatement());
         } else if (ctx.dropTableStatement() != null) {
             return (Statement) visit(ctx.dropTableStatement());
+        } else if (ctx.truncateTableStatement() != null) {
+            return (Statement) visit(ctx.truncateTableStatement());
         } else if (ctx.createIndexStatement() != null) {
             return (Statement) visit(ctx.createIndexStatement());
         } else if (ctx.dropIndexStatement() != null) {
@@ -669,6 +671,22 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
     public DropTableStatement visitDropTableStatement(MemGresParser.DropTableStatementContext ctx) {
         String tableName = ctx.tableName().getText();
         return new DropTableStatement(tableName);
+    }
+    
+    @Override
+    public TruncateTableStatement visitTruncateTableStatement(MemGresParser.TruncateTableStatementContext ctx) {
+        String tableName = ctx.tableName().getText();
+        
+        TruncateTableStatement.IdentityOption identityOption = null;
+        if (ctx.identityOption() != null) {
+            if (ctx.identityOption() instanceof MemGresParser.RestartIdentityOptionContext) {
+                identityOption = TruncateTableStatement.IdentityOption.RESTART;
+            } else if (ctx.identityOption() instanceof MemGresParser.ContinueIdentityOptionContext) {
+                identityOption = TruncateTableStatement.IdentityOption.CONTINUE;
+            }
+        }
+        
+        return new TruncateTableStatement(tableName, identityOption);
     }
     
     // Data type visitors

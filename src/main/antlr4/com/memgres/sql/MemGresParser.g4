@@ -16,6 +16,7 @@ statement
     | createTableStatement
     | alterTableStatement
     | dropTableStatement
+    | truncateTableStatement
     | createIndexStatement
     | dropIndexStatement
     | createSequenceStatement
@@ -168,6 +169,16 @@ alterTableAction
 // DROP TABLE statement
 dropTableStatement
     : DROP TABLE tableName
+    ;
+
+// TRUNCATE TABLE statement  
+truncateTableStatement
+    : TRUNCATE TABLE tableName (identityOption)?
+    ;
+
+identityOption
+    : CONTINUE IDENTITY     # continueIdentityOption
+    | RESTART IDENTITY      # restartIdentityOption
     ;
 
 // CREATE INDEX statement
