@@ -598,17 +598,43 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
     
     @Override
     public AlterTableAction visitAddColumnAction(MemGresParser.AddColumnActionContext ctx) {
-        ColumnDefinition columnDefinition = (ColumnDefinition) visit(ctx.columnDefinition());
+        // Manually construct ColumnDefinition like in CREATE TABLE
+        MemGresParser.ColumnDefinitionContext colCtx = ctx.columnDefinition();
+        String columnName = colCtx.columnName().getText();
+        DataTypeNode dataType = (DataTypeNode) visit(colCtx.dataType());
+        
+        List<ColumnDefinition.Constraint> constraints = new ArrayList<>();
+        if (colCtx.columnConstraint() != null) {
+            for (MemGresParser.ColumnConstraintContext constraintCtx : colCtx.columnConstraint()) {
+                if (constraintCtx.NOT() != null && constraintCtx.NULL() != null) {
+                    constraints.add(ColumnDefinition.Constraint.NOT_NULL);
+                } else if (constraintCtx.PRIMARY() != null && constraintCtx.KEY() != null) {
+                    constraints.add(ColumnDefinition.Constraint.PRIMARY_KEY);
+                } else if (constraintCtx.UNIQUE() != null) {
+                    constraints.add(ColumnDefinition.Constraint.UNIQUE);
+                } else if (constraintCtx.NULL() != null && constraintCtx.NOT() == null) {
+                    constraints.add(ColumnDefinition.Constraint.NULL);
+                }
+            }
+        }
+        
+        ColumnDefinition columnDefinition = new ColumnDefinition(columnName, dataType, constraints);
         
         AddColumnAction.Position position = AddColumnAction.Position.DEFAULT;
         String referenceColumnName = null;
         
         if (ctx.BEFORE() != null) {
             position = AddColumnAction.Position.BEFORE;
-            referenceColumnName = ctx.columnName().getText();
+            // The columnName after BEFORE is the reference column
+            if (ctx.columnName() != null) {
+                referenceColumnName = ctx.columnName().getText(); // The reference column
+            }
         } else if (ctx.AFTER() != null) {
             position = AddColumnAction.Position.AFTER;
-            referenceColumnName = ctx.columnName().getText();
+            // The columnName after AFTER is the reference column
+            if (ctx.columnName() != null) {
+                referenceColumnName = ctx.columnName().getText(); // The reference column
+            }
         }
         
         return new AddColumnAction(columnDefinition, position, referenceColumnName);

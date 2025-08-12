@@ -2338,6 +2338,9 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
                 }
             }
             
+            // Set table name in context for the action to use
+            context.setCurrentTableName(tableName);
+            
             // Execute the specific action
             return node.getAction().accept(this, context);
             
@@ -2349,26 +2352,194 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
     
     @Override
     public SqlExecutionResult visitAddColumnAction(AddColumnAction node, ExecutionContext context) throws Exception {
-        // TODO: Implement ADD COLUMN logic
-        throw new UnsupportedOperationException("ADD COLUMN not yet implemented");
+        try {
+            // Get table from context (set by visitAlterTableStatement)
+            String tableName = context.getCurrentTableName();
+            if (tableName == null) {
+                throw new SqlExecutionException("No table name in context for ADD COLUMN");
+            }
+            
+            Schema schema = engine.getSchema("public");
+            Table table = schema.getTable(tableName);
+            if (table == null) {
+                throw new SqlExecutionException("Table not found: " + tableName);
+            }
+            
+            // Convert ColumnDefinition AST to Column object
+            ColumnDefinition colDef = node.getColumnDefinition();
+            DataTypeNode dataTypeNode = colDef.getDataType();
+            
+            // Determine column constraints
+            boolean nullable = true;
+            boolean primaryKey = false;
+            boolean unique = false;
+            
+            for (ColumnDefinition.Constraint constraint : colDef.getConstraints()) {
+                switch (constraint) {
+                    case NOT_NULL:
+                        nullable = false;
+                        break;
+                    case NULL:
+                        nullable = true;
+                        break;
+                    case PRIMARY_KEY:
+                        primaryKey = true;
+                        nullable = false; // Primary keys are implicitly NOT NULL
+                        break;
+                    case UNIQUE:
+                        unique = true;
+                        break;
+                }
+            }
+            
+            Column newColumn = new Column.Builder()
+                .name(colDef.getColumnName())
+                .dataType(dataTypeNode.getDataType())
+                .nullable(nullable)
+                .primaryKey(primaryKey)
+                .unique(unique)
+                .build();
+            
+            // Determine position parameters
+            String position = null;
+            String referenceColumnName = node.getReferenceColumnName();
+            
+            switch (node.getPosition()) {
+                case FIRST:
+                    position = "FIRST";
+                    break;
+                case BEFORE:
+                    position = "BEFORE";
+                    break;
+                case AFTER:
+                    position = "AFTER";
+                    break;
+                case DEFAULT:
+                default:
+                    position = null; // Add at end
+                    break;
+            }
+            
+            // Add the column to the table
+            boolean success = table.addColumn(newColumn, position, referenceColumnName);
+            
+            if (success) {
+                logger.info("Added column {} to table {}", colDef.getColumnName(), tableName);
+                return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, 
+                    "ALTER TABLE ADD COLUMN completed successfully");
+            } else {
+                throw new SqlExecutionException("Failed to add column to table");
+            }
+            
+        } catch (Exception e) {
+            logger.error("Failed to add column: {}", e.getMessage());
+            throw new SqlExecutionException("Failed to add column: " + e.getMessage(), e);
+        }
     }
     
     @Override
     public SqlExecutionResult visitDropColumnAction(DropColumnAction node, ExecutionContext context) throws Exception {
-        // TODO: Implement DROP COLUMN logic
-        throw new UnsupportedOperationException("DROP COLUMN not yet implemented");
+        try {
+            // Get table from context
+            String tableName = context.getCurrentTableName();
+            if (tableName == null) {
+                throw new SqlExecutionException("No table name in context for DROP COLUMN");
+            }
+            
+            Schema schema = engine.getSchema("public");
+            Table table = schema.getTable(tableName);
+            if (table == null) {
+                throw new SqlExecutionException("Table not found: " + tableName);
+            }
+            
+            String columnName = node.getColumnName();
+            boolean ifExists = node.isIfExists();
+            
+            // Check if column exists (if IF EXISTS is specified)
+            if (ifExists && !table.hasColumn(columnName)) {
+                logger.info("Column does not exist (IF EXISTS): {} in table {}", columnName, tableName);
+                return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, "Column does not exist");
+            }
+            
+            // Remove the column from the table
+            boolean success = table.removeColumn(columnName);
+            
+            if (success) {
+                logger.info("Dropped column {} from table {}", columnName, tableName);
+                return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, 
+                    "ALTER TABLE DROP COLUMN completed successfully");
+            } else {
+                throw new SqlExecutionException("Failed to drop column from table");
+            }
+            
+        } catch (Exception e) {
+            logger.error("Failed to drop column: {}", e.getMessage());
+            throw new SqlExecutionException("Failed to drop column: " + e.getMessage(), e);
+        }
     }
     
     @Override
     public SqlExecutionResult visitRenameColumnAction(RenameColumnAction node, ExecutionContext context) throws Exception {
-        // TODO: Implement RENAME COLUMN logic
-        throw new UnsupportedOperationException("RENAME COLUMN not yet implemented");
+        try {
+            // Get table from context
+            String tableName = context.getCurrentTableName();
+            if (tableName == null) {
+                throw new SqlExecutionException("No table name in context for RENAME COLUMN");
+            }
+            
+            Schema schema = engine.getSchema("public");
+            Table table = schema.getTable(tableName);
+            if (table == null) {
+                throw new SqlExecutionException("Table not found: " + tableName);
+            }
+            
+            String oldColumnName = node.getOldColumnName();
+            String newColumnName = node.getNewColumnName();
+            
+            // Rename the column in the table
+            boolean success = table.renameColumn(oldColumnName, newColumnName);
+            
+            if (success) {
+                logger.info("Renamed column {} to {} in table {}", oldColumnName, newColumnName, tableName);
+                return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, 
+                    "ALTER TABLE RENAME COLUMN completed successfully");
+            } else {
+                throw new SqlExecutionException("Failed to rename column in table");
+            }
+            
+        } catch (Exception e) {
+            logger.error("Failed to rename column: {}", e.getMessage());
+            throw new SqlExecutionException("Failed to rename column: " + e.getMessage(), e);
+        }
     }
     
     @Override
     public SqlExecutionResult visitRenameTableAction(RenameTableAction node, ExecutionContext context) throws Exception {
-        // TODO: Implement RENAME TABLE logic
-        throw new UnsupportedOperationException("RENAME TABLE not yet implemented");
+        try {
+            // Get table from context
+            String oldTableName = context.getCurrentTableName();
+            if (oldTableName == null) {
+                throw new SqlExecutionException("No table name in context for RENAME TABLE");
+            }
+            
+            Schema schema = engine.getSchema("public");
+            String newTableName = node.getNewTableName();
+            
+            // Rename the table in the schema
+            boolean success = schema.renameTable(oldTableName, newTableName);
+            
+            if (success) {
+                logger.info("Renamed table {} to {}", oldTableName, newTableName);
+                return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, 
+                    "ALTER TABLE RENAME TO completed successfully");
+            } else {
+                throw new SqlExecutionException("Failed to rename table");
+            }
+            
+        } catch (Exception e) {
+            logger.error("Failed to rename table: {}", e.getMessage());
+            throw new SqlExecutionException("Failed to rename table: " + e.getMessage(), e);
+        }
     }
     
 }

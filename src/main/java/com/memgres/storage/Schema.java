@@ -269,6 +269,49 @@ public class Schema {
                 '}';
     }
     
+    /**
+     * Rename a table in the schema.
+     * 
+     * @param oldTableName current name of the table
+     * @param newTableName new name for the table
+     * @return true if table was renamed successfully
+     */
+    public boolean renameTable(String oldTableName, String newTableName) {
+        if (oldTableName == null || oldTableName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Old table name cannot be null or empty");
+        }
+        if (newTableName == null || newTableName.trim().isEmpty()) {
+            throw new IllegalArgumentException("New table name cannot be null or empty");
+        }
+        
+        String normalizedOldName = oldTableName.toLowerCase();
+        String normalizedNewName = newTableName.toLowerCase();
+        
+        schemaLock.writeLock().lock();
+        try {
+            // Check if old table exists
+            Table table = tables.get(normalizedOldName);
+            if (table == null) {
+                throw new IllegalArgumentException("Table does not exist: " + oldTableName);
+            }
+            
+            // Check if new table name already exists
+            if (tables.containsKey(normalizedNewName)) {
+                throw new IllegalArgumentException("Table already exists: " + newTableName);
+            }
+            
+            // Remove old table name and add with new name
+            tables.remove(normalizedOldName);
+            tables.put(normalizedNewName, table);
+            
+            logger.info("Renamed table {} to {} in schema {}", oldTableName, newTableName, name);
+            return true;
+            
+        } finally {
+            schemaLock.writeLock().unlock();
+        }
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

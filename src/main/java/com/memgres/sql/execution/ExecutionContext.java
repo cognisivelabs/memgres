@@ -14,6 +14,7 @@ public class ExecutionContext {
     
     private Row currentRow;
     private Table currentTable;
+    private String currentTableName;
     private List<Column> joinedColumns;
     private Map<String, List<Column>> tableColumns;
     private List<String> tableOrder;
@@ -32,6 +33,14 @@ public class ExecutionContext {
     
     public void setCurrentTable(Table currentTable) {
         this.currentTable = currentTable;
+    }
+    
+    public String getCurrentTableName() {
+        return currentTableName;
+    }
+    
+    public void setCurrentTableName(String currentTableName) {
+        this.currentTableName = currentTableName;
     }
     
     public List<Column> getJoinedColumns() {

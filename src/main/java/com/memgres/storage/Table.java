@@ -460,6 +460,234 @@ public class Table {
         }
     }
     
+    /**
+     * Add a new column to the table.
+     * All existing rows will be extended with NULL value for the new column.
+     * 
+     * @param column the column to add
+     * @param position the position to insert the column (null for end)
+     * @param referenceColumnName column name to insert before/after (null if position is FIRST or DEFAULT)
+     * @return true if column was added successfully
+     */
+    public boolean addColumn(Column column, String position, String referenceColumnName) {
+        if (column == null) {
+            throw new IllegalArgumentException("Column cannot be null");
+        }
+        
+        String columnName = column.getName().toLowerCase();
+        
+        tableLock.writeLock().lock();
+        try {
+            // Check if column already exists
+            if (columnMap.containsKey(columnName)) {
+                throw new IllegalArgumentException("Column already exists: " + columnName);
+            }
+            
+            int insertIndex = columns.size(); // Default: add at end
+            
+            // Determine insertion position
+            if (position != null) {
+                switch (position.toUpperCase()) {
+                    case "FIRST":
+                        insertIndex = 0;
+                        break;
+                    case "BEFORE":
+                        if (referenceColumnName != null) {
+                            insertIndex = findColumnIndex(referenceColumnName);
+                            if (insertIndex == -1) {
+                                throw new IllegalArgumentException("Reference column not found: " + referenceColumnName);
+                            }
+                        }
+                        break;
+                    case "AFTER":
+                        if (referenceColumnName != null) {
+                            insertIndex = findColumnIndex(referenceColumnName);
+                            if (insertIndex == -1) {
+                                throw new IllegalArgumentException("Reference column not found: " + referenceColumnName);
+                            }
+                            insertIndex++; // Insert after the reference column
+                        }
+                        break;
+                }
+            }
+            
+            // Add column to the appropriate position
+            columns.add(insertIndex, column);
+            columnMap.put(columnName, column);
+            
+            // Update all existing rows with NULL value for the new column
+            for (int i = 0; i < rows.size(); i++) {
+                Row row = rows.get(i);
+                Object[] oldData = row.getData();
+                Object[] newData = new Object[oldData.length + 1];
+                
+                // Copy data up to insertion point
+                System.arraycopy(oldData, 0, newData, 0, insertIndex);
+                
+                // Insert NULL value for new column
+                newData[insertIndex] = null;
+                
+                // Copy remaining data after insertion point
+                if (insertIndex < oldData.length) {
+                    System.arraycopy(oldData, insertIndex, newData, insertIndex + 1, oldData.length - insertIndex);
+                }
+                
+                // Replace the row with updated data
+                rows.set(i, new Row(row.getId(), newData));
+            }
+            
+            logger.info("Added column {} to table {} at position {}", columnName, name, insertIndex);
+            return true;
+            
+        } finally {
+            tableLock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Remove a column from the table.
+     * All existing rows will have the column data removed.
+     * 
+     * @param columnName the name of the column to remove
+     * @return true if column was removed successfully
+     */
+    public boolean removeColumn(String columnName) {
+        if (columnName == null || columnName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Column name cannot be null or empty");
+        }
+        
+        String normalizedColumnName = columnName.toLowerCase();
+        
+        tableLock.writeLock().lock();
+        try {
+            // Check if column exists
+            if (!columnMap.containsKey(normalizedColumnName)) {
+                throw new IllegalArgumentException("Column does not exist: " + columnName);
+            }
+            
+            // Cannot drop all columns - table must have at least one column
+            if (columns.size() <= 1) {
+                throw new IllegalArgumentException("Cannot drop the last column from table");
+            }
+            
+            // Find column index
+            int columnIndex = findColumnIndex(columnName);
+            if (columnIndex == -1) {
+                throw new IllegalArgumentException("Column not found: " + columnName);
+            }
+            
+            // Remove column from list and map
+            columns.remove(columnIndex);
+            columnMap.remove(normalizedColumnName);
+            
+            // Update all existing rows to remove the column data
+            for (int i = 0; i < rows.size(); i++) {
+                Row row = rows.get(i);
+                Object[] oldData = row.getData();
+                Object[] newData = new Object[oldData.length - 1];
+                
+                // Copy data before the removed column
+                System.arraycopy(oldData, 0, newData, 0, columnIndex);
+                
+                // Copy data after the removed column
+                if (columnIndex < oldData.length - 1) {
+                    System.arraycopy(oldData, columnIndex + 1, newData, columnIndex, oldData.length - columnIndex - 1);
+                }
+                
+                // Replace the row with updated data
+                rows.set(i, new Row(row.getId(), newData));
+            }
+            
+            // Remove any indexes on this column
+            indexes.entrySet().removeIf(entry -> {
+                Index index = entry.getValue();
+                if (index.getIndexedColumn().getName().equalsIgnoreCase(columnName)) {
+                    logger.debug("Removed index {} because it was on dropped column {}", entry.getKey(), columnName);
+                    return true;
+                }
+                return false;
+            });
+            
+            logger.info("Removed column {} from table {}", columnName, name);
+            return true;
+            
+        } finally {
+            tableLock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Rename a column in the table.
+     * 
+     * @param oldColumnName current name of the column
+     * @param newColumnName new name for the column
+     * @return true if column was renamed successfully
+     */
+    public boolean renameColumn(String oldColumnName, String newColumnName) {
+        if (oldColumnName == null || oldColumnName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Old column name cannot be null or empty");
+        }
+        if (newColumnName == null || newColumnName.trim().isEmpty()) {
+            throw new IllegalArgumentException("New column name cannot be null or empty");
+        }
+        
+        String normalizedOldName = oldColumnName.toLowerCase();
+        String normalizedNewName = newColumnName.toLowerCase();
+        
+        tableLock.writeLock().lock();
+        try {
+            // Check if old column exists
+            Column column = columnMap.get(normalizedOldName);
+            if (column == null) {
+                throw new IllegalArgumentException("Column does not exist: " + oldColumnName);
+            }
+            
+            // Check if new column name already exists
+            if (columnMap.containsKey(normalizedNewName)) {
+                throw new IllegalArgumentException("Column already exists: " + newColumnName);
+            }
+            
+            // Create new column with updated name
+            Column renamedColumn = new Column.Builder()
+                .name(newColumnName)
+                .dataType(column.getDataType())
+                .nullable(column.isNullable())
+                .primaryKey(column.isPrimaryKey())
+                .unique(column.isUnique())
+                .build();
+            
+            // Update column in list
+            int columnIndex = findColumnIndex(oldColumnName);
+            columns.set(columnIndex, renamedColumn);
+            
+            // Update column map
+            columnMap.remove(normalizedOldName);
+            columnMap.put(normalizedNewName, renamedColumn);
+            
+            logger.info("Renamed column {} to {} in table {}", oldColumnName, newColumnName, name);
+            return true;
+            
+        } finally {
+            tableLock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Find the index of a column by name.
+     * 
+     * @param columnName the column name to find
+     * @return the index of the column, or -1 if not found
+     */
+    private int findColumnIndex(String columnName) {
+        String normalizedName = columnName.toLowerCase();
+        for (int i = 0; i < columns.size(); i++) {
+            if (columns.get(i).getName().toLowerCase().equals(normalizedName)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     @Override
     public String toString() {
         return "Table{" +
