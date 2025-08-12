@@ -18,6 +18,7 @@ public interface AstVisitor<T, C> {
     T visitDeleteStatement(DeleteStatement node, C context) throws Exception;
     T visitMergeStatement(MergeStatement node, C context) throws Exception;
     T visitCreateTableStatement(CreateTableStatement node, C context) throws Exception;
+    T visitAlterTableStatement(AlterTableStatement node, C context) throws Exception;
     T visitDropTableStatement(DropTableStatement node, C context) throws Exception;
     T visitCreateIndexStatement(CreateIndexStatement node, C context) throws Exception;
     T visitDropIndexStatement(DropIndexStatement node, C context) throws Exception;
@@ -53,4 +54,10 @@ public interface AstVisitor<T, C> {
     T visitSelectItem(SelectItem node, C context) throws Exception;
     T visitDataType(DataTypeNode node, C context) throws Exception;
     T visitColumnDefinition(ColumnDefinition node, C context) throws Exception;
+    
+    // ALTER TABLE action visitors
+    T visitAddColumnAction(AddColumnAction node, C context) throws Exception;
+    T visitDropColumnAction(DropColumnAction node, C context) throws Exception;
+    T visitRenameColumnAction(RenameColumnAction node, C context) throws Exception;
+    T visitRenameTableAction(RenameTableAction node, C context) throws Exception;
 }
