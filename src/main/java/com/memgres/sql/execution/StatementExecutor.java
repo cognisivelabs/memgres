@@ -434,6 +434,36 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
         }
     }
     
+    @Override
+    public SqlExecutionResult visitTruncateTableStatement(TruncateTableStatement node, ExecutionContext context) throws SqlExecutionException {
+        try {
+            String tableName = node.getTableName();
+            TruncateTableStatement.IdentityOption identityOption = node.getIdentityOption();
+            
+            logger.debug("Truncating table: {}", tableName);
+            
+            // Get the table
+            Table table = engine.getTable("public", tableName);
+            if (table == null) {
+                throw new SqlExecutionException("Table does not exist: " + tableName);
+            }
+            
+            // Determine if we should restart identity sequences
+            boolean restartIdentity = identityOption == TruncateTableStatement.IdentityOption.RESTART;
+            
+            // Truncate the table
+            table.truncate(restartIdentity);
+            
+            logger.info("Truncated table: {}", tableName);
+            return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, 
+                "TRUNCATE TABLE completed successfully");
+                
+        } catch (Exception e) {
+            logger.error("Failed to truncate table {}: {}", node.getTableName(), e.getMessage());
+            throw new SqlExecutionException("Failed to truncate table: " + e.getMessage(), e);
+        }
+    }
+    
     /**
      * Result of executing a FROM clause with potential joins.
      */

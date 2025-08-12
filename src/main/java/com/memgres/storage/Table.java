@@ -687,6 +687,38 @@ public class Table {
         }
         return -1;
     }
+    
+    /**
+     * Truncate the table by removing all rows.
+     * This operation cannot be rolled back and is faster than DELETE.
+     * 
+     * @param restartIdentity if true, reset identity sequences to their start value
+     */
+    public void truncate(boolean restartIdentity) {
+        tableLock.writeLock().lock();
+        try {
+            // Clear all data
+            rows.clear();
+            
+            // Clear all indexes (they'll be rebuilt as needed)
+            for (Index index : indexes.values()) {
+                // Clear the index data but keep the index structure
+                index.clear();
+            }
+            
+            // Reset identity/sequence columns if requested
+            if (restartIdentity) {
+                // This would reset AUTO_INCREMENT or IDENTITY columns
+                // For now, we'll log that this feature is requested
+                logger.info("RESTART IDENTITY requested for table {} - sequence reset not yet implemented", name);
+            }
+            
+            logger.info("Truncated table {} (restart identity: {})", name, restartIdentity);
+            
+        } finally {
+            tableLock.writeLock().unlock();
+        }
+    }
 
     @Override
     public String toString() {

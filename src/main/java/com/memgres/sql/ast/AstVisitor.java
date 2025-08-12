@@ -20,6 +20,7 @@ public interface AstVisitor<T, C> {
     T visitCreateTableStatement(CreateTableStatement node, C context) throws Exception;
     T visitAlterTableStatement(AlterTableStatement node, C context) throws Exception;
     T visitDropTableStatement(DropTableStatement node, C context) throws Exception;
+    T visitTruncateTableStatement(TruncateTableStatement node, C context) throws Exception;
     T visitCreateIndexStatement(CreateIndexStatement node, C context) throws Exception;
     T visitDropIndexStatement(DropIndexStatement node, C context) throws Exception;
     T visitCreateSequenceStatement(CreateSequenceStatement node, C context) throws Exception;
