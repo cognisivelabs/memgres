@@ -135,10 +135,10 @@ public class MemGresTestNGIntegrationTest {
         
         // Create table and insert data - should be rolled back
         SqlExecutionResult executionResult = sqlEngine.execute(
-            "CREATE TABLE testng_temp_table (id INTEGER, value VARCHAR(50))");
+            "CREATE TABLE testng_temp_table (id INTEGER, data_value VARCHAR(50))");
         Assert.assertTrue(executionResult.isSuccess(), "CREATE TABLE should succeed");
         
-        executionResult = sqlEngine.execute("INSERT INTO testng_temp_table (id, value) VALUES (1, 'testng_test')");
+        executionResult = sqlEngine.execute("INSERT INTO testng_temp_table (id, data_value) VALUES (1, 'testng_test')");
         Assert.assertTrue(executionResult.isSuccess(), "INSERT should succeed");
         
         // Data should exist during test

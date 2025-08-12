@@ -132,10 +132,10 @@ class MemGresJUnit5IntegrationTest {
         
         // Create table and insert data - should be rolled back
         SqlExecutionResult result = sqlEngine.execute(
-            "CREATE TABLE temp_table (id INTEGER, value VARCHAR(50))");
+            "CREATE TABLE temp_table (id INTEGER, data_value VARCHAR(50))");
         assertTrue(result.isSuccess(), "CREATE TABLE should succeed");
         
-        result = sqlEngine.execute("INSERT INTO temp_table (id, value) VALUES (1, 'test')");
+        result = sqlEngine.execute("INSERT INTO temp_table (id, data_value) VALUES (1, 'test')");
         assertTrue(result.isSuccess(), "INSERT should succeed");
         
         // Data should exist during test

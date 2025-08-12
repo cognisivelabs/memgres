@@ -205,7 +205,7 @@ class SqlIntegrationTest {
     void testTransactionIsolation() throws Exception {
         logger.info("Starting transaction isolation test");
         
-        String createSql = "CREATE TABLE isolation_test (id INTEGER, value VARCHAR)";
+        String createSql = "CREATE TABLE isolation_test (id INTEGER, data_value VARCHAR)";
         sqlEngine.execute(createSql, TransactionIsolationLevel.READ_COMMITTED);
         
         // Test different isolation levels

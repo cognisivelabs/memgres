@@ -64,6 +64,22 @@ FALSE: [Ff][Aa][Ll][Ss][Ee];
 PRIMARY: [Pp][Rr][Ii][Mm][Aa][Rr][Yy];
 KEY: [Kk][Ee][Yy];
 UNIQUE: [Uu][Nn][Ii][Qq][Uu][Ee];
+SEQUENCE: [Ss][Ee][Qq][Uu][Ee][Nn][Cc][Ee];
+START: [Ss][Tt][Aa][Rr][Tt];
+WITH: [Ww][Ii][Tt][Hh];
+INCREMENT: [Ii][Nn][Cc][Rr][Ee][Mm][Ee][Nn][Tt];
+MINVALUE: [Mm][Ii][Nn][Vv][Aa][Ll][Uu][Ee];
+MAXVALUE: [Mm][Aa][Xx][Vv][Aa][Ll][Uu][Ee];
+NOMINVALUE: [Nn][Oo][Mm][Ii][Nn][Vv][Aa][Ll][Uu][Ee];
+NOMAXVALUE: [Nn][Oo][Mm][Aa][Xx][Vv][Aa][Ll][Uu][Ee];
+CYCLE: [Cc][Yy][Cc][Ll][Ee];
+NOCYCLE: [Nn][Oo][Cc][Yy][Cc][Ll][Ee];
+CACHE: [Cc][Aa][Cc][Hh][Ee];
+NOCACHE: [Nn][Oo][Cc][Aa][Cc][Hh][Ee];
+VALUE: [Vv][Aa][Ll][Uu][Ee];
+FOR: [Ff][Oo][Rr];
+CURRENT: [Cc][Uu][Rr][Rr][Ee][Nn][Tt];
+NEXT: [Nn][Ee][Xx][Tt];
 
 // Data types
 SMALLINT: [Ss][Mm][Aa][Ll][Ll][Ii][Nn][Tt];

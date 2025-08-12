@@ -1,6 +1,7 @@
 package com.memgres.core;
 
 import com.memgres.storage.Schema;
+import com.memgres.storage.Sequence;
 import com.memgres.storage.Table;
 import com.memgres.transaction.TransactionManager;
 import org.slf4j.Logger;
@@ -172,6 +173,56 @@ public class MemGresEngine {
         }
         
         return schema.getTable(tableName);
+    }
+    
+    // ===== SEQUENCE MANAGEMENT METHODS =====
+    
+    /**
+     * Create a sequence in the specified schema
+     * @param schemaName the schema name
+     * @param sequence the sequence to create
+     * @return true if sequence was created, false if it already exists
+     */
+    public boolean createSequence(String schemaName, Sequence sequence) {
+        validateInitialized();
+        Schema schema = getSchema(schemaName);
+        if (schema == null) {
+            throw new IllegalArgumentException("Schema does not exist: " + schemaName);
+        }
+        
+        return schema.createSequence(sequence);
+    }
+    
+    /**
+     * Drop a sequence from the specified schema
+     * @param schemaName the schema name
+     * @param sequenceName the sequence name
+     * @return true if sequence was dropped, false if it didn't exist
+     */
+    public boolean dropSequence(String schemaName, String sequenceName) {
+        validateInitialized();
+        Schema schema = getSchema(schemaName);
+        if (schema == null) {
+            return false;
+        }
+        
+        return schema.dropSequence(sequenceName);
+    }
+    
+    /**
+     * Get a sequence from the specified schema
+     * @param schemaName the schema name
+     * @param sequenceName the sequence name
+     * @return the sequence or null if not found
+     */
+    public Sequence getSequence(String schemaName, String sequenceName) {
+        validateInitialized();
+        Schema schema = getSchema(schemaName);
+        if (schema == null) {
+            return null;
+        }
+        
+        return schema.getSequence(sequenceName);
     }
     
     /**

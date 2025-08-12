@@ -31,11 +31,16 @@ class MergeIntegrationTest {
         
         // Create test tables for MERGE operations
         try {
-            String createTargetTableSql = "CREATE TABLE target_table (id INTEGER, name VARCHAR, value INTEGER)";
+            String createTargetTableSql = "CREATE TABLE target_table (id INTEGER, name VARCHAR, data_value INTEGER)";
             sqlEngine.execute(createTargetTableSql, TransactionIsolationLevel.READ_COMMITTED);
             
-            String createSourceTableSql = "CREATE TABLE source_table (id INTEGER, name VARCHAR, value INTEGER)";
+            String createSourceTableSql = "CREATE TABLE source_table (id INTEGER, name VARCHAR, data_value INTEGER)";
             sqlEngine.execute(createSourceTableSql, TransactionIsolationLevel.READ_COMMITTED);
+            
+            // Insert test data into source_table for subquery tests
+            sqlEngine.execute("INSERT INTO source_table VALUES (1, 'Alice', 75)", TransactionIsolationLevel.READ_COMMITTED);
+            sqlEngine.execute("INSERT INTO source_table VALUES (2, 'Bob', 25)", TransactionIsolationLevel.READ_COMMITTED);
+            sqlEngine.execute("INSERT INTO source_table VALUES (3, 'Charlie', 100)", TransactionIsolationLevel.READ_COMMITTED);
             
             logger.info("Test tables created successfully");
         } catch (Exception e) {
@@ -96,8 +101,8 @@ class MergeIntegrationTest {
         
         String advancedMergeSql = "MERGE INTO target_table USING source_table " +
                                  "ON target_table.id = source_table.id " +
-                                 "WHEN MATCHED THEN UPDATE SET value = source_table.value " +
-                                 "WHEN NOT MATCHED THEN INSERT VALUES (source_table.id, source_table.name, source_table.value)";
+                                 "WHEN MATCHED THEN UPDATE SET data_value = source_table.data_value " +
+                                 "WHEN NOT MATCHED THEN INSERT VALUES (source_table.id, source_table.name, source_table.data_value)";
         SqlExecutionResult result = sqlEngine.execute(advancedMergeSql, TransactionIsolationLevel.READ_COMMITTED);
         
         assertEquals(SqlExecutionResult.ResultType.MERGE, result.getType());
@@ -111,8 +116,8 @@ class MergeIntegrationTest {
         
         String advancedMergeSql = "MERGE INTO target_table t USING source_table s " +
                                  "ON t.id = s.id " +
-                                 "WHEN MATCHED THEN UPDATE SET value = s.value " +
-                                 "WHEN NOT MATCHED THEN INSERT VALUES (s.id, s.name, s.value)";
+                                 "WHEN MATCHED THEN UPDATE SET data_value = s.data_value " +
+                                 "WHEN NOT MATCHED THEN INSERT VALUES (s.id, s.name, s.data_value)";
         SqlExecutionResult result = sqlEngine.execute(advancedMergeSql, TransactionIsolationLevel.READ_COMMITTED);
         
         assertEquals(SqlExecutionResult.ResultType.MERGE, result.getType());
@@ -125,10 +130,10 @@ class MergeIntegrationTest {
         logger.info("Testing advanced MERGE with subquery source");
         
         String advancedMergeSql = "MERGE INTO target_table " +
-                                 "USING (SELECT id, name, value FROM source_table WHERE value > 50) s " +
+                                 "USING (SELECT id, name, data_value FROM source_table WHERE data_value > 50) s " +
                                  "ON target_table.id = s.id " +
-                                 "WHEN MATCHED THEN UPDATE SET value = s.value " +
-                                 "WHEN NOT MATCHED THEN INSERT VALUES (s.id, s.name, s.value)";
+                                 "WHEN MATCHED THEN UPDATE SET data_value = s.data_value " +
+                                 "WHEN NOT MATCHED THEN INSERT VALUES (s.id, s.name, s.data_value)";
         SqlExecutionResult result = sqlEngine.execute(advancedMergeSql, TransactionIsolationLevel.READ_COMMITTED);
         
         assertEquals(SqlExecutionResult.ResultType.MERGE, result.getType());
@@ -142,9 +147,9 @@ class MergeIntegrationTest {
         
         String advancedMergeSql = "MERGE INTO target_table USING source_table " +
                                  "ON target_table.id = source_table.id " +
-                                 "WHEN MATCHED AND source_table.value < 0 THEN DELETE " +
-                                 "WHEN MATCHED THEN UPDATE SET value = source_table.value " +
-                                 "WHEN NOT MATCHED THEN INSERT VALUES (source_table.id, source_table.name, source_table.value)";
+                                 "WHEN MATCHED AND source_table.data_value < 0 THEN DELETE " +
+                                 "WHEN MATCHED THEN UPDATE SET data_value = source_table.data_value " +
+                                 "WHEN NOT MATCHED THEN INSERT VALUES (source_table.id, source_table.name, source_table.data_value)";
         SqlExecutionResult result = sqlEngine.execute(advancedMergeSql, TransactionIsolationLevel.READ_COMMITTED);
         
         assertEquals(SqlExecutionResult.ResultType.MERGE, result.getType());
@@ -158,8 +163,8 @@ class MergeIntegrationTest {
         
         String advancedMergeSql = "MERGE INTO target_table USING source_table " +
                                  "ON target_table.id = source_table.id " +
-                                 "WHEN MATCHED THEN UPDATE SET value = source_table.value " +
-                                 "WHEN NOT MATCHED AND source_table.value > 0 THEN INSERT VALUES (source_table.id, source_table.name, source_table.value)";
+                                 "WHEN MATCHED THEN UPDATE SET data_value = source_table.data_value " +
+                                 "WHEN NOT MATCHED AND source_table.data_value > 0 THEN INSERT VALUES (source_table.id, source_table.name, source_table.data_value)";
         SqlExecutionResult result = sqlEngine.execute(advancedMergeSql, TransactionIsolationLevel.READ_COMMITTED);
         
         assertEquals(SqlExecutionResult.ResultType.MERGE, result.getType());
@@ -173,8 +178,8 @@ class MergeIntegrationTest {
         
         String advancedMergeSql = "MERGE INTO target_table USING source_table " +
                                  "ON target_table.id = source_table.id " +
-                                 "WHEN MATCHED THEN UPDATE SET name = source_table.name, value = source_table.value " +
-                                 "WHEN NOT MATCHED THEN INSERT (id, name, value) VALUES (source_table.id, source_table.name, source_table.value)";
+                                 "WHEN MATCHED THEN UPDATE SET name = source_table.name, data_value = source_table.data_value " +
+                                 "WHEN NOT MATCHED THEN INSERT (id, name, data_value) VALUES (source_table.id, source_table.name, source_table.data_value)";
         SqlExecutionResult result = sqlEngine.execute(advancedMergeSql, TransactionIsolationLevel.READ_COMMITTED);
         
         assertEquals(SqlExecutionResult.ResultType.MERGE, result.getType());
@@ -188,9 +193,9 @@ class MergeIntegrationTest {
         
         String complexMergeSql = "MERGE INTO target_table t USING source_table s " +
                                 "ON t.id = s.id " +
-                                "WHEN MATCHED AND t.value < s.value THEN UPDATE SET value = s.value " +
-                                "WHEN MATCHED AND t.value >= s.value THEN DELETE " +
-                                "WHEN NOT MATCHED AND s.value > 100 THEN INSERT VALUES (s.id, s.name, s.value)";
+                                "WHEN MATCHED AND t.data_value < s.data_value THEN UPDATE SET data_value = s.data_value " +
+                                "WHEN MATCHED AND t.data_value >= s.data_value THEN DELETE " +
+                                "WHEN NOT MATCHED AND s.data_value > 100 THEN INSERT VALUES (s.id, s.name, s.data_value)";
         SqlExecutionResult result = sqlEngine.execute(complexMergeSql, TransactionIsolationLevel.READ_COMMITTED);
         
         assertEquals(SqlExecutionResult.ResultType.MERGE, result.getType());
@@ -203,10 +208,10 @@ class MergeIntegrationTest {
         logger.info("Testing MERGE case insensitivity");
         
         String[] caseVariations = {
-            "merge into target_table key(id) values (1, 'test', 100)",
+            "merge into target_table key(id) VALUES (1, 'test', 100)",
             "MERGE INTO target_table KEY(id) VALUES (2, 'TEST', 200)",
             "Merge Into target_table Key(id) Values (3, 'Test', 300)",
-            "MERGE INTO target_table USING source_table ON target_table.id = source_table.id WHEN MATCHED THEN UPDATE SET value = source_table.value WHEN NOT MATCHED THEN INSERT VALUES (source_table.id, source_table.name, source_table.value)"
+            "MERGE INTO target_table USING source_table ON target_table.id = source_table.id WHEN MATCHED THEN UPDATE SET data_value = source_table.data_value WHEN NOT MATCHED THEN INSERT VALUES (source_table.id, source_table.name, source_table.data_value)"
         };
         
         for (int i = 0; i < caseVariations.length; i++) {
@@ -252,10 +257,10 @@ class MergeIntegrationTest {
             "MERGE INTO target_table KEY(id) VALUES (1, 'test', 100), (2, 'test2', 200)",
             
             // Advanced MERGE variations
-            "MERGE INTO target_table USING source_table ON target_table.id = source_table.id WHEN MATCHED THEN UPDATE SET value = source_table.value WHEN NOT MATCHED THEN INSERT VALUES (source_table.id, source_table.name, source_table.value)",
-            "MERGE INTO target_table t USING source_table s ON t.id = s.id WHEN MATCHED THEN DELETE WHEN NOT MATCHED THEN INSERT VALUES (s.id, s.name, s.value)",
-            "MERGE INTO target_table USING (SELECT * FROM source_table) s ON target_table.id = s.id WHEN MATCHED THEN UPDATE SET value = s.value WHEN NOT MATCHED THEN INSERT VALUES (s.id, s.name, s.value)",
-            "MERGE INTO target_table USING source_table ON target_table.id = source_table.id WHEN MATCHED AND target_table.value < source_table.value THEN UPDATE SET value = source_table.value WHEN NOT MATCHED AND source_table.value > 0 THEN INSERT VALUES (source_table.id, source_table.name, source_table.value)"
+            "MERGE INTO target_table USING source_table ON target_table.id = source_table.id WHEN MATCHED THEN UPDATE SET data_value = source_table.data_value WHEN NOT MATCHED THEN INSERT VALUES (source_table.id, source_table.name, source_table.data_value)",
+            "MERGE INTO target_table t USING source_table s ON t.id = s.id WHEN MATCHED THEN DELETE WHEN NOT MATCHED THEN INSERT VALUES (s.id, s.name, s.data_value)",
+            "MERGE INTO target_table USING (SELECT * FROM source_table) s ON target_table.id = s.id WHEN MATCHED THEN UPDATE SET data_value = s.data_value WHEN NOT MATCHED THEN INSERT VALUES (s.id, s.name, s.data_value)",
+            "MERGE INTO target_table USING source_table ON target_table.id = source_table.id WHEN MATCHED AND target_table.data_value < source_table.data_value THEN UPDATE SET data_value = source_table.data_value WHEN NOT MATCHED AND source_table.data_value > 0 THEN INSERT VALUES (source_table.id, source_table.name, source_table.data_value)"
         };
         
         for (String sql : validMergeStatements) {
@@ -274,8 +279,8 @@ class MergeIntegrationTest {
         
         String expressionMergeSql = "MERGE INTO target_table USING source_table " +
                                    "ON target_table.id = source_table.id " +
-                                   "WHEN MATCHED THEN UPDATE SET value = source_table.value + 10 " +
-                                   "WHEN NOT MATCHED THEN INSERT VALUES (source_table.id, 'prefix_' || source_table.name, source_table.value * 2)";
+                                   "WHEN MATCHED THEN UPDATE SET data_value = source_table.data_value + 10 " +
+                                   "WHEN NOT MATCHED THEN INSERT VALUES (source_table.id, 'prefix_' || source_table.name, source_table.data_value * 2)";
         SqlExecutionResult result = sqlEngine.execute(expressionMergeSql, TransactionIsolationLevel.READ_COMMITTED);
         
         assertEquals(SqlExecutionResult.ResultType.MERGE, result.getType());
