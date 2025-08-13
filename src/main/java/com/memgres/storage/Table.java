@@ -697,29 +697,68 @@ public class Table {
     public void truncate(boolean restartIdentity) {
         tableLock.writeLock().lock();
         try {
+            int rowCount = rows.size();
+            
             // Clear all data
             rows.clear();
             
-            // Clear all indexes (they'll be rebuilt as needed)
-            for (Index index : indexes.values()) {
-                // Clear the index data but keep the index structure
-                index.clear();
+            // Clear all indexes by removing and recreating them
+            // This is a simple approach since Index doesn't have a clear method
+            Map<String, Index> indexesCopy = new HashMap<>(indexes);
+            indexes.clear();
+            for (Map.Entry<String, Index> entry : indexesCopy.entrySet()) {
+                Index oldIndex = entry.getValue();
+                Index newIndex = new Index(oldIndex.getName(), oldIndex.getIndexedColumn(), this);
+                indexes.put(entry.getKey(), newIndex);
             }
             
             // Reset identity/sequence columns if requested
             if (restartIdentity) {
-                // This would reset AUTO_INCREMENT or IDENTITY columns
-                // For now, we'll log that this feature is requested
-                logger.info("RESTART IDENTITY requested for table {} - sequence reset not yet implemented", name);
+                // Reset row ID generator
+                rowIdGenerator.set(0);
+                logger.info("RESTART IDENTITY applied for table {} - row ID generator reset", name);
+            } else {
+                logger.info("CONTINUE IDENTITY applied for table {} - row ID generator preserved", name);
             }
             
-            logger.info("Truncated table {} (restart identity: {})", name, restartIdentity);
+            logger.info("Truncated table {} (restart identity: {}): {} rows removed", name, restartIdentity, rowCount);
             
         } finally {
             tableLock.writeLock().unlock();
         }
     }
-
+    
+    /**
+     * Truncate the table by removing all rows
+     * @return the number of rows that were removed
+     */
+    public int truncate() {
+        tableLock.writeLock().lock();
+        try {
+            int rowCount = rows.size();
+            
+            // Clear all rows
+            rows.clear();
+            
+            // Clear all indexes by removing and recreating them
+            Map<String, Index> indexesCopy = new HashMap<>(indexes);
+            indexes.clear();
+            for (Map.Entry<String, Index> entry : indexesCopy.entrySet()) {
+                Index oldIndex = entry.getValue();
+                Index newIndex = new Index(oldIndex.getName(), oldIndex.getIndexedColumn(), this);
+                indexes.put(entry.getKey(), newIndex);
+            }
+            
+            // Reset row ID generator
+            rowIdGenerator.set(0);
+            
+            logger.info("Truncated table {}: {} rows removed", name, rowCount);
+            return rowCount;
+        } finally {
+            tableLock.writeLock().unlock();
+        }
+    }
+    
     @Override
     public String toString() {
         return "Table{" +

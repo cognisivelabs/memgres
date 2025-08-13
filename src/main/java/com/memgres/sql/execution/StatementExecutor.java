@@ -8,6 +8,7 @@ import com.memgres.sql.ast.statement.*;
 import com.memgres.storage.Schema;
 import com.memgres.storage.Sequence;
 import com.memgres.storage.Table;
+import com.memgres.storage.View;
 import com.memgres.types.Column;
 import com.memgres.types.DataType;
 import com.memgres.types.Row;
@@ -449,7 +450,7 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             }
             
             // Determine if we should restart identity sequences
-            boolean restartIdentity = identityOption == TruncateTableStatement.IdentityOption.RESTART;
+            boolean restartIdentity = identityOption == TruncateTableStatement.IdentityOption.RESTART_IDENTITY;
             
             // Truncate the table
             table.truncate(restartIdentity);
@@ -461,6 +462,107 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
         } catch (Exception e) {
             logger.error("Failed to truncate table {}: {}", node.getTableName(), e.getMessage());
             throw new SqlExecutionException("Failed to truncate table: " + e.getMessage(), e);
+        }
+    }
+    
+    @Override
+    public SqlExecutionResult visitCreateViewStatement(CreateViewStatement node, ExecutionContext context) throws SqlExecutionException {
+        try {
+            String viewName = node.getViewName();
+            List<String> columnNames = node.getColumnNames();
+            SelectStatement selectStatement = node.getSelectStatement();
+            boolean orReplace = node.isOrReplace();
+            boolean ifNotExists = node.isIfNotExists();
+            boolean force = node.isForce();
+            
+            // Create the view object
+            View view = new View(viewName, columnNames, selectStatement, force);
+            
+            // Get the default schema
+            Schema schema = engine.getSchema("public");
+            if (schema == null) {
+                throw new SqlExecutionException("Schema 'public' not found");
+            }
+            
+            boolean created;
+            String message;
+            
+            if (orReplace) {
+                // CREATE OR REPLACE - always succeeds
+                schema.createOrReplaceView(view);
+                created = true;
+                message = "View " + viewName + " created or replaced successfully";
+                logger.debug("CREATE OR REPLACE VIEW executed: {} created/replaced", viewName);
+            } else {
+                // Regular CREATE VIEW
+                if (ifNotExists) {
+                    // CREATE VIEW IF NOT EXISTS - don't fail if exists
+                    if (schema.hasView(viewName)) {
+                        created = true; // Operation succeeds even though view already exists
+                        message = "View " + viewName + " already exists (skipped)";
+                        logger.debug("CREATE VIEW IF NOT EXISTS executed: {} already exists", viewName);
+                    } else {
+                        created = schema.createView(view);
+                        message = "View " + viewName + " created successfully";
+                        logger.debug("CREATE VIEW IF NOT EXISTS executed: {} created", viewName);
+                    }
+                } else {
+                    // Regular CREATE VIEW - fail if exists
+                    if (schema.hasView(viewName)) {
+                        throw new SqlExecutionException("View '" + viewName + "' already exists");
+                    }
+                    created = schema.createView(view);
+                    message = "View " + viewName + " created successfully";
+                    logger.debug("CREATE VIEW executed: {} created", viewName);
+                }
+            }
+            
+            return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, created, message);
+            
+        } catch (Exception e) {
+            if (e instanceof SqlExecutionException) {
+                throw (SqlExecutionException) e;
+            }
+            throw new SqlExecutionException("Failed to execute CREATE VIEW statement", e);
+        }
+    }
+    
+    @Override
+    public SqlExecutionResult visitDropViewStatement(DropViewStatement node, ExecutionContext context) throws SqlExecutionException {
+        try {
+            String viewName = node.getViewName();
+            boolean ifExists = node.isIfExists();
+            
+            // Get the default schema
+            Schema schema = engine.getSchema("public");
+            if (schema == null) {
+                throw new SqlExecutionException("Schema 'public' not found");
+            }
+            
+            if (ifExists) {
+                // DROP VIEW IF EXISTS - don't fail if doesn't exist
+                boolean dropped = schema.dropView(viewName);
+                String message = dropped 
+                    ? "View " + viewName + " dropped successfully"
+                    : "View " + viewName + " does not exist (skipped)";
+                logger.debug("DROP VIEW IF EXISTS executed: {} (dropped: {})", viewName, dropped);
+                return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, message); // Always succeed for IF EXISTS
+            } else {
+                // Regular DROP VIEW - fail if doesn't exist
+                if (!schema.hasView(viewName)) {
+                    throw new SqlExecutionException("View '" + viewName + "' does not exist");
+                }
+                boolean dropped = schema.dropView(viewName);
+                String message = "View " + viewName + " dropped successfully";
+                logger.debug("DROP VIEW executed: {} dropped", viewName);
+                return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, dropped, message);
+            }
+            
+        } catch (Exception e) {
+            if (e instanceof SqlExecutionException) {
+                throw (SqlExecutionException) e;
+            }
+            throw new SqlExecutionException("Failed to execute DROP VIEW statement", e);
         }
     }
     
@@ -489,17 +591,40 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
         
         JoinableTable joinableTable = joinableTables.get(0);
         
-        // Get base table
+        // Get base table or view
         TableReference baseTableRef = joinableTable.getBaseTable();
         String baseTableName = baseTableRef.getTableName();
-        Table baseTable = engine.getTable("public", baseTableName);
-        if (baseTable == null) {
-            throw new SqlExecutionException("Table not found: " + baseTableName);
-        }
         
-        // Start with base table data
-        List<Column> resultColumns = new ArrayList<>(baseTable.getColumns());
-        List<Row> resultRows = baseTable.getAllRows();
+        // Try to get table first
+        Table baseTable = engine.getTable("public", baseTableName);
+        List<Column> resultColumns;
+        List<Row> resultRows;
+        
+        if (baseTable != null) {
+            // It's a table
+            resultColumns = new ArrayList<>(baseTable.getColumns());
+            resultRows = baseTable.getAllRows();
+        } else {
+            // Try to get view
+            Schema schema = engine.getSchema("public");
+            if (schema == null) {
+                throw new SqlExecutionException("Schema 'public' not found");
+            }
+            
+            View baseView = schema.getView(baseTableName);
+            if (baseView == null) {
+                throw new SqlExecutionException("Table or view not found: " + baseTableName);
+            }
+            
+            // Execute the view's SELECT statement to get the data
+            SqlExecutionResult viewResult = visitSelectStatement(baseView.getSelectStatement(), context);
+            if (viewResult.getType() != SqlExecutionResult.ResultType.SELECT) {
+                throw new SqlExecutionException("View SELECT statement did not return query result");
+            }
+            
+            resultColumns = viewResult.getColumns();
+            resultRows = viewResult.getRows();
+        }
         
         
         // Apply joins if present
@@ -523,16 +648,40 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
     private JoinResult executeJoin(List<Column> leftColumns, List<Row> leftRows, 
                                   JoinClause joinClause, ExecutionContext context, TableReference leftTableRef) throws SqlExecutionException {
         
-        // Get right table
+        // Get right table or view
         TableReference rightTableRef = joinClause.getTable();
         String rightTableName = rightTableRef.getTableName();
-        Table rightTable = engine.getTable("public", rightTableName);
-        if (rightTable == null) {
-            throw new SqlExecutionException("Table not found: " + rightTableName);
-        }
         
-        List<Row> rightRows = rightTable.getAllRows();
-        List<Column> rightColumns = rightTable.getColumns();
+        // Try to get table first
+        Table rightTable = engine.getTable("public", rightTableName);
+        List<Row> rightRows;
+        List<Column> rightColumns;
+        
+        if (rightTable != null) {
+            // It's a table
+            rightRows = rightTable.getAllRows();
+            rightColumns = rightTable.getColumns();
+        } else {
+            // Try to get view
+            Schema schema = engine.getSchema("public");
+            if (schema == null) {
+                throw new SqlExecutionException("Schema 'public' not found");
+            }
+            
+            View rightView = schema.getView(rightTableName);
+            if (rightView == null) {
+                throw new SqlExecutionException("Table or view not found: " + rightTableName);
+            }
+            
+            // Execute the view's SELECT statement to get the data
+            SqlExecutionResult viewResult = visitSelectStatement(rightView.getSelectStatement(), context);
+            if (viewResult.getType() != SqlExecutionResult.ResultType.SELECT) {
+                throw new SqlExecutionException("View SELECT statement did not return query result");
+            }
+            
+            rightRows = viewResult.getRows();
+            rightColumns = viewResult.getColumns();
+        }
         
         // Combine column schemas
         List<Column> combinedColumns = new ArrayList<>(leftColumns);
@@ -2345,6 +2494,7 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
     }
     
     @Override
+<<<<<<< HEAD
     public SqlExecutionResult visitAlterTableStatement(AlterTableStatement node, ExecutionContext context) throws Exception {
         try {
             String tableName = node.getTableName();
@@ -2569,6 +2719,124 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
         } catch (Exception e) {
             logger.error("Failed to rename table: {}", e.getMessage());
             throw new SqlExecutionException("Failed to rename table: " + e.getMessage(), e);
+        }
+    }
+    
+    @Override
+    public SqlExecutionResult visitTruncateTableStatement(TruncateTableStatement node, ExecutionContext context) throws Exception {
+        try {
+            String tableName = node.getTableName();
+            TruncateTableStatement.IdentityOption identityOption = node.getIdentityOption();
+            
+            Schema schema = engine.getSchema("public");
+            Table table = schema.getTable(tableName);
+            if (table == null) {
+                throw new SqlExecutionException("Table not found: " + tableName);
+            }
+            
+            // Handle identity option properly with new truncate method
+            boolean restartIdentity = identityOption == TruncateTableStatement.IdentityOption.RESTART_IDENTITY;
+            table.truncate(restartIdentity);
+            
+            logger.info("Truncated table {} with identity option: {}", tableName, 
+                       identityOption != null ? identityOption.toString() : "default");
+            return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, 
+                "Table " + tableName + " truncated successfully");
+            
+        } catch (Exception e) {
+            logger.error("Failed to truncate table {}: {}", node.getTableName(), e.getMessage());
+            if (e instanceof SqlExecutionException) {
+                throw (SqlExecutionException) e;
+            }
+            throw new SqlExecutionException("Failed to truncate table: " + e.getMessage(), e);
+        }
+    }
+    
+    @Override
+    public SqlExecutionResult visitCreateViewStatement(CreateViewStatement node, ExecutionContext context) throws Exception {
+        try {
+            String viewName = node.getViewName();
+            List<String> columnNames = node.getColumnNames();
+            SelectStatement selectStatement = node.getSelectStatement();
+            boolean orReplace = node.isOrReplace();
+            boolean force = node.isForce();
+            boolean ifNotExists = node.isIfNotExists();
+            
+            Schema schema = engine.getSchema("public");
+            
+            // Check if view already exists
+            if (schema.hasView(viewName)) {
+                if (orReplace) {
+                    // Replace existing view
+                    schema.dropView(viewName);
+                    logger.info("Replaced existing view: {}", viewName);
+                } else if (ifNotExists) {
+                    // Skip creation, return success
+                    logger.info("View {} already exists, skipping due to IF NOT EXISTS", viewName);
+                    return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, 
+                        "View " + viewName + " already exists");
+                } else {
+                    throw new SqlExecutionException("View already exists: " + viewName);
+                }
+            }
+            
+            // Create the view
+            View view = new View(viewName, columnNames, selectStatement, force);
+            schema.createView(view);
+            
+            logger.info("Created view: {}", viewName);
+            return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, 
+                "View " + viewName + " created successfully");
+            
+        } catch (Exception e) {
+            logger.error("Failed to create view {}: {}", node.getViewName(), e.getMessage());
+            if (e instanceof SqlExecutionException) {
+                throw (SqlExecutionException) e;
+            }
+            throw new SqlExecutionException("Failed to create view: " + e.getMessage(), e);
+        }
+    }
+    
+    @Override
+    public SqlExecutionResult visitDropViewStatement(DropViewStatement node, ExecutionContext context) throws Exception {
+        try {
+            String viewName = node.getViewName();
+            boolean ifExists = node.isIfExists();
+            DropViewStatement.DropOption dropOption = node.getDropOption();
+            
+            Schema schema = engine.getSchema("public");
+            
+            // Check if view exists
+            if (!schema.hasView(viewName)) {
+                if (ifExists) {
+                    // Skip drop, return success
+                    logger.info("View {} does not exist, skipping due to IF EXISTS", viewName);
+                    return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, 
+                        "View " + viewName + " does not exist");
+                } else {
+                    throw new SqlExecutionException("View does not exist: " + viewName);
+                }
+            }
+            
+            // Drop the view
+            // Note: CASCADE/RESTRICT options would be implemented here for dependent objects
+            if (dropOption != null) {
+                logger.debug("Drop option {} noted but not fully implemented yet", dropOption);
+            }
+            
+            schema.dropView(viewName);
+            
+            logger.info("Dropped view: {}", viewName);
+            return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, 
+                "View " + viewName + " dropped successfully");
+            
+        } catch (Exception e) {
+            logger.error("Failed to drop view {}: {}", node.getViewName(), e.getMessage());
+            if (e instanceof SqlExecutionException) {
+                throw (SqlExecutionException) e;
+            }
+            throw new SqlExecutionException("Failed to drop view: " + e.getMessage(), e);
+        }
         }
     }
     

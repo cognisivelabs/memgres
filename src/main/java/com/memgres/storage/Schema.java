@@ -17,6 +17,7 @@ public class Schema {
     
     private final String name;
     private final ConcurrentMap<String, Table> tables;
+    private final ConcurrentMap<String, View> views;
     private final ConcurrentMap<String, Sequence> sequences;
     private final ReadWriteLock schemaLock;
     
@@ -27,6 +28,7 @@ public class Schema {
         
         this.name = name.toLowerCase(); // PostgreSQL converts schema names to lowercase
         this.tables = new ConcurrentHashMap<>();
+        this.views = new ConcurrentHashMap<>();
         this.sequences = new ConcurrentHashMap<>();
         this.schemaLock = new ReentrantReadWriteLock();
         
@@ -150,6 +152,143 @@ public class Schema {
         }
     }
     
+    // ===== VIEW MANAGEMENT METHODS =====
+    
+    /**
+     * Create a view in this schema
+     * @param view the view to create
+     * @return true if view was created, false if it already exists
+     */
+    public boolean createView(View view) {
+        if (view == null) {
+            throw new IllegalArgumentException("View cannot be null");
+        }
+        
+        String viewName = view.getName().toLowerCase();
+        
+        schemaLock.writeLock().lock();
+        try {
+            if (views.containsKey(viewName)) {
+                logger.warn("View already exists in schema {}: {}", name, viewName);
+                return false;
+            }
+            
+            views.put(viewName, view);
+            logger.debug("Created view {} in schema {}", viewName, name);
+            return true;
+        } finally {
+            schemaLock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Create or replace a view in this schema
+     * @param view the view to create or replace
+     * @return true if view was created or replaced
+     */
+    public boolean createOrReplaceView(View view) {
+        if (view == null) {
+            throw new IllegalArgumentException("View cannot be null");
+        }
+        
+        String viewName = view.getName().toLowerCase();
+        
+        schemaLock.writeLock().lock();
+        try {
+            View existingView = views.put(viewName, view);
+            if (existingView != null) {
+                logger.debug("Replaced existing view {} in schema {}", viewName, name);
+            } else {
+                logger.debug("Created view {} in schema {}", viewName, name);
+            }
+            return true;
+        } finally {
+            schemaLock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Drop a view from this schema
+     * @param viewName the name of the view to drop
+     * @return true if view was dropped, false if it didn't exist
+     */
+    public boolean dropView(String viewName) {
+        if (viewName == null || viewName.trim().isEmpty()) {
+            throw new IllegalArgumentException("View name cannot be null or empty");
+        }
+        
+        String normalizedName = viewName.toLowerCase();
+        
+        schemaLock.writeLock().lock();
+        try {
+            View removedView = views.remove(normalizedName);
+            if (removedView != null) {
+                logger.debug("Dropped view {} from schema {}", normalizedName, name);
+                return true;
+            } else {
+                logger.warn("View does not exist in schema {}: {}", name, normalizedName);
+                return false;
+            }
+        } finally {
+            schemaLock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Get a view by name
+     * @param viewName the view name
+     * @return the view or null if not found
+     */
+    public View getView(String viewName) {
+        if (viewName == null || viewName.trim().isEmpty()) {
+            return null;
+        }
+        
+        String normalizedName = viewName.toLowerCase();
+        
+        schemaLock.readLock().lock();
+        try {
+            return views.get(normalizedName);
+        } finally {
+            schemaLock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Check if a view exists in this schema
+     * @param viewName the view name
+     * @return true if the view exists
+     */
+    public boolean hasView(String viewName) {
+        return getView(viewName) != null;
+    }
+    
+    /**
+     * Get all view names in this schema
+     * @return set of view names
+     */
+    public Set<String> getViewNames() {
+        schemaLock.readLock().lock();
+        try {
+            return Set.copyOf(views.keySet());
+        } finally {
+            schemaLock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Get the number of views in this schema
+     * @return number of views
+     */
+    public int getViewCount() {
+        schemaLock.readLock().lock();
+        try {
+            return views.size();
+        } finally {
+            schemaLock.readLock().unlock();
+        }
+    }
+    
     // ===== SEQUENCE MANAGEMENT METHODS =====
     
     /**
@@ -266,6 +405,7 @@ public class Schema {
         return "Schema{" +
                 "name='" + name + '\'' +
                 ", tableCount=" + getTableCount() +
+                ", viewCount=" + getViewCount() +
                 '}';
     }
     

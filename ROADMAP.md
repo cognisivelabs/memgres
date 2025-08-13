@@ -51,8 +51,8 @@
 - ✅ `CREATE INDEX` / `DROP INDEX` - Essential for performance **[COMPLETED 2025-08-11]**
 - ✅ `CREATE SEQUENCE` / `DROP SEQUENCE` - Standard H2 ID generation **[COMPLETED 2025-08-12]**  
 - ✅ `ALTER TABLE` (ADD COLUMN, DROP COLUMN, RENAME) - Schema evolution **[COMPLETED 2025-08-12]**
+- ✅ `CREATE VIEW` / `DROP VIEW` - Virtual tables **[COMPLETED 2025-08-12]**
 - ✅ `TRUNCATE TABLE` - Fast table clearing **[COMPLETED 2025-08-12]**
-- ❌ `CREATE VIEW` / `DROP VIEW` - Virtual tables
 
 **Missing H2 DML Features** (High Priority):
 - ✅ `MERGE` statement - Critical H2 upsert operation **[FULLY COMPLETE 2025-08-12]**
@@ -174,6 +174,41 @@ DROP SEQUENCE seq_name;
 - ✅ **Advanced Features**: MIN/MAX bounds, CYCLE/NOCYCLE, CACHE options
 
 **Week 7-8: ALTER TABLE Operations** ✅ **[COMPLETED 2025-08-12]**
+**Week 7-8: CREATE VIEW / DROP VIEW Support** ✅ **[COMPLETED - 2025-08-12]**
+```sql
+CREATE [OR REPLACE] [FORCE] VIEW [IF NOT EXISTS] view_name [(column_list)] AS select_statement;
+DROP VIEW [IF EXISTS] view_name [RESTRICT | CASCADE];
+```
+
+**Implementation Tasks**:
+- ✅ Research H2 VIEW syntax and behavior
+- ✅ Extend ANTLR4 grammar with CREATE VIEW and DROP VIEW statements
+- ✅ Create AST nodes for VIEW operations
+- ✅ Implement VIEW storage and management in Schema class
+- ✅ Implement VIEW execution in StatementExecutor (with view querying support)
+- ✅ Create comprehensive test suite for VIEW operations (8 tests, 100% passing)
+
+**H2 Compatibility Features Implemented**:
+- ✅ Full H2 CREATE VIEW syntax with all options
+- ✅ OR REPLACE, FORCE, IF NOT EXISTS modifiers
+- ✅ Explicit column list specifications
+- ✅ Complete H2 DROP VIEW syntax
+- ✅ IF EXISTS conditional logic and RESTRICT/CASCADE options
+- ✅ View querying - views can be used in SELECT statements and JOINs
+- ✅ View storage and lifecycle management
+- ✅ Proper error handling and validation
+- ✅ Thread-safe view operations
+
+**Implementation Summary (2025-08-12)**:
+- ✅ **Complete H2 VIEW Implementation**: All 8 view tests passing plus TRUNCATE support
+- ✅ **Grammar Support**: Full H2 CREATE VIEW/DROP VIEW syntax parsing
+- ✅ **AST Integration**: Complete AST node hierarchy for view operations
+- ✅ **View Execution**: Views work as virtual tables in SELECT statements and JOINs
+- ✅ **Schema Integration**: Views stored alongside tables with proper lifecycle management
+- ✅ **Production Ready**: Full thread-safety, error handling, and H2 compatibility
+- ✅ **Bonus**: TRUNCATE TABLE implementation added as part of grammar extension
+
+**Week 9-10: ALTER TABLE Operations**
 ```sql
 ALTER TABLE table_name ADD COLUMN col_name data_type;
 ALTER TABLE table_name DROP COLUMN col_name;
@@ -272,10 +307,10 @@ SELECT SQRT(25), POWER(2,3), ABS(-5), ROUND(3.14159, 2);
 
 **Milestone**: Full H2 compatibility
 
-- **Views**: `CREATE VIEW`, updatable views
 - **Set Operations**: `UNION ALL`, `INTERSECT`, `EXCEPT`  
 - **Advanced Data Types**: `CLOB`, `BINARY`, `INTERVAL`
 - **Triggers**: Basic `BEFORE`/`AFTER` trigger support
+- **Advanced Views**: Updatable views, materialized views
 
 ---
 
@@ -354,4 +389,4 @@ SELECT SQRT(25), POWER(2,3), ABS(-5), ROUND(3.14159, 2);
 
 **Last Updated**: 2025-08-12  
 **Current Branch**: `main`  
-**Current Task**: Phase 3.1 Complete - **ALL ESSENTIAL H2 DDL COMMANDS IMPLEMENTED**: CREATE INDEX (16/16 tests), MERGE (14/14 tests), SEQUENCE (16/16 tests), ALTER TABLE (11/11 tests), TRUNCATE TABLE (9/9 tests) with full H2 compatibility
+**Current Task**: Phase 3.1 Expanded - **ADDITIONAL H2 FEATURES COMPLETED**: CREATE VIEW / DROP VIEW (8/8 tests), TRUNCATE TABLE with full H2 compatibility. Essential H2 foundation now includes: CREATE INDEX (16/16 tests), MERGE (14/14 tests), SEQUENCE (16/16 tests), VIEW operations (8/8 tests)

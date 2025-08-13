@@ -17,6 +17,8 @@ statement
     | alterTableStatement
     | dropTableStatement
     | truncateTableStatement
+    | createViewStatement
+    | dropViewStatement
     | createIndexStatement
     | dropIndexStatement
     | createSequenceStatement
@@ -181,6 +183,21 @@ identityOption
     | RESTART IDENTITY      # restartIdentityOption
     ;
 
+// CREATE VIEW statement
+createViewStatement
+    : CREATE (OR REPLACE)? (FORCE)? VIEW (IF NOT EXISTS)? viewName (LPAREN columnNameList RPAREN)? AS selectStatement
+    ;
+
+// DROP VIEW statement
+dropViewStatement
+    : DROP VIEW (IF EXISTS)? viewName (restrictOrCascade)?
+    ;
+
+restrictOrCascade
+    : RESTRICT     # restrictOption
+    | CASCADE      # cascadeOption
+    ;
+
 // CREATE INDEX statement
 createIndexStatement
     : CREATE (UNIQUE (NULLS DISTINCT)? | SPATIAL)? INDEX (IF NOT EXISTS)? indexName? ON tableName LPAREN indexColumnList RPAREN (INCLUDE LPAREN indexColumnList RPAREN)?
@@ -256,6 +273,10 @@ tableName
     : identifier
     ;
 
+viewName
+    : identifier
+    ;
+
 columnName
     : identifier
     ;
@@ -285,6 +306,10 @@ expressionList
     ;
 
 columnList
+    : columnName (COMMA columnName)*
+    ;
+
+columnNameList
     : columnName (COMMA columnName)*
     ;
 

@@ -43,8 +43,8 @@ public class TruncateTableStatement extends Statement {
      * Identity option for TRUNCATE TABLE statement.
      */
     public enum IdentityOption {
-        CONTINUE("CONTINUE IDENTITY"),
-        RESTART("RESTART IDENTITY");
+        CONTINUE_IDENTITY("CONTINUE IDENTITY"),
+        RESTART_IDENTITY("RESTART IDENTITY");
         
         private final String syntax;
         
