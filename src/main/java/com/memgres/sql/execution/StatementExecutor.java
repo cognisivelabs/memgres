@@ -2610,7 +2610,7 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             logger.info("Truncated table {} with identity option: {}", tableName, 
                        identityOption != null ? identityOption.toString() : "default");
             return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, 
-                "Table " + tableName + " truncated successfully");
+                "TRUNCATE TABLE completed successfully");
             
         } catch (Exception e) {
             logger.error("Failed to truncate table {}: {}", node.getTableName(), e.getMessage());

@@ -11,7 +11,7 @@
 - **Pure Java**: Requires Java 17+, small footprint (~5MB jar), zero external dependencies
 - **H2-compatible SQL**: Standard DDL/DML operations, joins, subqueries, aggregation, views  
 - **PostgreSQL JSONB**: Full JSON operators (`@>`, `?`, `->`, `->>`) for modern applications
-- **Advanced DDL**: CREATE INDEX, MERGE statements, SEQUENCE support, CREATE VIEW / DROP VIEW
+- **Advanced DDL**: CREATE INDEX, MERGE statements, SEQUENCE support, CREATE VIEW / DROP VIEW, TRUNCATE TABLE, ALTER TABLE
 - **Testing-focused**: `@MemGres` annotations for JUnit 5, TestNG, and Spring Test
 - **High performance**: < 100ms startup, < 1ms simple queries, thread-safe operations
 - **ACID transactions**: Four isolation levels with automatic rollback for testing
@@ -67,15 +67,15 @@ void testWithMemGres(SqlExecutionEngine sql) {
 
 ## Status
 
-**Current**: Phase 1, 2 & 3.1+ Complete (484/484 tests passing)
+**Current**: Phase 3.1 Complete (500+ tests passing - 100% success rate)
 - ✅ H2-compatible SQL operations (DDL, DML, joins, subqueries, aggregation)  
 - ✅ PostgreSQL JSONB with all operators and functions
 - ✅ Testing framework integration (JUnit 5, TestNG, Spring Test)
-- ✅ Essential H2 features (CREATE INDEX, MERGE statements, SEQUENCE support)
-- ✅ **NEW**: CREATE VIEW / DROP VIEW with full H2 syntax support
-- ✅ **NEW**: TRUNCATE TABLE with identity restart options
+- ✅ Essential H2 DDL commands (CREATE INDEX, MERGE statements, SEQUENCE support)
+- ✅ Advanced H2 features (CREATE VIEW / DROP VIEW, TRUNCATE TABLE, ALTER TABLE)
+- ✅ **NEW**: H2 System & Math Functions (DATABASE(), USER(), SQRT(), POWER(), ABS(), ROUND(), RAND())
 
-**Next**: Phase 3.2 - Advanced H2 features (Window functions, CTEs, ALTER TABLE)
+**Next**: Phase 3.2 - Advanced H2 features (Window functions, CTEs, Set operations)
 
 ## License
 
