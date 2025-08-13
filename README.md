@@ -9,8 +9,9 @@
 ## Features
 
 - **Pure Java**: Requires Java 17+, small footprint (~5MB jar), zero external dependencies
-- **H2-compatible SQL**: Standard DDL/DML operations, joins, subqueries, aggregation  
+- **H2-compatible SQL**: Standard DDL/DML operations, joins, subqueries, aggregation, views  
 - **PostgreSQL JSONB**: Full JSON operators (`@>`, `?`, `->`, `->>`) for modern applications
+- **Advanced DDL**: CREATE INDEX, MERGE statements, SEQUENCE support, CREATE VIEW / DROP VIEW
 - **Testing-focused**: `@MemGres` annotations for JUnit 5, TestNG, and Spring Test
 - **High performance**: < 100ms startup, < 1ms simple queries, thread-safe operations
 - **ACID transactions**: Four isolation levels with automatic rollback for testing
@@ -41,7 +42,10 @@ void testWithMemGres(SqlExecutionEngine sql) {
     sql.execute("CREATE TABLE users (id INTEGER, profile JSONB)");
     sql.execute("INSERT INTO users VALUES (1, '{\"name\": \"Alice\", \"age\": 30}')");
     
-    var result = sql.execute("SELECT profile->>'name' FROM users WHERE profile @> '{\"age\": 30}'");
+    // Create a view with JSONB operations
+    sql.execute("CREATE VIEW adult_users AS SELECT id, profile->>'name' as name FROM users WHERE profile @> '{\"age\": 30}'");
+    
+    var result = sql.execute("SELECT name FROM adult_users");
     assertEquals("Alice", result.getRows().get(0).getValue(0));
 }
 ```
@@ -63,13 +67,15 @@ void testWithMemGres(SqlExecutionEngine sql) {
 
 ## Status
 
-**Current**: Phase 1, 2 & 3.1 Complete (476/476 tests passing)
+**Current**: Phase 1, 2 & 3.1+ Complete (484/484 tests passing)
 - ✅ H2-compatible SQL operations (DDL, DML, joins, subqueries, aggregation)  
 - ✅ PostgreSQL JSONB with all operators and functions
 - ✅ Testing framework integration (JUnit 5, TestNG, Spring Test)
 - ✅ Essential H2 features (CREATE INDEX, MERGE statements, SEQUENCE support)
+- ✅ **NEW**: CREATE VIEW / DROP VIEW with full H2 syntax support
+- ✅ **NEW**: TRUNCATE TABLE with identity restart options
 
-**Next**: Phase 3.2 - Advanced H2 features (Window functions, CTEs, ALTER TABLE, TRUNCATE)
+**Next**: Phase 3.2 - Advanced H2 features (Window functions, CTEs, ALTER TABLE)
 
 ## License
 
