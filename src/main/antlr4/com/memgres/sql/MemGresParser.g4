@@ -290,12 +290,17 @@ functionCall
     : GEN_RANDOM_UUID LPAREN RPAREN                    # genRandomUuidFunction
     | UUID_GENERATE_V1 LPAREN RPAREN                   # uuidGenerateV1Function
     | UUID_GENERATE_V4 LPAREN RPAREN                   # uuidGenerateV4Function
-    | COUNT LPAREN (MULTIPLY | expression) RPAREN      # countFunction
-    | SUM LPAREN expression RPAREN                     # sumFunction
-    | AVG LPAREN expression RPAREN                     # avgFunction
-    | MIN LPAREN expression RPAREN                     # minFunction
-    | MAX LPAREN expression RPAREN                     # maxFunction
+    | COUNT LPAREN (MULTIPLY | expression) RPAREN (OVER overClause)?  # countFunction
+    | SUM LPAREN expression RPAREN (OVER overClause)?   # sumFunction
+    | AVG LPAREN expression RPAREN (OVER overClause)?   # avgFunction
+    | MIN LPAREN expression RPAREN (OVER overClause)?   # minFunction
+    | MAX LPAREN expression RPAREN (OVER overClause)?   # maxFunction
     | COUNT LPAREN DISTINCT expression RPAREN          # countDistinctFunction
+    | ROW_NUMBER LPAREN RPAREN OVER overClause         # rowNumberFunction
+    | RANK LPAREN RPAREN OVER overClause               # rankFunction
+    | DENSE_RANK LPAREN RPAREN OVER overClause         # denseRankFunction
+    | PERCENT_RANK LPAREN RPAREN OVER overClause       # percentRankFunction
+    | CUME_DIST LPAREN RPAREN OVER overClause          # cumeDistFunction
     | NEXT VALUE FOR sequenceName                      # nextValueForFunction
     | CURRENT VALUE FOR sequenceName                   # currentValueForFunction
     | DATABASE LPAREN RPAREN                           # databaseFunction
@@ -309,6 +314,15 @@ functionCall
     | ROUND LPAREN expression (COMMA expression)? RPAREN # roundFunction
     | RAND LPAREN RPAREN                               # randFunction
     | identifier LPAREN (expressionList)? RPAREN       # genericFunction
+    ;
+
+// Window functions
+overClause
+    : LPAREN (PARTITION BY expressionList)? (ORDER BY orderItemList)? RPAREN
+    ;
+
+orderItemList
+    : orderItem (COMMA orderItem)*
     ;
 
 expressionList

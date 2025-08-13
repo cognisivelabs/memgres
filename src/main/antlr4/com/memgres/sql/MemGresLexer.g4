@@ -145,6 +145,16 @@ ABS: [Aa][Bb][Ss];
 ROUND: [Rr][Oo][Uu][Nn][Dd];
 RAND: [Rr][Aa][Nn][Dd];
 
+// Window functions
+ROW_NUMBER: [Rr][Oo][Ww]'_'[Nn][Uu][Mm][Bb][Ee][Rr];
+RANK: [Rr][Aa][Nn][Kk];
+DENSE_RANK: [Dd][Ee][Nn][Ss][Ee]'_'[Rr][Aa][Nn][Kk];
+PERCENT_RANK: [Pp][Ee][Rr][Cc][Ee][Nn][Tt]'_'[Rr][Aa][Nn][Kk];
+CUME_DIST: [Cc][Uu][Mm][Ee]'_'[Dd][Ii][Ss][Tt];
+OVER: [Oo][Vv][Ee][Rr];
+PARTITION: [Pp][Aa][Rr][Tt][Ii][Tt][Ii][Oo][Nn];
+WINDOW: [Ww][Ii][Nn][Dd][Oo][Ww];
+
 // Operators
 EQ: '=';
 NE: '!=' | '<>';
