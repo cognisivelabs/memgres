@@ -39,6 +39,8 @@ public interface AstVisitor<T, C> {
     T visitExistsExpression(ExistsExpression node, C context) throws Exception;
     T visitInSubqueryExpression(InSubqueryExpression node, C context) throws Exception;
     T visitAggregateFunction(AggregateFunction node, C context) throws Exception;
+    T visitWindowFunction(WindowFunction node, C context) throws Exception;
+    T visitOverClause(OverClause node, C context) throws Exception;
     T visitNextValueForExpression(NextValueForExpression node, C context) throws Exception;
     T visitCurrentValueForExpression(CurrentValueForExpression node, C context) throws Exception;
     

@@ -43,7 +43,7 @@
 
 **Goal**: Achieve 90%+ H2 feature compatibility for true "drop-in replacement" status.
 
-**Current Status**: Phase 3.1 Complete - CREATE INDEX, MERGE statement, and SEQUENCE support fully implemented with comprehensive H2 compatibility (2025-08-12)
+**Current Status**: Phase 3.1 Complete, Phase 3.2 Window Functions In Progress - CREATE INDEX, MERGE statement, and SEQUENCE support fully implemented with comprehensive H2 compatibility. Window Functions foundation complete (2025-08-13)
 
 ### 🚨 Critical H2 Gaps Identified
 
@@ -56,7 +56,7 @@
 
 **Missing H2 DML Features** (High Priority):
 - ✅ `MERGE` statement - Critical H2 upsert operation **[FULLY COMPLETE 2025-08-12]**
-- ❌ Window Functions - `ROW_NUMBER()`, `RANK()`, `OVER()` clause
+- 🔄 Window Functions - `ROW_NUMBER()`, `RANK()`, `OVER()` clause **[IN PROGRESS 2025-08-13]**
 - ❌ Common Table Expressions - `WITH` clause  
 - ❌ Set Operations - `UNION`, `INTERSECT`, `EXCEPT`
 
@@ -279,12 +279,37 @@ TRUNCATE TABLE table_name [CONTINUE IDENTITY | RESTART IDENTITY];
 
 **Milestone**: Support complex H2 applications
 
-**Week 1-4: Window Functions**
+**Week 1-4: Window Functions** 🔄 **[IN PROGRESS - 2025-08-13]**
 ```sql
 SELECT ROW_NUMBER() OVER (PARTITION BY dept ORDER BY salary),
-       RANK() OVER (ORDER BY salary DESC)
+       RANK() OVER (ORDER BY salary DESC),
+       COUNT(*) OVER (PARTITION BY dept) as dept_count
 FROM employees;
 ```
+
+**Implementation Tasks**:
+- ✅ Research H2 Window Functions syntax and behavior (ROW_NUMBER, RANK, OVER clause)
+- ✅ Extend ANTLR4 grammar to support Window Functions and OVER clause
+- ✅ Create AST nodes for Window Functions (WindowFunction, OverClause, PartitionBy, OrderBy)
+- 🔄 Implement window function execution in ExpressionEvaluator
+- ❌ Add window function support to SELECT statement processing
+- ❌ Create comprehensive test suite for Window Functions
+
+**H2 Compatibility Features Implemented**:
+- ✅ Full H2 window function grammar with all tokens (ROW_NUMBER, RANK, DENSE_RANK, PERCENT_RANK, CUME_DIST)
+- ✅ OVER clause syntax: `OVER (PARTITION BY expr1, expr2 ORDER BY expr3, expr4)`
+- ✅ Aggregate functions as window functions: `COUNT() OVER`, `SUM() OVER`, `AVG() OVER`, `MIN() OVER`, `MAX() OVER`
+- ✅ Complete AST node architecture (WindowFunction, OverClause classes)
+- ✅ Parser integration with SqlAstBuilder visitor methods
+- ✅ Thread-safe AST representation with visitor pattern support
+
+**Implementation Summary (2025-08-13)**:
+- ✅ **Window Function Grammar**: Complete H2-compatible ANTLR4 grammar with all window function tokens
+- ✅ **AST Foundation**: WindowFunction and OverClause AST nodes with full visitor pattern integration
+- ✅ **Parser Integration**: All visitor methods implemented in SqlAstBuilder for window function parsing
+- ✅ **Compilation Ready**: Clean build with 101 source files compiled successfully
+- 🔄 **Execution Layer**: Window function execution implementation in progress
+- ❌ **Test Coverage**: Comprehensive test suite to be implemented
 
 **Week 5-8: Common Table Expressions**
 ```sql
@@ -412,5 +437,5 @@ SELECT SQRT(25), POWER(2,3), ABS(-5), ROUND(3.14159, 2), RAND();
 ---
 
 **Last Updated**: 2025-08-13  
-**Current Branch**: `main`  
-**Current Task**: Phase 3.1 Complete - **ALL ESSENTIAL H2 FEATURES COMPLETE**: CREATE INDEX (16/16 tests), MERGE (14/14 tests), SEQUENCE (16/16 tests), CREATE VIEW / DROP VIEW (8/8 tests), TRUNCATE TABLE (9/9 tests), ALTER TABLE (11/11 tests), System & Math Functions (8/8 tests). **TOTAL: 82/82 tests passing (100%)**
+**Current Branch**: `feature/testing-framework-enhancements`  
+**Current Task**: Phase 3.2 Window Functions Foundation - **PHASE 3.1 COMPLETE**: CREATE INDEX (16/16 tests), MERGE (14/14 tests), SEQUENCE (16/16 tests), CREATE VIEW / DROP VIEW (8/8 tests), TRUNCATE TABLE (9/9 tests), ALTER TABLE (11/11 tests), System & Math Functions (8/8 tests). **TOTAL: 82/82 tests passing (100%)**. **PHASE 3.2 IN PROGRESS**: Window Functions grammar, AST nodes, and parser integration complete.

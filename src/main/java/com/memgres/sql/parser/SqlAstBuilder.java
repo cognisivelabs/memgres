@@ -347,38 +347,65 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
     
     @Override
     public AggregateFunction visitCountFunction(MemGresParser.CountFunctionContext ctx) {
-        if (ctx.MULTIPLY() != null) {
-            // COUNT(*)
-            return new AggregateFunction(AggregateFunction.AggregateType.COUNT, null);
-        } else {
-            // COUNT(expression)
-            Expression expr = (Expression) visit(ctx.expression());
-            return new AggregateFunction(AggregateFunction.AggregateType.COUNT, expr);
+        Expression expr = null;
+        if (ctx.MULTIPLY() == null && ctx.expression() != null) {
+            expr = (Expression) visit(ctx.expression());
         }
+        
+        Optional<OverClause> overClause = Optional.empty();
+        if (ctx.overClause() != null) {
+            overClause = Optional.of((OverClause) visit(ctx.overClause()));
+        }
+        
+        return new AggregateFunction(AggregateFunction.AggregateType.COUNT, expr, overClause);
     }
     
     @Override
     public AggregateFunction visitSumFunction(MemGresParser.SumFunctionContext ctx) {
         Expression expr = (Expression) visit(ctx.expression());
-        return new AggregateFunction(AggregateFunction.AggregateType.SUM, expr);
+        
+        Optional<OverClause> overClause = Optional.empty();
+        if (ctx.overClause() != null) {
+            overClause = Optional.of((OverClause) visit(ctx.overClause()));
+        }
+        
+        return new AggregateFunction(AggregateFunction.AggregateType.SUM, expr, overClause);
     }
     
     @Override
     public AggregateFunction visitAvgFunction(MemGresParser.AvgFunctionContext ctx) {
         Expression expr = (Expression) visit(ctx.expression());
-        return new AggregateFunction(AggregateFunction.AggregateType.AVG, expr);
+        
+        Optional<OverClause> overClause = Optional.empty();
+        if (ctx.overClause() != null) {
+            overClause = Optional.of((OverClause) visit(ctx.overClause()));
+        }
+        
+        return new AggregateFunction(AggregateFunction.AggregateType.AVG, expr, overClause);
     }
     
     @Override
     public AggregateFunction visitMinFunction(MemGresParser.MinFunctionContext ctx) {
         Expression expr = (Expression) visit(ctx.expression());
-        return new AggregateFunction(AggregateFunction.AggregateType.MIN, expr);
+        
+        Optional<OverClause> overClause = Optional.empty();
+        if (ctx.overClause() != null) {
+            overClause = Optional.of((OverClause) visit(ctx.overClause()));
+        }
+        
+        return new AggregateFunction(AggregateFunction.AggregateType.MIN, expr, overClause);
     }
     
     @Override
     public AggregateFunction visitMaxFunction(MemGresParser.MaxFunctionContext ctx) {
         Expression expr = (Expression) visit(ctx.expression());
-        return new AggregateFunction(AggregateFunction.AggregateType.MAX, expr);
+        
+        Optional<OverClause> overClause = Optional.empty();
+        if (ctx.overClause() != null) {
+            overClause = Optional.of((OverClause) visit(ctx.overClause()));
+        }
+        
+        return new AggregateFunction(AggregateFunction.AggregateType.MAX, expr, overClause);
     }
     
     @Override
@@ -1081,5 +1108,61 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
     @Override
     public FunctionCall visitRandFunction(MemGresParser.RandFunctionContext ctx) {
         return new FunctionCall("RAND", List.of());
+    }
+    
+    // Window function visitors
+    @Override
+    public WindowFunction visitRowNumberFunction(MemGresParser.RowNumberFunctionContext ctx) {
+        OverClause overClause = (OverClause) visit(ctx.overClause());
+        return new WindowFunction(WindowFunction.WindowFunctionType.ROW_NUMBER, overClause);
+    }
+    
+    @Override
+    public WindowFunction visitRankFunction(MemGresParser.RankFunctionContext ctx) {
+        OverClause overClause = (OverClause) visit(ctx.overClause());
+        return new WindowFunction(WindowFunction.WindowFunctionType.RANK, overClause);
+    }
+    
+    @Override
+    public WindowFunction visitDenseRankFunction(MemGresParser.DenseRankFunctionContext ctx) {
+        OverClause overClause = (OverClause) visit(ctx.overClause());
+        return new WindowFunction(WindowFunction.WindowFunctionType.DENSE_RANK, overClause);
+    }
+    
+    @Override
+    public WindowFunction visitPercentRankFunction(MemGresParser.PercentRankFunctionContext ctx) {
+        OverClause overClause = (OverClause) visit(ctx.overClause());
+        return new WindowFunction(WindowFunction.WindowFunctionType.PERCENT_RANK, overClause);
+    }
+    
+    @Override
+    public WindowFunction visitCumeDistFunction(MemGresParser.CumeDistFunctionContext ctx) {
+        OverClause overClause = (OverClause) visit(ctx.overClause());
+        return new WindowFunction(WindowFunction.WindowFunctionType.CUME_DIST, overClause);
+    }
+    
+    @Override
+    public OverClause visitOverClause(MemGresParser.OverClauseContext ctx) {
+        Optional<List<Expression>> partitionByExpressions = Optional.empty();
+        if (ctx.PARTITION() != null && ctx.expressionList() != null) {
+            List<Expression> expressions = new ArrayList<>();
+            for (MemGresParser.ExpressionContext exprCtx : ctx.expressionList().expression()) {
+                expressions.add((Expression) visit(exprCtx));
+            }
+            partitionByExpressions = Optional.of(expressions);
+        }
+        
+        Optional<List<OrderByClause.OrderItem>> orderByItems = Optional.empty();
+        if (ctx.ORDER() != null && ctx.orderItemList() != null) {
+            List<OrderByClause.OrderItem> items = new ArrayList<>();
+            for (MemGresParser.OrderItemContext itemCtx : ctx.orderItemList().orderItem()) {
+                Expression expr = (Expression) visit(itemCtx.expression());
+                boolean ascending = itemCtx.DESC() == null; // Default to ASC
+                items.add(new OrderByClause.OrderItem(expr, ascending));
+            }
+            orderByItems = Optional.of(items);
+        }
+        
+        return new OverClause(partitionByExpressions, orderByItems);
     }
 }

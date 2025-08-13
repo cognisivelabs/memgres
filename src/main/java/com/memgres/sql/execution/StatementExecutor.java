@@ -1338,6 +1338,8 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
     @Override public SqlExecutionResult visitAggregateFunction(AggregateFunction node, ExecutionContext context) { return null; }
     @Override public SqlExecutionResult visitNextValueForExpression(NextValueForExpression node, ExecutionContext context) { return null; }
     @Override public SqlExecutionResult visitCurrentValueForExpression(CurrentValueForExpression node, ExecutionContext context) { return null; }
+    @Override public SqlExecutionResult visitWindowFunction(WindowFunction node, ExecutionContext context) { return null; }
+    @Override public SqlExecutionResult visitOverClause(OverClause node, ExecutionContext context) { return null; }
     
     // Helper methods for aggregation
     private boolean hasAggregateFunction(List<SelectItem> selectItems) {
