@@ -11,6 +11,7 @@ import java.util.Optional;
  */
 public class SelectStatement extends Statement {
     
+    private final Optional<WithClause> withClause;
     private final boolean distinct;
     private final List<SelectItem> selectItems;
     private final Optional<FromClause> fromClause;
@@ -20,7 +21,8 @@ public class SelectStatement extends Statement {
     private final Optional<OrderByClause> orderByClause;
     private final Optional<LimitClause> limitClause;
     
-    public SelectStatement(boolean distinct,
+    public SelectStatement(Optional<WithClause> withClause,
+                          boolean distinct,
                           List<SelectItem> selectItems,
                           Optional<FromClause> fromClause,
                           Optional<WhereClause> whereClause,
@@ -28,6 +30,7 @@ public class SelectStatement extends Statement {
                           Optional<HavingClause> havingClause,
                           Optional<OrderByClause> orderByClause,
                           Optional<LimitClause> limitClause) {
+        this.withClause = withClause;
         this.distinct = distinct;
         this.selectItems = selectItems;
         this.fromClause = fromClause;
@@ -36,6 +39,10 @@ public class SelectStatement extends Statement {
         this.havingClause = havingClause;
         this.orderByClause = orderByClause;
         this.limitClause = limitClause;
+    }
+    
+    public Optional<WithClause> getWithClause() {
+        return withClause;
     }
     
     public boolean isDistinct() {

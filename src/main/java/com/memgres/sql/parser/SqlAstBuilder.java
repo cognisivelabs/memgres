@@ -100,8 +100,12 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
             
         Optional<LimitClause> limitClause = ctx.limitClause() != null ?
             Optional.of((LimitClause) visit(ctx.limitClause())) : Optional.empty();
+            
+        // Parse optional WITH clause
+        Optional<WithClause> withClause = ctx.withClause() != null ?
+            Optional.of((WithClause) visit(ctx.withClause())) : Optional.empty();
         
-        return new SelectStatement(distinct, selectItems, fromClause, whereClause,
+        return new SelectStatement(withClause, distinct, selectItems, fromClause, whereClause,
                                  groupByClause, havingClause, orderByClause, limitClause);
     }
     
@@ -1164,5 +1168,35 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
         }
         
         return new OverClause(partitionByExpressions, orderByItems);
+    }
+    
+    @Override
+    public WithClause visitWithClause(MemGresParser.WithClauseContext ctx) {
+        boolean recursive = ctx.RECURSIVE() != null;
+        
+        List<CommonTableExpression> ctes = new ArrayList<>();
+        for (MemGresParser.CommonTableExpressionContext cteCtx : ctx.commonTableExpression()) {
+            ctes.add((CommonTableExpression) visit(cteCtx));
+        }
+        
+        return new WithClause(recursive, ctes);
+    }
+    
+    @Override
+    public CommonTableExpression visitCommonTableExpression(MemGresParser.CommonTableExpressionContext ctx) {
+        String name = ctx.identifier().getText();
+        
+        Optional<List<String>> columnNames = Optional.empty();
+        if (ctx.columnNameList() != null) {
+            List<String> names = new ArrayList<>();
+            for (MemGresParser.ColumnNameContext colCtx : ctx.columnNameList().columnName()) {
+                names.add(colCtx.identifier().getText());
+            }
+            columnNames = Optional.of(names);
+        }
+        
+        SelectStatement selectStatement = (SelectStatement) visit(ctx.selectStatement());
+        
+        return new CommonTableExpression(name, columnNames, selectStatement);
     }
 }

@@ -4,6 +4,7 @@ import com.memgres.storage.Table;
 import com.memgres.types.Column;
 import com.memgres.types.Row;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -18,6 +19,9 @@ public class ExecutionContext {
     private List<Column> joinedColumns;
     private Map<String, List<Column>> tableColumns;
     private List<String> tableOrder;
+    
+    // CTE support - store temporary result sets
+    private Map<String, CTEResult> cteResults = new HashMap<>();
     
     public Row getCurrentRow() {
         return currentRow;
@@ -65,5 +69,35 @@ public class ExecutionContext {
     
     public void setTableOrder(List<String> tableOrder) {
         this.tableOrder = tableOrder;
+    }
+    
+    // CTE support methods
+    public void addCTEResult(String cteName, List<Column> columns, List<Row> rows) {
+        cteResults.put(cteName.toLowerCase(), new CTEResult(columns, rows));
+    }
+    
+    public CTEResult getCTEResult(String cteName) {
+        return cteResults.get(cteName.toLowerCase());
+    }
+    
+    public boolean hasCTE(String cteName) {
+        return cteResults.containsKey(cteName.toLowerCase());
+    }
+    
+    public void clearCTEs() {
+        cteResults.clear();
+    }
+    
+    /**
+     * Result of a Common Table Expression execution.
+     */
+    public static class CTEResult {
+        public final List<Column> columns;
+        public final List<Row> rows;
+        
+        public CTEResult(List<Column> columns, List<Row> rows) {
+            this.columns = columns;
+            this.rows = rows;
+        }
     }
 }
