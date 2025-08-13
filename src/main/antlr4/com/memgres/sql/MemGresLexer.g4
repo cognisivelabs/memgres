@@ -131,6 +131,20 @@ AVG: [Aa][Vv][Gg];
 MIN: [Mm][Ii][Nn];
 MAX: [Mm][Aa][Xx];
 
+// System functions
+DATABASE: [Dd][Aa][Tt][Aa][Bb][Aa][Ss][Ee];
+USER: [Uu][Ss][Ee][Rr];
+CURRENT_USER: [Cc][Uu][Rr][Rr][Ee][Nn][Tt]'_'[Uu][Ss][Ee][Rr];
+SESSION_USER: [Ss][Ee][Ss][Ss][Ii][Oo][Nn]'_'[Uu][Ss][Ee][Rr];
+SESSION_ID: [Ss][Ee][Ss][Ss][Ii][Oo][Nn]'_'[Ii][Dd];
+
+// Math functions
+SQRT: [Ss][Qq][Rr][Tt];
+POWER: [Pp][Oo][Ww][Ee][Rr];
+ABS: [Aa][Bb][Ss];
+ROUND: [Rr][Oo][Uu][Nn][Dd];
+RAND: [Rr][Aa][Nn][Dd];
+
 // Operators
 EQ: '=';
 NE: '!=' | '<>';
@@ -143,7 +157,7 @@ MINUS: '-';
 MULTIPLY: '*';
 DIVIDE: '/';
 MODULO: '%';
-POWER: '^';
+EXPONENT: '^';
 CONCAT: '||';
 JSONB_CONTAINS: '@>';
 JSONB_CONTAINED: '<@';

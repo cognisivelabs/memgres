@@ -244,7 +244,7 @@ whenClause
 
 binaryOperator
     : EQ | NE | LT | LE | GT | GE
-    | PLUS | MINUS | MULTIPLY | DIVIDE | MODULO | POWER
+    | PLUS | MINUS | MULTIPLY | DIVIDE | MODULO | EXPONENT
     | AND | OR
     | CONCAT
     | JSONB_CONTAINS | JSONB_CONTAINED | JSONB_EXISTS
@@ -298,6 +298,16 @@ functionCall
     | COUNT LPAREN DISTINCT expression RPAREN          # countDistinctFunction
     | NEXT VALUE FOR sequenceName                      # nextValueForFunction
     | CURRENT VALUE FOR sequenceName                   # currentValueForFunction
+    | DATABASE LPAREN RPAREN                           # databaseFunction
+    | USER LPAREN RPAREN                               # userFunction
+    | CURRENT_USER LPAREN RPAREN                       # currentUserFunction
+    | SESSION_USER LPAREN RPAREN                       # sessionUserFunction
+    | SESSION_ID LPAREN RPAREN                         # sessionIdFunction
+    | SQRT LPAREN expression RPAREN                    # sqrtFunction
+    | POWER LPAREN expression COMMA expression RPAREN  # powerFunction
+    | ABS LPAREN expression RPAREN                     # absFunction
+    | ROUND LPAREN expression (COMMA expression)? RPAREN # roundFunction
+    | RAND LPAREN RPAREN                               # randFunction
     | identifier LPAREN (expressionList)? RPAREN       # genericFunction
     ;
 
