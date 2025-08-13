@@ -2633,11 +2633,14 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             
             Schema schema = engine.getSchema("public");
             
+            boolean isReplacement = false;
+            
             // Check if view already exists
             if (schema.hasView(viewName)) {
                 if (orReplace) {
                     // Replace existing view
                     schema.dropView(viewName);
+                    isReplacement = true;
                     logger.info("Replaced existing view: {}", viewName);
                 } else if (ifNotExists) {
                     // Skip creation, return success
@@ -2653,9 +2656,12 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             View view = new View(viewName, columnNames, selectStatement, force);
             schema.createView(view);
             
+            String successMessage = isReplacement ? 
+                "View " + viewName + " created or replaced successfully" :
+                "View " + viewName + " created successfully";
+            
             logger.info("Created view: {}", viewName);
-            return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, 
-                "View " + viewName + " created successfully");
+            return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, successMessage);
             
         } catch (Exception e) {
             logger.error("Failed to create view {}: {}", node.getViewName(), e.getMessage());
