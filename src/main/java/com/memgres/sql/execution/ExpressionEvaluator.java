@@ -291,6 +291,7 @@ public class ExpressionEvaluator {
     
     private Object evaluateFunctionCall(FunctionCall function, ExecutionContext context) {
         String functionName = function.getFunctionName().toLowerCase();
+        List<Expression> arguments = function.getArguments();
         
         switch (functionName) {
             case "gen_random_uuid":
@@ -299,9 +300,158 @@ public class ExpressionEvaluator {
                 return UuidFunctions.uuidGenerateV1();
             case "uuid_generate_v4":
                 return UuidFunctions.uuidGenerateV4();
+            
+            // System Functions
+            case "database":
+                return evaluateDatabaseFunction();
+            case "user":
+            case "current_user":
+            case "session_user":
+                return evaluateUserFunction();
+            case "session_id":
+                return evaluateSessionIdFunction();
+                
+            // Math Functions
+            case "sqrt":
+                return evaluateSqrtFunction(arguments, context);
+            case "power":
+                return evaluatePowerFunction(arguments, context);
+            case "abs":
+                return evaluateAbsFunction(arguments, context);
+            case "round":
+                return evaluateRoundFunction(arguments, context);
+            case "rand":
+                return evaluateRandFunction();
+                
             default:
                 throw new UnsupportedOperationException("Function not supported: " + functionName);
         }
+    }
+    
+    // System Function Implementations
+    private String evaluateDatabaseFunction() {
+        // Return the current database name - using "memgres" as our database name
+        return "memgres";
+    }
+    
+    private String evaluateUserFunction() {
+        // Return the current user name - using "sa" as default H2 system admin user
+        return "sa";
+    }
+    
+    private Long evaluateSessionIdFunction() {
+        // Return a unique session ID - using current thread ID as a simple implementation
+        return Thread.currentThread().getId();
+    }
+    
+    // Math Function Implementations
+    private Double evaluateSqrtFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() != 1) {
+            throw new IllegalArgumentException("SQRT function requires exactly 1 argument");
+        }
+        
+        Object value = evaluate(arguments.get(0), context);
+        if (value == null) return null;
+        
+        if (!(value instanceof Number)) {
+            throw new IllegalArgumentException("SQRT function requires a numeric argument");
+        }
+        
+        double numericValue = ((Number) value).doubleValue();
+        if (numericValue < 0) {
+            throw new ArithmeticException("SQRT function cannot be applied to negative numbers");
+        }
+        
+        return Math.sqrt(numericValue);
+    }
+    
+    private Double evaluatePowerFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() != 2) {
+            throw new IllegalArgumentException("POWER function requires exactly 2 arguments");
+        }
+        
+        Object baseValue = evaluate(arguments.get(0), context);
+        Object exponentValue = evaluate(arguments.get(1), context);
+        
+        if (baseValue == null || exponentValue == null) return null;
+        
+        if (!(baseValue instanceof Number) || !(exponentValue instanceof Number)) {
+            throw new IllegalArgumentException("POWER function requires numeric arguments");
+        }
+        
+        double base = ((Number) baseValue).doubleValue();
+        double exponent = ((Number) exponentValue).doubleValue();
+        
+        return Math.pow(base, exponent);
+    }
+    
+    private Object evaluateAbsFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() != 1) {
+            throw new IllegalArgumentException("ABS function requires exactly 1 argument");
+        }
+        
+        Object value = evaluate(arguments.get(0), context);
+        if (value == null) return null;
+        
+        if (!(value instanceof Number)) {
+            throw new IllegalArgumentException("ABS function requires a numeric argument");
+        }
+        
+        // Preserve original type for integers
+        if (value instanceof Integer) {
+            return Math.abs((Integer) value);
+        } else if (value instanceof Long) {
+            return Math.abs((Long) value);
+        } else if (value instanceof Float) {
+            return Math.abs((Float) value);
+        } else if (value instanceof Double) {
+            return Math.abs((Double) value);
+        } else {
+            // For other numeric types, convert to double
+            return Math.abs(((Number) value).doubleValue());
+        }
+    }
+    
+    private Object evaluateRoundFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() < 1 || arguments.size() > 2) {
+            throw new IllegalArgumentException("ROUND function requires 1 or 2 arguments");
+        }
+        
+        Object value = evaluate(arguments.get(0), context);
+        if (value == null) return null;
+        
+        if (!(value instanceof Number)) {
+            throw new IllegalArgumentException("ROUND function requires a numeric first argument");
+        }
+        
+        double numericValue = ((Number) value).doubleValue();
+        
+        // Default precision is 0 (round to integer)
+        int precision = 0;
+        if (arguments.size() == 2) {
+            Object precisionValue = evaluate(arguments.get(1), context);
+            if (precisionValue == null) return null;
+            
+            if (!(precisionValue instanceof Number)) {
+                throw new IllegalArgumentException("ROUND function requires a numeric second argument");
+            }
+            precision = ((Number) precisionValue).intValue();
+        }
+        
+        // Use BigDecimal for precise rounding
+        java.math.BigDecimal bd = java.math.BigDecimal.valueOf(numericValue);
+        bd = bd.setScale(precision, java.math.RoundingMode.HALF_EVEN);
+        
+        // Return appropriate type
+        if (precision == 0) {
+            return bd.longValue();
+        } else {
+            return bd.doubleValue();
+        }
+    }
+    
+    private Double evaluateRandFunction() {
+        return Math.random();
     }
     
     private Object evaluateSubqueryExpression(SubqueryExpression subquery, ExecutionContext context) {

@@ -838,7 +838,7 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
         if (ctx.MULTIPLY() != null) return BinaryExpression.Operator.MULTIPLY;
         if (ctx.DIVIDE() != null) return BinaryExpression.Operator.DIVIDE;
         if (ctx.MODULO() != null) return BinaryExpression.Operator.MODULO;
-        if (ctx.POWER() != null) return BinaryExpression.Operator.POWER;
+        if (ctx.EXPONENT() != null) return BinaryExpression.Operator.POWER;
         if (ctx.AND() != null) return BinaryExpression.Operator.AND;
         if (ctx.OR() != null) return BinaryExpression.Operator.OR;
         if (ctx.CONCAT() != null) return BinaryExpression.Operator.CONCAT;
@@ -1015,5 +1015,71 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
     public CurrentValueForExpression visitCurrentValueForFunction(MemGresParser.CurrentValueForFunctionContext ctx) {
         String sequenceName = ctx.sequenceName().identifier().getText();
         return new CurrentValueForExpression(sequenceName);
+    }
+    
+    // System Functions
+    @Override
+    public FunctionCall visitDatabaseFunction(MemGresParser.DatabaseFunctionContext ctx) {
+        return new FunctionCall("DATABASE", List.of());
+    }
+    
+    @Override
+    public FunctionCall visitUserFunction(MemGresParser.UserFunctionContext ctx) {
+        return new FunctionCall("USER", List.of());
+    }
+    
+    @Override
+    public FunctionCall visitCurrentUserFunction(MemGresParser.CurrentUserFunctionContext ctx) {
+        return new FunctionCall("CURRENT_USER", List.of());
+    }
+    
+    @Override
+    public FunctionCall visitSessionUserFunction(MemGresParser.SessionUserFunctionContext ctx) {
+        return new FunctionCall("SESSION_USER", List.of());
+    }
+    
+    @Override
+    public FunctionCall visitSessionIdFunction(MemGresParser.SessionIdFunctionContext ctx) {
+        return new FunctionCall("SESSION_ID", List.of());
+    }
+    
+    // Math Functions
+    @Override
+    public FunctionCall visitSqrtFunction(MemGresParser.SqrtFunctionContext ctx) {
+        Expression argument = (Expression) visit(ctx.expression());
+        return new FunctionCall("SQRT", List.of(argument));
+    }
+    
+    @Override
+    public FunctionCall visitPowerFunction(MemGresParser.PowerFunctionContext ctx) {
+        Expression base = (Expression) visit(ctx.expression(0));
+        Expression exponent = (Expression) visit(ctx.expression(1));
+        return new FunctionCall("POWER", List.of(base, exponent));
+    }
+    
+    @Override
+    public FunctionCall visitAbsFunction(MemGresParser.AbsFunctionContext ctx) {
+        Expression argument = (Expression) visit(ctx.expression());
+        return new FunctionCall("ABS", List.of(argument));
+    }
+    
+    @Override
+    public FunctionCall visitRoundFunction(MemGresParser.RoundFunctionContext ctx) {
+        Expression value = (Expression) visit(ctx.expression(0));
+        List<Expression> arguments = new ArrayList<>();
+        arguments.add(value);
+        
+        // Optional precision argument
+        if (ctx.expression().size() > 1) {
+            Expression precision = (Expression) visit(ctx.expression(1));
+            arguments.add(precision);
+        }
+        
+        return new FunctionCall("ROUND", arguments);
+    }
+    
+    @Override
+    public FunctionCall visitRandFunction(MemGresParser.RandFunctionContext ctx) {
+        return new FunctionCall("RAND", List.of());
     }
 }
