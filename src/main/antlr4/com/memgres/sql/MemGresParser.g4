@@ -27,7 +27,7 @@ statement
 
 // SELECT statement
 selectStatement
-    : SELECT selectModifier? selectList
+    : withClause? SELECT selectModifier? selectList
       (FROM fromClause)?
       whereClause?
       groupByClause?
@@ -426,6 +426,15 @@ sequenceOption
     | NOCYCLE
     | CACHE signedIntegerLiteral
     | NOCACHE
+    ;
+
+// WITH clause (Common Table Expressions)
+withClause
+    : WITH RECURSIVE? commonTableExpression (COMMA commonTableExpression)*
+    ;
+
+commonTableExpression
+    : identifier (LPAREN columnNameList RPAREN)? AS LPAREN selectStatement RPAREN
     ;
 
 // Signed integer literal

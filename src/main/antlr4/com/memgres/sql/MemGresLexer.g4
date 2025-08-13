@@ -74,6 +74,7 @@ UNIQUE: [Uu][Nn][Ii][Qq][Uu][Ee];
 SEQUENCE: [Ss][Ee][Qq][Uu][Ee][Nn][Cc][Ee];
 START: [Ss][Tt][Aa][Rr][Tt];
 WITH: [Ww][Ii][Tt][Hh];
+RECURSIVE: [Rr][Ee][Cc][Uu][Rr][Ss][Ii][Vv][Ee];
 INCREMENT: [Ii][Nn][Cc][Rr][Ee][Mm][Ee][Nn][Tt];
 MINVALUE: [Mm][Ii][Nn][Vv][Aa][Ll][Uu][Ee];
 MAXVALUE: [Mm][Aa][Xx][Vv][Aa][Ll][Uu][Ee];

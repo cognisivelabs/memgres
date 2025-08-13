@@ -64,6 +64,11 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
     @Override
     public SqlExecutionResult visitSelectStatement(SelectStatement node, ExecutionContext context) throws SqlExecutionException {
         try {
+            // Process WITH clause (CTEs) if present
+            if (node.getWithClause().isPresent()) {
+                processCTEs(node.getWithClause().get(), context);
+            }
+            
             // Process FROM clause and execute joins (or create empty row for subqueries without FROM)
             JoinResult joinResult;
             if (node.getFromClause().isPresent()) {
@@ -472,35 +477,44 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
         TableReference baseTableRef = joinableTable.getBaseTable();
         String baseTableName = baseTableRef.getTableName();
         
-        // Try to get table first
-        Table baseTable = engine.getTable("public", baseTableName);
+        // Check for CTE first, then table, then view
         List<Column> resultColumns;
         List<Row> resultRows;
         
-        if (baseTable != null) {
-            // It's a table
-            resultColumns = new ArrayList<>(baseTable.getColumns());
-            resultRows = baseTable.getAllRows();
+        if (context.hasCTE(baseTableName)) {
+            // It's a CTE - use the stored result
+            ExecutionContext.CTEResult cteResult = context.getCTEResult(baseTableName);
+            resultColumns = new ArrayList<>(cteResult.columns);
+            resultRows = new ArrayList<>(cteResult.rows);
+            logger.debug("Resolved table '{}' as CTE with {} rows", baseTableName, resultRows.size());
         } else {
-            // Try to get view
-            Schema schema = engine.getSchema("public");
-            if (schema == null) {
-                throw new SqlExecutionException("Schema 'public' not found");
+            // Try to get table
+            Table baseTable = engine.getTable("public", baseTableName);
+            if (baseTable != null) {
+                // It's a table
+                resultColumns = new ArrayList<>(baseTable.getColumns());
+                resultRows = baseTable.getAllRows();
+            } else {
+                // Try to get view
+                Schema schema = engine.getSchema("public");
+                if (schema == null) {
+                    throw new SqlExecutionException("Schema 'public' not found");
+                }
+                
+                View baseView = schema.getView(baseTableName);
+                if (baseView == null) {
+                    throw new SqlExecutionException("Table, view, or CTE not found: " + baseTableName);
+                }
+                
+                // Execute the view's SELECT statement to get the data
+                SqlExecutionResult viewResult = visitSelectStatement(baseView.getSelectStatement(), context);
+                if (viewResult.getType() != SqlExecutionResult.ResultType.SELECT) {
+                    throw new SqlExecutionException("View SELECT statement did not return query result");
+                }
+                
+                resultColumns = viewResult.getColumns();
+                resultRows = viewResult.getRows();
             }
-            
-            View baseView = schema.getView(baseTableName);
-            if (baseView == null) {
-                throw new SqlExecutionException("Table or view not found: " + baseTableName);
-            }
-            
-            // Execute the view's SELECT statement to get the data
-            SqlExecutionResult viewResult = visitSelectStatement(baseView.getSelectStatement(), context);
-            if (viewResult.getType() != SqlExecutionResult.ResultType.SELECT) {
-                throw new SqlExecutionException("View SELECT statement did not return query result");
-            }
-            
-            resultColumns = viewResult.getColumns();
-            resultRows = viewResult.getRows();
         }
         
         
@@ -3051,6 +3065,102 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             }
             throw new SqlExecutionException("Failed to drop view: " + e.getMessage(), e);
         }
+    }
+    
+    // CTE processing methods
+    private void processCTEs(WithClause withClause, ExecutionContext context) throws SqlExecutionException {
+        if (withClause.isRecursive()) {
+            processRecursiveCTEs(withClause, context);
+        } else {
+            processNonRecursiveCTEs(withClause, context);
+        }
+    }
+    
+    private void processNonRecursiveCTEs(WithClause withClause, ExecutionContext context) throws SqlExecutionException {
+        // Process non-recursive CTEs in order
+        for (CommonTableExpression cte : withClause.getCommonTableExpressions()) {
+            processSingleCTE(cte, context, false);
+        }
+    }
+    
+    private void processRecursiveCTEs(WithClause withClause, ExecutionContext context) throws SqlExecutionException {
+        // For recursive CTEs, we need to handle the anchor and recursive parts
+        for (CommonTableExpression cte : withClause.getCommonTableExpressions()) {
+            if (isRecursiveCTE(cte)) {
+                processRecursiveCTE(cte, context);
+            } else {
+                processSingleCTE(cte, context, false);
+            }
+        }
+    }
+    
+    private void processSingleCTE(CommonTableExpression cte, ExecutionContext context, boolean isRecursive) throws SqlExecutionException {
+        try {
+            // Execute the CTE's SELECT statement
+            SqlExecutionResult result = cte.getSelectStatement().accept(this, context);
+            
+            // Determine column names
+            List<Column> columns = result.getColumns();
+            if (cte.getColumnNames().isPresent()) {
+                // Use specified column names
+                List<String> specifiedNames = cte.getColumnNames().get();
+                columns = new ArrayList<>();
+                for (int i = 0; i < specifiedNames.size() && i < result.getColumns().size(); i++) {
+                    Column originalCol = result.getColumns().get(i);
+                    columns.add(new Column.Builder()
+                        .name(specifiedNames.get(i))
+                        .dataType(originalCol.getDataType())
+                        .nullable(originalCol.isNullable())
+                        .build());
+                }
+            }
+            
+            // Store the CTE result in context
+            context.addCTEResult(cte.getName(), columns, result.getRows());
+            
+            logger.debug("Processed CTE '{}' with {} rows", cte.getName(), result.getRows().size());
+            
+        } catch (Exception e) {
+            logger.error("Failed to process CTE '{}': {}", cte.getName(), e.getMessage());
+            throw new SqlExecutionException("Failed to process CTE '" + cte.getName() + "': " + e.getMessage(), e);
+        }
+    }
+    
+    private boolean isRecursiveCTE(CommonTableExpression cte) {
+        // Check if the CTE's SELECT statement references itself (recursive)
+        // This is a simplified check - in a full implementation, we'd analyze the AST
+        return containsSelfReference(cte.getSelectStatement(), cte.getName());
+    }
+    
+    private boolean containsSelfReference(SelectStatement selectStatement, String cteName) {
+        // Simplified check - look for table references to the CTE name
+        if (selectStatement.getFromClause().isPresent()) {
+            return checkFromClauseForSelfReference(selectStatement.getFromClause().get(), cteName);
+        }
+        return false;
+    }
+    
+    private boolean checkFromClauseForSelfReference(FromClause fromClause, String cteName) {
+        // This is a simplified implementation
+        // In a complete implementation, we'd traverse the entire AST looking for table references
+        return false; // For now, treat all CTEs as non-recursive
+    }
+    
+    private void processRecursiveCTE(CommonTableExpression cte, ExecutionContext context) throws SqlExecutionException {
+        // Recursive CTE processing - this is complex and needs UNION ALL handling
+        // For now, implement as a placeholder
+        logger.warn("Recursive CTE processing not fully implemented yet for CTE: {}", cte.getName());
+        processSingleCTE(cte, context, true);
+    }
+    
+    @Override
+    public SqlExecutionResult visitWithClause(WithClause node, ExecutionContext context) throws Exception {
+        throw new UnsupportedOperationException("WITH clause should be handled in visitSelectStatement");
+    }
+    
+    @Override
+    public SqlExecutionResult visitCommonTableExpression(CommonTableExpression node, ExecutionContext context) throws Exception {
+        throw new UnsupportedOperationException("CTE should be handled in visitSelectStatement");
     }
     
 }

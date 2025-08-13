@@ -51,6 +51,8 @@ public interface AstVisitor<T, C> {
     T visitGroupByClause(GroupByClause node, C context) throws Exception;
     T visitHavingClause(HavingClause node, C context) throws Exception;
     T visitLimitClause(LimitClause node, C context) throws Exception;
+    T visitWithClause(WithClause node, C context) throws Exception;
+    T visitCommonTableExpression(CommonTableExpression node, C context) throws Exception;
     
     // Other node visitors
     T visitTableReference(TableReference node, C context) throws Exception;
