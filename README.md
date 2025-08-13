@@ -45,8 +45,8 @@ void testWithMemGres(SqlExecutionEngine sql) {
     // Create a view with JSONB operations
     sql.execute("CREATE VIEW adult_users AS SELECT id, profile->>'name' as name FROM users WHERE profile @> '{\"age\": 30}'");
     
-    // Window functions (coming in Phase 3.2)
-    // sql.execute("SELECT name, ROW_NUMBER() OVER (ORDER BY id) as row_num FROM adult_users");
+    // Window functions (Phase 3.2 Complete!)
+    sql.execute("SELECT name, ROW_NUMBER() OVER (ORDER BY id) as row_num FROM adult_users");
     
     var result = sql.execute("SELECT name FROM adult_users");
     assertEquals("Alice", result.getRows().get(0).getValue(0));
@@ -77,9 +77,9 @@ void testWithMemGres(SqlExecutionEngine sql) {
 - ✅ Essential H2 DDL commands (CREATE INDEX, MERGE statements, SEQUENCE support)
 - ✅ Advanced H2 features (CREATE VIEW / DROP VIEW, TRUNCATE TABLE, ALTER TABLE)
 - ✅ **NEW**: H2 System & Math Functions (DATABASE(), USER(), SQRT(), POWER(), ABS(), ROUND(), RAND())
-- 🔄 **IN PROGRESS**: Window Functions foundation (ROW_NUMBER, RANK, OVER clause grammar & AST complete)
+- ✅ **NEW**: Window Functions (ROW_NUMBER, RANK, DENSE_RANK, PERCENT_RANK, CUME_DIST with OVER clause)
 
-**Next**: Phase 3.2 - Window Functions (foundation complete, execution layer in progress)
+**Next**: Phase 3.2 - Common Table Expressions (WITH clause, RECURSIVE CTEs)
 
 ## License
 
