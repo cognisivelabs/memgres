@@ -2494,7 +2494,6 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
     }
     
     @Override
-<<<<<<< HEAD
     public SqlExecutionResult visitAlterTableStatement(AlterTableStatement node, ExecutionContext context) throws Exception {
         try {
             String tableName = node.getTableName();
@@ -2836,7 +2835,6 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
                 throw (SqlExecutionException) e;
             }
             throw new SqlExecutionException("Failed to drop view: " + e.getMessage(), e);
-        }
         }
     }
     
