@@ -12,8 +12,10 @@ import com.memgres.sql.ast.expression.FunctionCall;
 import com.memgres.sql.ast.expression.InSubqueryExpression;
 import com.memgres.sql.ast.expression.LiteralExpression;
 import com.memgres.sql.ast.expression.NextValueForExpression;
+import com.memgres.sql.ast.expression.OverClause;
 import com.memgres.sql.ast.expression.SubqueryExpression;
 import com.memgres.sql.ast.expression.UnaryExpression;
+import com.memgres.sql.ast.expression.WindowFunction;
 import com.memgres.storage.Table;
 import com.memgres.types.Column;
 import com.memgres.types.Row;
@@ -68,6 +70,9 @@ public class ExpressionEvaluator {
         }
         else if (expression instanceof AggregateFunction) {
             throw new IllegalStateException("Aggregate functions must be handled at the SELECT statement level");
+        }
+        else if (expression instanceof WindowFunction) {
+            throw new IllegalStateException("Window functions must be handled at the SELECT statement level");
         }
         else if (expression instanceof NextValueForExpression) {
             return evaluateNextValueForExpression((NextValueForExpression) expression, context);

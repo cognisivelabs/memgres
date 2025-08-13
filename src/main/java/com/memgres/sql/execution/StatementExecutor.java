@@ -127,6 +127,13 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
                 groupedRows = applyOrderBy(groupedRows, orderBy, context, groupedColumns);
             }
             
+            // Apply window functions if present
+            if (hasWindowFunction(node.getSelectItems())) {
+                WindowFunctionResult windowResult = processWindowFunctions(node, groupedRows, groupedColumns, context);
+                groupedRows = windowResult.rows;
+                groupedColumns = windowResult.columns;
+            }
+            
             // Apply LIMIT if present
             if (node.getLimitClause().isPresent()) {
                 LimitClause limitClause = node.getLimitClause().get();
@@ -145,8 +152,8 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             List<Column> resultColumns;
             List<Row> resultRows;
             
-            if (node.getGroupByClause().isPresent() || hasAggregateFunction(node.getSelectItems())) {
-                // Aggregation already handled projection - use results directly
+            if (node.getGroupByClause().isPresent() || hasAggregateFunction(node.getSelectItems()) || hasWindowFunction(node.getSelectItems())) {
+                // Aggregation or window functions already handled projection - use results directly
                 resultColumns = groupedColumns;
                 resultRows = groupedRows;
             } else if (node.getSelectItems().size() == 1 && node.getSelectItems().get(0).isWildcard()) {
@@ -1359,11 +1366,42 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
         return false;
     }
     
+    private boolean hasWindowFunction(List<SelectItem> selectItems) {
+        for (SelectItem item : selectItems) {
+            if (containsWindowFunction(item.getExpression())) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    private boolean containsWindowFunction(Expression expression) {
+        if (expression instanceof WindowFunction) {
+            return true;
+        }
+        if (expression instanceof AggregateFunction) {
+            AggregateFunction aggFunc = (AggregateFunction) expression;
+            return aggFunc.isWindowFunction();
+        }
+        // TODO: Recursively check nested expressions
+        return false;
+    }
+    
     private static class AggregationResult {
         final List<Column> columns;
         final List<Row> rows;
         
         AggregationResult(List<Column> columns, List<Row> rows) {
+            this.columns = columns;
+            this.rows = rows;
+        }
+    }
+    
+    private static class WindowFunctionResult {
+        final List<Column> columns;
+        final List<Row> rows;
+        
+        WindowFunctionResult(List<Column> columns, List<Row> rows) {
             this.columns = columns;
             this.rows = rows;
         }
@@ -1613,6 +1651,305 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             }
         }
         return a.toString().compareTo(b.toString());
+    }
+    
+    // Helper methods for window functions
+    private WindowFunctionResult processWindowFunctions(SelectStatement selectStatement, List<Row> rows,
+                                                       List<Column> columns, ExecutionContext context) throws SqlExecutionException {
+        
+        // Create result columns including window function columns
+        List<Column> resultColumns = new ArrayList<>();
+        List<Row> resultRows = new ArrayList<>();
+        
+        // Determine result columns
+        for (int i = 0; i < selectStatement.getSelectItems().size(); i++) {
+            SelectItem item = selectStatement.getSelectItems().get(i);
+            String columnName;
+            if (item.getAlias().isPresent()) {
+                columnName = item.getAlias().get();
+            } else if (item.getExpression() instanceof ColumnReference) {
+                ColumnReference colRef = (ColumnReference) item.getExpression();
+                columnName = colRef.getColumnName();
+            } else {
+                columnName = "column" + i;
+            }
+            resultColumns.add(new Column.Builder()
+                .name(columnName)
+                .dataType(DataType.TEXT)
+                .build());
+        }
+        
+        // Process each row and evaluate window functions
+        for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
+            Row currentRow = rows.get(rowIndex);
+            Object[] resultData = new Object[selectStatement.getSelectItems().size()];
+            
+            for (int itemIndex = 0; itemIndex < selectStatement.getSelectItems().size(); itemIndex++) {
+                SelectItem item = selectStatement.getSelectItems().get(itemIndex);
+                Expression expr = item.getExpression();
+                
+                if (expr instanceof WindowFunction) {
+                    WindowFunction windowFunc = (WindowFunction) expr;
+                    resultData[itemIndex] = calculateWindowFunctionValue(windowFunc, rows, columns, rowIndex, context);
+                } else if (expr instanceof AggregateFunction) {
+                    AggregateFunction aggFunc = (AggregateFunction) expr;
+                    if (aggFunc.isWindowFunction()) {
+                        resultData[itemIndex] = calculateWindowAggregateValue(aggFunc, rows, columns, rowIndex, context);
+                    } else {
+                        // Regular aggregate - should have been handled earlier
+                        throw new IllegalStateException("Regular aggregate functions should be handled before window functions");
+                    }
+                } else {
+                    // Regular expression - evaluate with current row
+                    context.setCurrentRow(currentRow);
+                    context.setJoinedColumns(columns);
+                    resultData[itemIndex] = expressionEvaluator.evaluate(expr, context);
+                }
+            }
+            
+            resultRows.add(new Row(currentRow.getId(), resultData));
+        }
+        
+        return new WindowFunctionResult(resultColumns, resultRows);
+    }
+    
+    private Object calculateWindowFunctionValue(WindowFunction windowFunc, List<Row> allRows, List<Column> columns, 
+                                              int currentRowIndex, ExecutionContext context) {
+        
+        OverClause overClause = windowFunc.getOverClause();
+        
+        // Get the window frame for this row (partition and order)
+        List<Row> windowRows = getWindowFrame(overClause, allRows, columns, currentRowIndex, context);
+        
+        switch (windowFunc.getWindowFunctionType()) {
+            case ROW_NUMBER:
+                return calculateRowNumber(allRows, columns, currentRowIndex, overClause, context);
+                
+            case RANK:
+                return calculateRank(windowRows, columns, currentRowIndex, overClause, context, false);
+                
+            case DENSE_RANK:
+                return calculateRank(windowRows, columns, currentRowIndex, overClause, context, true);
+                
+            case PERCENT_RANK:
+                return calculatePercentRank(windowRows, columns, currentRowIndex, overClause, context);
+                
+            case CUME_DIST:
+                return calculateCumeDistribution(windowRows, columns, currentRowIndex, overClause, context);
+                
+            default:
+                throw new IllegalArgumentException("Unsupported window function: " + windowFunc.getWindowFunctionType());
+        }
+    }
+    
+    private Object calculateWindowAggregateValue(AggregateFunction aggFunc, List<Row> allRows, List<Column> columns,
+                                               int currentRowIndex, ExecutionContext context) {
+        
+        OverClause overClause = aggFunc.getOverClause().get();
+        
+        // Get the window frame for this row
+        List<Row> windowRows = getWindowFrame(overClause, allRows, columns, currentRowIndex, context);
+        
+        // Calculate aggregate over the window frame
+        return calculateAggregateValue(aggFunc, windowRows, columns, context);
+    }
+    
+    private List<Row> getWindowFrame(OverClause overClause, List<Row> allRows, List<Column> columns,
+                                   int currentRowIndex, ExecutionContext context) {
+        
+        // For now, implement a simple window frame:
+        // - If PARTITION BY is present, include only rows in the same partition
+        // - If ORDER BY is present, include all rows up to the current row in order
+        // - Otherwise, include all rows
+        
+        if (overClause.getPartitionByExpressions().isPresent()) {
+            // Partition the rows and return only those in the same partition as current row
+            return getPartitionRows(overClause, allRows, columns, currentRowIndex, context);
+        } else {
+            // No partitioning - use all rows
+            return allRows;
+        }
+    }
+    
+    private List<Row> getPartitionRows(OverClause overClause, List<Row> allRows, List<Column> columns,
+                                     int currentRowIndex, ExecutionContext context) {
+        
+        Row currentRow = allRows.get(currentRowIndex);
+        List<Expression> partitionExpressions = overClause.getPartitionByExpressions().get();
+        
+        // Calculate partition key for current row
+        context.setCurrentRow(currentRow);
+        context.setJoinedColumns(columns);
+        StringBuilder currentPartitionKey = new StringBuilder();
+        for (int i = 0; i < partitionExpressions.size(); i++) {
+            Expression partitionExpr = partitionExpressions.get(i);
+            Object value = expressionEvaluator.evaluate(partitionExpr, context);
+            if (i > 0) currentPartitionKey.append("|");
+            currentPartitionKey.append(value != null ? value.toString() : "NULL");
+        }
+        String currentKey = currentPartitionKey.toString();
+        
+        // Find all rows with the same partition key
+        List<Row> partitionRows = new ArrayList<>();
+        for (Row row : allRows) {
+            context.setCurrentRow(row);
+            context.setJoinedColumns(columns);
+            StringBuilder partitionKey = new StringBuilder();
+            for (int i = 0; i < partitionExpressions.size(); i++) {
+                Expression partitionExpr = partitionExpressions.get(i);
+                Object value = expressionEvaluator.evaluate(partitionExpr, context);
+                if (i > 0) partitionKey.append("|");
+                partitionKey.append(value != null ? value.toString() : "NULL");
+            }
+            
+            if (partitionKey.toString().equals(currentKey)) {
+                partitionRows.add(row);
+            }
+        }
+        
+        return partitionRows;
+    }
+    
+    private Long calculateRowNumber(List<Row> allRows, List<Column> columns, int currentRowIndex,
+                                  OverClause overClause, ExecutionContext context) {
+        
+        if (!overClause.getPartitionByExpressions().isPresent()) {
+            // No partitioning - simple row number based on order
+            if (overClause.getOrderByItems().isPresent()) {
+                // Find position in ordered result
+                Row currentRow = allRows.get(currentRowIndex);
+                long rowNumber = 1L;
+                
+                for (int i = 0; i < allRows.size(); i++) {
+                    if (i == currentRowIndex) break;
+                    
+                    Row compareRow = allRows.get(i);
+                    boolean isLess = compareOrderByValues(compareRow, currentRow, overClause.getOrderByItems().get(), columns, context);
+                    if (isLess) {
+                        rowNumber++;
+                    }
+                }
+                return rowNumber;
+            } else {
+                // No ordering - just sequential row number
+                return (long) (currentRowIndex + 1);
+            }
+        } else {
+            // With partitioning - row number within partition
+            List<Row> partitionRows = getPartitionRows(overClause, allRows, columns, currentRowIndex, context);
+            Row currentRow = allRows.get(currentRowIndex);
+            
+            if (overClause.getOrderByItems().isPresent()) {
+                // Find position within ordered partition
+                long rowNumber = 1L;
+                for (Row partitionRow : partitionRows) {
+                    if (partitionRow == currentRow) break;
+                    
+                    boolean isLess = compareOrderByValues(partitionRow, currentRow, overClause.getOrderByItems().get(), columns, context);
+                    if (isLess) {
+                        rowNumber++;
+                    }
+                }
+                return rowNumber;
+            } else {
+                // No ordering within partition - find position in partition
+                for (int i = 0; i < partitionRows.size(); i++) {
+                    if (partitionRows.get(i) == currentRow) {
+                        return (long) (i + 1);
+                    }
+                }
+                return 1L; // Fallback
+            }
+        }
+    }
+    
+    private Long calculateRank(List<Row> windowRows, List<Column> columns, int currentRowIndex, 
+                             OverClause overClause, ExecutionContext context, boolean dense) {
+        
+        if (!overClause.getOrderByItems().isPresent()) {
+            return 1L; // No ordering - all rows have rank 1
+        }
+        
+        // Simple rank calculation - count how many rows come before current row in order
+        Row currentRow = windowRows.get(currentRowIndex);
+        long rank = 1L;
+        
+        for (int i = 0; i < currentRowIndex; i++) {
+            Row compareRow = windowRows.get(i);
+            
+            // Compare order by expressions
+            boolean isLess = compareOrderByValues(compareRow, currentRow, overClause.getOrderByItems().get(), columns, context);
+            if (isLess) {
+                if (dense) {
+                    // Dense rank - only increment if values are different
+                    boolean isDifferent = !compareOrderByValues(currentRow, compareRow, overClause.getOrderByItems().get(), columns, context) &&
+                                        !compareOrderByValues(compareRow, currentRow, overClause.getOrderByItems().get(), columns, context);
+                    if (isDifferent) {
+                        rank++;
+                    }
+                } else {
+                    // Regular rank - increment for each preceding row
+                    rank++;
+                }
+            }
+        }
+        
+        return rank;
+    }
+    
+    private Double calculatePercentRank(List<Row> windowRows, List<Column> columns, int currentRowIndex,
+                                      OverClause overClause, ExecutionContext context) {
+        
+        if (windowRows.size() <= 1) {
+            return 0.0; // Only one row - percent rank is 0
+        }
+        
+        Long rank = calculateRank(windowRows, columns, currentRowIndex, overClause, context, false);
+        return (rank - 1.0) / (windowRows.size() - 1.0);
+    }
+    
+    private Double calculateCumeDistribution(List<Row> windowRows, List<Column> columns, int currentRowIndex,
+                                           OverClause overClause, ExecutionContext context) {
+        
+        // Count rows with values less than or equal to current row
+        Row currentRow = windowRows.get(currentRowIndex);
+        long countLessOrEqual = 0;
+        
+        if (overClause.getOrderByItems().isPresent()) {
+            for (Row compareRow : windowRows) {
+                boolean isLessOrEqual = compareOrderByValues(compareRow, currentRow, overClause.getOrderByItems().get(), columns, context) ||
+                                      compareOrderByValues(currentRow, compareRow, overClause.getOrderByItems().get(), columns, context);
+                if (isLessOrEqual) {
+                    countLessOrEqual++;
+                }
+            }
+        } else {
+            countLessOrEqual = windowRows.size(); // No ordering - all rows are considered equal
+        }
+        
+        return (double) countLessOrEqual / windowRows.size();
+    }
+    
+    private boolean compareOrderByValues(Row row1, Row row2, List<OrderByClause.OrderItem> orderItems,
+                                       List<Column> columns, ExecutionContext context) {
+        
+        for (OrderByClause.OrderItem orderItem : orderItems) {
+            context.setCurrentRow(row1);
+            context.setJoinedColumns(columns);
+            Object value1 = expressionEvaluator.evaluate(orderItem.getExpression(), context);
+            
+            context.setCurrentRow(row2);
+            context.setJoinedColumns(columns);
+            Object value2 = expressionEvaluator.evaluate(orderItem.getExpression(), context);
+            
+            int comparison = compareObjects(value1, value2);
+            if (comparison != 0) {
+                boolean isAscending = orderItem.isAscending();
+                return isAscending ? comparison < 0 : comparison > 0;
+            }
+        }
+        
+        return false; // All values are equal
     }
     
     @Override
