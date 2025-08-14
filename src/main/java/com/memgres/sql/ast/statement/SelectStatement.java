@@ -8,19 +8,13 @@ import java.util.Optional;
 
 /**
  * Represents a SELECT statement in the SQL AST.
+ * Now wraps CompoundSelectStatement to support UNION operations while maintaining backward compatibility.
  */
 public class SelectStatement extends Statement {
     
-    private final Optional<WithClause> withClause;
-    private final boolean distinct;
-    private final List<SelectItem> selectItems;
-    private final Optional<FromClause> fromClause;
-    private final Optional<WhereClause> whereClause;
-    private final Optional<GroupByClause> groupByClause;
-    private final Optional<HavingClause> havingClause;
-    private final Optional<OrderByClause> orderByClause;
-    private final Optional<LimitClause> limitClause;
+    private final CompoundSelectStatement compoundSelectStatement;
     
+    // Constructor for simple SELECT statements (backward compatibility)
     public SelectStatement(Optional<WithClause> withClause,
                           boolean distinct,
                           List<SelectItem> selectItems,
@@ -30,51 +24,65 @@ public class SelectStatement extends Statement {
                           Optional<HavingClause> havingClause,
                           Optional<OrderByClause> orderByClause,
                           Optional<LimitClause> limitClause) {
-        this.withClause = withClause;
-        this.distinct = distinct;
-        this.selectItems = selectItems;
-        this.fromClause = fromClause;
-        this.whereClause = whereClause;
-        this.groupByClause = groupByClause;
-        this.havingClause = havingClause;
-        this.orderByClause = orderByClause;
-        this.limitClause = limitClause;
+        // Create a simple compound SELECT statement with no UNION operations
+        SimpleSelectStatement simpleSelect = new SimpleSelectStatement(
+            withClause, distinct, selectItems, fromClause, whereClause,
+            groupByClause, havingClause, orderByClause, limitClause
+        );
+        this.compoundSelectStatement = new CompoundSelectStatement(
+            List.of(simpleSelect), List.of()
+        );
     }
     
+    // Constructor for compound SELECT statements (with UNION operations)
+    public SelectStatement(CompoundSelectStatement compoundSelectStatement) {
+        this.compoundSelectStatement = compoundSelectStatement;
+    }
+    
+    // Delegate to the first (and possibly only) simple SELECT statement for backward compatibility
     public Optional<WithClause> getWithClause() {
-        return withClause;
+        return compoundSelectStatement.getFirstSelectStatement().getWithClause();
     }
     
     public boolean isDistinct() {
-        return distinct;
+        return compoundSelectStatement.getFirstSelectStatement().isDistinct();
     }
     
     public List<SelectItem> getSelectItems() {
-        return selectItems;
+        return compoundSelectStatement.getFirstSelectStatement().getSelectItems();
     }
     
     public Optional<FromClause> getFromClause() {
-        return fromClause;
+        return compoundSelectStatement.getFirstSelectStatement().getFromClause();
     }
     
     public Optional<WhereClause> getWhereClause() {
-        return whereClause;
+        return compoundSelectStatement.getFirstSelectStatement().getWhereClause();
     }
     
     public Optional<GroupByClause> getGroupByClause() {
-        return groupByClause;
+        return compoundSelectStatement.getFirstSelectStatement().getGroupByClause();
     }
     
     public Optional<HavingClause> getHavingClause() {
-        return havingClause;
+        return compoundSelectStatement.getFirstSelectStatement().getHavingClause();
     }
     
     public Optional<OrderByClause> getOrderByClause() {
-        return orderByClause;
+        return compoundSelectStatement.getFirstSelectStatement().getOrderByClause();
     }
     
     public Optional<LimitClause> getLimitClause() {
-        return limitClause;
+        return compoundSelectStatement.getFirstSelectStatement().getLimitClause();
+    }
+    
+    // New methods for compound SELECT functionality
+    public CompoundSelectStatement getCompoundSelectStatement() {
+        return compoundSelectStatement;
+    }
+    
+    public boolean isCompound() {
+        return !compoundSelectStatement.isSimple();
     }
     
     @Override
