@@ -67,6 +67,30 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
     
     @Override
     public SelectStatement visitSelectStatement(MemGresParser.SelectStatementContext ctx) {
+        CompoundSelectStatement compoundSelect = visitCompoundSelectStatement(ctx.compoundSelectStatement());
+        return new SelectStatement(compoundSelect);
+    }
+    
+    @Override
+    public CompoundSelectStatement visitCompoundSelectStatement(MemGresParser.CompoundSelectStatementContext ctx) {
+        List<SimpleSelectStatement> selectStatements = new ArrayList<>();
+        List<UnionClause> unionClauses = new ArrayList<>();
+        
+        // Process all simple SELECT statements
+        for (MemGresParser.SimpleSelectStatementContext simpleCtx : ctx.simpleSelectStatement()) {
+            selectStatements.add(visitSimpleSelectStatement(simpleCtx));
+        }
+        
+        // Process all UNION clauses
+        for (MemGresParser.UnionClauseContext unionCtx : ctx.unionClause()) {
+            unionClauses.add(visitUnionClause(unionCtx));
+        }
+        
+        return new CompoundSelectStatement(selectStatements, unionClauses);
+    }
+    
+    @Override
+    public SimpleSelectStatement visitSimpleSelectStatement(MemGresParser.SimpleSelectStatementContext ctx) {
         // Parse DISTINCT
         boolean distinct = ctx.selectModifier() != null && 
                           ctx.selectModifier().DISTINCT() != null;
@@ -105,8 +129,15 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
         Optional<WithClause> withClause = ctx.withClause() != null ?
             Optional.of((WithClause) visit(ctx.withClause())) : Optional.empty();
         
-        return new SelectStatement(withClause, distinct, selectItems, fromClause, whereClause,
-                                 groupByClause, havingClause, orderByClause, limitClause);
+        return new SimpleSelectStatement(withClause, distinct, selectItems, fromClause, whereClause,
+                                       groupByClause, havingClause, orderByClause, limitClause);
+    }
+    
+    @Override
+    public UnionClause visitUnionClause(MemGresParser.UnionClauseContext ctx) {
+        UnionClause.UnionType unionType = ctx.ALL() != null ? 
+            UnionClause.UnionType.UNION_ALL : UnionClause.UnionType.UNION;
+        return new UnionClause(unionType);
     }
     
     @Override

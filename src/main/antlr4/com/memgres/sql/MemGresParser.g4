@@ -25,8 +25,16 @@ statement
     | dropSequenceStatement
     ;
 
-// SELECT statement
+// SELECT statement (can be compound with UNION)
 selectStatement
+    : compoundSelectStatement
+    ;
+
+compoundSelectStatement
+    : simpleSelectStatement (unionClause simpleSelectStatement)*
+    ;
+
+simpleSelectStatement
     : withClause? SELECT selectModifier? selectList
       (FROM fromClause)?
       whereClause?
@@ -34,6 +42,10 @@ selectStatement
       havingClause?
       orderByClause?
       limitClause?
+    ;
+
+unionClause
+    : UNION ALL?
     ;
 
 selectModifier

@@ -13,6 +13,8 @@ public interface AstVisitor<T, C> {
     
     // Statement visitors
     T visitSelectStatement(SelectStatement node, C context) throws Exception;
+    T visitCompoundSelectStatement(CompoundSelectStatement node, C context) throws Exception;
+    T visitSimpleSelectStatement(SimpleSelectStatement node, C context) throws Exception;
     T visitInsertStatement(InsertStatement node, C context) throws Exception;
     T visitUpdateStatement(UpdateStatement node, C context) throws Exception;
     T visitDeleteStatement(DeleteStatement node, C context) throws Exception;
@@ -53,6 +55,7 @@ public interface AstVisitor<T, C> {
     T visitLimitClause(LimitClause node, C context) throws Exception;
     T visitWithClause(WithClause node, C context) throws Exception;
     T visitCommonTableExpression(CommonTableExpression node, C context) throws Exception;
+    T visitUnionClause(UnionClause node, C context) throws Exception;
     
     // Other node visitors
     T visitTableReference(TableReference node, C context) throws Exception;

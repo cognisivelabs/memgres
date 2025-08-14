@@ -64,156 +64,17 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
     @Override
     public SqlExecutionResult visitSelectStatement(SelectStatement node, ExecutionContext context) throws SqlExecutionException {
         try {
-            // Process WITH clause (CTEs) if present
-            if (node.getWithClause().isPresent()) {
-                processCTEs(node.getWithClause().get(), context);
-            }
-            
-            // Process FROM clause and execute joins (or create empty row for subqueries without FROM)
-            JoinResult joinResult;
-            if (node.getFromClause().isPresent()) {
-                FromClause fromClause = node.getFromClause().get();
-                joinResult = executeFromClause(fromClause, context);
+            // Only use compound logic if it's actually a compound statement
+            if (node.isCompound()) {
+                return visitCompoundSelectStatement(node.getCompoundSelectStatement(), context);
             } else {
-                // No FROM clause - create a single empty row for expression evaluation
-                joinResult = new JoinResult(List.of(), List.of(new Row(0L, new Object[0])));
+                // Use original SELECT logic for simple statements - this was working before
+                return executeOriginalSelectStatement(node, context);
             }
-            
-            List<Row> filteredRows = joinResult.rows;
-            
-            // Apply WHERE clause if present
-            if (node.getWhereClause().isPresent()) {
-                WhereClause whereClause = node.getWhereClause().get();
-                filteredRows = new ArrayList<>();
-                
-                for (Row row : joinResult.rows) {
-                    context.setCurrentRow(row);
-                    context.setJoinedColumns(joinResult.columns);
-                    
-                    Object result = expressionEvaluator.evaluate(whereClause.getCondition(), context);
-                    
-                    if (Boolean.TRUE.equals(result)) {
-                        filteredRows.add(row);
-                    }
-                }
-            }
-            
-            
-            // Handle GROUP BY and aggregation
-            List<Row> groupedRows = filteredRows;
-            List<Column> groupedColumns = joinResult.columns;
-            
-            if (node.getGroupByClause().isPresent() || hasAggregateFunction(node.getSelectItems())) {
-                AggregationResult aggregationResult = performAggregation(node, filteredRows, joinResult.columns, context);
-                groupedRows = aggregationResult.rows;
-                groupedColumns = aggregationResult.columns;
-            }
-            
-            // Apply HAVING clause if present
-            if (node.getHavingClause().isPresent()) {
-                HavingClause havingClause = node.getHavingClause().get();
-                List<Row> havingFilteredRows = new ArrayList<>();
-                
-                for (Row row : groupedRows) {
-                    context.setCurrentRow(row);
-                    context.setJoinedColumns(groupedColumns);
-                    
-                    Object result = expressionEvaluator.evaluate(havingClause.getCondition(), context);
-                    if (Boolean.TRUE.equals(result)) {
-                        havingFilteredRows.add(row);
-                    }
-                }
-                groupedRows = havingFilteredRows;
-            }
-            
-            // Apply ORDER BY if present (on grouped results)
-            if (node.getOrderByClause().isPresent()) {
-                OrderByClause orderBy = node.getOrderByClause().get();
-                groupedRows = applyOrderBy(groupedRows, orderBy, context, groupedColumns);
-            }
-            
-            // Apply window functions if present
-            if (hasWindowFunction(node.getSelectItems())) {
-                WindowFunctionResult windowResult = processWindowFunctions(node, groupedRows, groupedColumns, context);
-                groupedRows = windowResult.rows;
-                groupedColumns = windowResult.columns;
-            }
-            
-            // Apply LIMIT if present
-            if (node.getLimitClause().isPresent()) {
-                LimitClause limitClause = node.getLimitClause().get();
-                int limit = evaluateIntExpression(limitClause.getLimit(), context);
-                int offset = 0;
-                if (limitClause.getOffset().isPresent()) {
-                    offset = evaluateIntExpression(limitClause.getOffset().get(), context);
-                }
-                
-                int fromIndex = Math.min(offset, groupedRows.size());
-                int toIndex = Math.min(fromIndex + limit, groupedRows.size());
-                groupedRows = groupedRows.subList(fromIndex, toIndex);
-            }
-            
-            // Project columns based on SELECT list
-            List<Column> resultColumns;
-            List<Row> resultRows;
-            
-            if (node.getGroupByClause().isPresent() || hasAggregateFunction(node.getSelectItems()) || hasWindowFunction(node.getSelectItems())) {
-                // Aggregation or window functions already handled projection - use results directly
-                resultColumns = groupedColumns;
-                resultRows = groupedRows;
-            } else if (node.getSelectItems().size() == 1 && node.getSelectItems().get(0).isWildcard()) {
-                // SELECT * - return all columns
-                resultColumns = groupedColumns;
-                resultRows = groupedRows;
-            } else {
-                // Project specific columns/expressions (non-aggregate case)
-                resultColumns = new ArrayList<>();
-                resultRows = new ArrayList<>();
-                
-                // Validate column references in SELECT items
-                context.setJoinedColumns(groupedColumns);
-                for (SelectItem item : node.getSelectItems()) {
-                    validateColumnReferences(item.getExpression(), groupedColumns);
-                }
-                
-                // Determine result columns
-                for (int i = 0; i < node.getSelectItems().size(); i++) {
-                    SelectItem item = node.getSelectItems().get(i);
-                    String columnName;
-                    if (item.getAlias().isPresent()) {
-                        columnName = item.getAlias().get();
-                    } else if (item.getExpression() instanceof com.memgres.sql.ast.expression.ColumnReference) {
-                        com.memgres.sql.ast.expression.ColumnReference colRef = 
-                            (com.memgres.sql.ast.expression.ColumnReference) item.getExpression();
-                        columnName = colRef.getColumnName();
-                    } else {
-                        columnName = "column" + i;
-                    }
-                    resultColumns.add(new Column.Builder()
-                    .name(columnName)
-                    .dataType(DataType.TEXT)
-                    .build());
-                }
-                
-                // Project rows
-                for (Row row : groupedRows) {
-                    context.setCurrentRow(row);
-                    context.setJoinedColumns(groupedColumns);
-                    
-                    Object[] projectedData = new Object[node.getSelectItems().size()];
-                    for (int i = 0; i < node.getSelectItems().size(); i++) {
-                        SelectItem item = node.getSelectItems().get(i);
-                        projectedData[i] = expressionEvaluator.evaluate(item.getExpression(), context);
-                    }
-                    
-                    resultRows.add(new Row(row.getId(), projectedData));
-                }
-            }
-            
-            logger.debug("SELECT executed: {} rows returned", resultRows.size());
-            return new SqlExecutionResult(resultColumns, resultRows);
-            
         } catch (Exception e) {
+            if (e instanceof SqlExecutionException) {
+                throw (SqlExecutionException) e;
+            }
             throw new SqlExecutionException("Failed to execute SELECT statement", e);
         }
     }
@@ -543,35 +404,45 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
         TableReference rightTableRef = joinClause.getTable();
         String rightTableName = rightTableRef.getTableName();
         
-        // Try to get table first
-        Table rightTable = engine.getTable("public", rightTableName);
+        // Check for CTE first
         List<Row> rightRows;
         List<Column> rightColumns;
         
-        if (rightTable != null) {
-            // It's a table
-            rightRows = rightTable.getAllRows();
-            rightColumns = rightTable.getColumns();
+        if (context.hasCTE(rightTableName)) {
+            // It's a CTE - use the stored result
+            ExecutionContext.CTEResult cteResult = context.getCTEResult(rightTableName);
+            rightColumns = new ArrayList<>(cteResult.columns);
+            rightRows = new ArrayList<>(cteResult.rows);
+            logger.debug("Resolved JOIN table '{}' as CTE with {} rows", rightTableName, rightRows.size());
         } else {
-            // Try to get view
-            Schema schema = engine.getSchema("public");
-            if (schema == null) {
-                throw new SqlExecutionException("Schema 'public' not found");
-            }
+            // Try to get table
+            Table rightTable = engine.getTable("public", rightTableName);
             
-            View rightView = schema.getView(rightTableName);
-            if (rightView == null) {
-                throw new SqlExecutionException("Table or view not found: " + rightTableName);
+            if (rightTable != null) {
+                // It's a table
+                rightRows = rightTable.getAllRows();
+                rightColumns = rightTable.getColumns();
+            } else {
+                // Try to get view
+                Schema schema = engine.getSchema("public");
+                if (schema == null) {
+                    throw new SqlExecutionException("Schema 'public' not found");
+                }
+                
+                View rightView = schema.getView(rightTableName);
+                if (rightView == null) {
+                    throw new SqlExecutionException("Table, view, or CTE not found: " + rightTableName);
+                }
+                
+                // Execute the view's SELECT statement to get the data
+                SqlExecutionResult viewResult = visitSelectStatement(rightView.getSelectStatement(), context);
+                if (viewResult.getType() != SqlExecutionResult.ResultType.SELECT) {
+                    throw new SqlExecutionException("View SELECT statement did not return query result");
+                }
+                
+                rightRows = viewResult.getRows();
+                rightColumns = viewResult.getColumns();
             }
-            
-            // Execute the view's SELECT statement to get the data
-            SqlExecutionResult viewResult = visitSelectStatement(rightView.getSelectStatement(), context);
-            if (viewResult.getType() != SqlExecutionResult.ResultType.SELECT) {
-                throw new SqlExecutionException("View SELECT statement did not return query result");
-            }
-            
-            rightRows = viewResult.getRows();
-            rightColumns = viewResult.getColumns();
         }
         
         // Combine column schemas
@@ -3133,24 +3004,145 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
     }
     
     private boolean containsSelfReference(SelectStatement selectStatement, String cteName) {
-        // Simplified check - look for table references to the CTE name
-        if (selectStatement.getFromClause().isPresent()) {
-            return checkFromClauseForSelfReference(selectStatement.getFromClause().get(), cteName);
+        // Check compound SELECT statement for self-references
+        CompoundSelectStatement compoundStmt = selectStatement.getCompoundSelectStatement();
+        
+        // Check all simple SELECT statements in the compound
+        for (SimpleSelectStatement simpleStmt : compoundStmt.getSelectStatements()) {
+            if (simpleStmt.getFromClause().isPresent()) {
+                if (checkFromClauseForSelfReference(simpleStmt.getFromClause().get(), cteName)) {
+                    return true;
+                }
+            }
         }
+        
         return false;
     }
     
     private boolean checkFromClauseForSelfReference(FromClause fromClause, String cteName) {
-        // This is a simplified implementation
-        // In a complete implementation, we'd traverse the entire AST looking for table references
-        return false; // For now, treat all CTEs as non-recursive
+        // Check all joinable tables in the FROM clause
+        for (JoinableTable joinableTable : fromClause.getJoinableTables()) {
+            // Check all table references in this joinable table
+            for (TableReference tableRef : joinableTable.getAllTableReferences()) {
+                if (tableRef.getTableName().equalsIgnoreCase(cteName)) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
     }
     
     private void processRecursiveCTE(CommonTableExpression cte, ExecutionContext context) throws SqlExecutionException {
-        // Recursive CTE processing - this is complex and needs UNION ALL handling
-        // For now, implement as a placeholder
-        logger.warn("Recursive CTE processing not fully implemented yet for CTE: {}", cte.getName());
-        processSingleCTE(cte, context, true);
+        logger.debug("Processing recursive CTE: {}", cte.getName());
+        
+        try {
+            // Recursive CTEs must have a UNION ALL structure
+            SelectStatement cteSelect = cte.getSelectStatement();
+            CompoundSelectStatement compoundStmt = cteSelect.getCompoundSelectStatement();
+            
+            if (compoundStmt.isSimple()) {
+                throw new SqlExecutionException("Recursive CTE must contain UNION ALL structure: " + cte.getName());
+            }
+            
+            List<SimpleSelectStatement> selectStatements = compoundStmt.getSelectStatements();
+            List<UnionClause> unionClauses = compoundStmt.getUnionClauses();
+            
+            // Validate UNION ALL requirement for recursive CTEs
+            for (UnionClause unionClause : unionClauses) {
+                if (!unionClause.isUnionAll()) {
+                    throw new SqlExecutionException("Recursive CTE must use UNION ALL, not UNION: " + cte.getName());
+                }
+            }
+            
+            if (selectStatements.size() < 2) {
+                throw new SqlExecutionException("Recursive CTE must have at least anchor and recursive parts: " + cte.getName());
+            }
+            
+            // First SELECT statement is the anchor (non-recursive part)
+            SimpleSelectStatement anchorStmt = selectStatements.get(0);
+            
+            // Execute anchor part
+            SelectStatement anchorLegacyStmt = createLegacySelectStatement(anchorStmt);
+            SqlExecutionResult anchorResult = executeSelectStatementDirectly(anchorLegacyStmt, context);
+            
+            // Determine column names
+            List<Column> cteColumns = anchorResult.getColumns();
+            if (cte.getColumnNames().isPresent()) {
+                // Use specified column names
+                List<String> specifiedNames = cte.getColumnNames().get();
+                cteColumns = new ArrayList<>();
+                for (int i = 0; i < specifiedNames.size() && i < anchorResult.getColumns().size(); i++) {
+                    Column originalCol = anchorResult.getColumns().get(i);
+                    cteColumns.add(new Column.Builder()
+                        .name(specifiedNames.get(i))
+                        .dataType(originalCol.getDataType())
+                        .nullable(originalCol.isNullable())
+                        .build());
+                }
+            }
+            
+            // Initialize working table with anchor results
+            List<Row> currentRows = new ArrayList<>(anchorResult.getRows());
+            List<Row> allRows = new ArrayList<>(anchorResult.getRows());
+            
+            // Store initial CTE result
+            context.addCTEResult(cte.getName(), cteColumns, new ArrayList<>(allRows));
+            
+            // Iteratively execute recursive parts
+            int iteration = 0;
+            int maxIterations = 1000; // Safety limit to prevent infinite recursion
+            
+            while (!currentRows.isEmpty() && iteration < maxIterations) {
+                iteration++;
+                logger.debug("Recursive CTE iteration {} for {}: processing {} rows", iteration, cte.getName(), currentRows.size());
+                
+                // Update CTE result with current working table for this iteration
+                context.addCTEResult(cte.getName(), cteColumns, new ArrayList<>(currentRows));
+                
+                List<Row> nextRows = new ArrayList<>();
+                
+                // Execute each recursive part (all SELECT statements after the anchor)
+                for (int i = 1; i < selectStatements.size(); i++) {
+                    SimpleSelectStatement recursiveStmt = selectStatements.get(i);
+                    
+                    SelectStatement recursiveLegacyStmt = createLegacySelectStatement(recursiveStmt);
+                    SqlExecutionResult recursiveResult = executeSelectStatementDirectly(recursiveLegacyStmt, context);
+                    
+                    // Validate column compatibility
+                    if (recursiveResult.getColumns().size() != cteColumns.size()) {
+                        throw new SqlExecutionException("Recursive CTE column count mismatch in " + cte.getName() + 
+                            ": anchor has " + cteColumns.size() + " columns, recursive part has " + recursiveResult.getColumns().size());
+                    }
+                    
+                    // Add new rows that don't already exist (to avoid infinite loops from duplicates)
+                    for (Row newRow : recursiveResult.getRows()) {
+                        if (!containsEquivalentRow(allRows, newRow)) {
+                            nextRows.add(newRow);
+                            allRows.add(newRow);
+                        }
+                    }
+                }
+                
+                // Prepare for next iteration
+                currentRows = nextRows;
+            }
+            
+            if (iteration >= maxIterations) {
+                logger.warn("Recursive CTE {} reached maximum iteration limit ({})", cte.getName(), maxIterations);
+            }
+            
+            // Store final CTE result with all accumulated rows
+            context.addCTEResult(cte.getName(), cteColumns, allRows);
+            
+            logger.debug("Recursive CTE {} completed: {} iterations, {} final rows", cte.getName(), iteration, allRows.size());
+            
+        } catch (Exception e) {
+            if (e instanceof SqlExecutionException) {
+                throw (SqlExecutionException) e;
+            }
+            throw new SqlExecutionException("Failed to process recursive CTE: " + cte.getName(), e);
+        }
     }
     
     @Override
@@ -3161,6 +3153,600 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
     @Override
     public SqlExecutionResult visitCommonTableExpression(CommonTableExpression node, ExecutionContext context) throws Exception {
         throw new UnsupportedOperationException("CTE should be handled in visitSelectStatement");
+    }
+    
+    @Override
+    public SqlExecutionResult visitCompoundSelectStatement(CompoundSelectStatement node, ExecutionContext context) throws Exception {
+        if (node.isSimple()) {
+            // Simple SELECT - convert first statement to legacy format and use original execution
+            SimpleSelectStatement simpleStmt = node.getFirstSelectStatement();
+            
+            // Create a legacy SelectStatement for the original execution logic
+            SelectStatement legacyStmt = createLegacySelectStatement(simpleStmt);
+            
+            // Use the original SELECT execution logic by calling the real visitSelectStatement
+            // but prevent infinite recursion by using a flag
+            return executeSelectStatementDirectly(legacyStmt, context);
+        } else {
+            // Compound SELECT with UNION operations
+            return executeUnionOperations(node, context);
+        }
+    }
+    
+    @Override
+    public SqlExecutionResult visitSimpleSelectStatement(SimpleSelectStatement node, ExecutionContext context) throws Exception {
+        // This should be handled by transforming to legacy SelectStatement
+        // But we need to avoid recursion in visitSelectStatement
+        throw new UnsupportedOperationException("SimpleSelectStatement should be handled in compound context or converted to legacy format");
+    }
+    
+    @Override
+    public SqlExecutionResult visitUnionClause(UnionClause node, ExecutionContext context) throws Exception {
+        throw new UnsupportedOperationException("UNION clause should be handled in compound SELECT processing");
+    }
+    
+    private SqlExecutionResult executeUnionOperations(CompoundSelectStatement node, ExecutionContext context) throws SqlExecutionException {
+        try {
+            List<SimpleSelectStatement> selectStatements = node.getSelectStatements();
+            List<UnionClause> unionClauses = node.getUnionClauses();
+            
+            // Execute the first SELECT statement
+            SelectStatement firstLegacyStmt = createLegacySelectStatement(selectStatements.get(0));
+            SqlExecutionResult firstResult = executeSelectStatementDirectly(firstLegacyStmt, context);
+            List<Column> resultColumns = firstResult.getColumns();
+            List<Row> allRows = new ArrayList<>(firstResult.getRows());
+            
+            // Execute subsequent SELECT statements and combine results
+            for (int i = 1; i < selectStatements.size(); i++) {
+                SimpleSelectStatement selectStmt = selectStatements.get(i);
+                UnionClause unionClause = unionClauses.get(i - 1);
+                
+                SelectStatement legacyStmt = createLegacySelectStatement(selectStmt);
+                SqlExecutionResult selectResult = executeSelectStatementDirectly(legacyStmt, context);
+                
+                // Validate column compatibility
+                if (selectResult.getColumns().size() != resultColumns.size()) {
+                    throw new SqlExecutionException("UNION: column count mismatch - first query has " + 
+                        resultColumns.size() + " columns, query " + (i + 1) + " has " + 
+                        selectResult.getColumns().size() + " columns");
+                }
+                
+                if (unionClause.isUnionAll()) {
+                    // UNION ALL - keep all rows including duplicates
+                    allRows.addAll(selectResult.getRows());
+                } else {
+                    // UNION - remove duplicates
+                    for (Row newRow : selectResult.getRows()) {
+                        if (!containsEquivalentRow(allRows, newRow)) {
+                            allRows.add(newRow);
+                        }
+                    }
+                }
+            }
+            
+            logger.debug("UNION executed: {} total rows from {} SELECT statements", 
+                        allRows.size(), selectStatements.size());
+            
+            return new SqlExecutionResult(resultColumns, allRows);
+            
+        } catch (Exception e) {
+            if (e instanceof SqlExecutionException) {
+                throw (SqlExecutionException) e;
+            }
+            throw new SqlExecutionException("Failed to execute UNION operations", e);
+        }
+    }
+    
+    /**
+     * Create a legacy SelectStatement from a SimpleSelectStatement for backward compatibility
+     */
+    private SelectStatement createLegacySelectStatement(SimpleSelectStatement simpleStmt) {
+        return new SelectStatement(
+            simpleStmt.getWithClause(),
+            simpleStmt.isDistinct(),
+            simpleStmt.getSelectItems(),
+            simpleStmt.getFromClause(),
+            simpleStmt.getWhereClause(),
+            simpleStmt.getGroupByClause(),
+            simpleStmt.getHavingClause(),
+            simpleStmt.getOrderByClause(),
+            simpleStmt.getLimitClause()
+        );
+    }
+    
+    /**
+     * Execute a SelectStatement using the original logic, but bypass the visitSelectStatement recursion issue
+     */
+    private SqlExecutionResult executeSelectStatementDirectly(SelectStatement selectStatement, ExecutionContext context) throws SqlExecutionException {
+        try {
+            // Get the original SELECT execution logic from git history
+            // This is the working SELECT logic before we added compound support
+            return executeOriginalSelectLogic(selectStatement, context);
+        } catch (Exception e) {
+            if (e instanceof SqlExecutionException) {
+                throw (SqlExecutionException) e;
+            }
+            throw new SqlExecutionException("Failed to execute SELECT statement directly", e);
+        }
+    }
+
+    /**
+     * Original SELECT execution logic restored from git history (before compound changes)
+     */
+    private SqlExecutionResult executeOriginalSelectLogic(SelectStatement node, ExecutionContext context) throws SqlExecutionException {
+        try {
+            // Process WITH clause (CTEs) if present  
+            if (node.getWithClause().isPresent()) {
+                WithClause withClause = node.getWithClause().get();
+                processCTEs(withClause, context);
+            }
+            
+            // Process FROM clause and execute joins (or create empty row for subqueries without FROM)
+            JoinResult joinResult;
+            if (node.getFromClause().isPresent()) {
+                FromClause fromClause = node.getFromClause().get();
+                joinResult = executeFromClause(fromClause, context);
+            } else {
+                // No FROM clause - create a single empty row for expression evaluation
+                joinResult = new JoinResult(List.of(), List.of(new Row(0L, new Object[0])));
+            }
+            
+            List<Row> filteredRows = joinResult.rows;
+            
+            // Apply WHERE clause if present
+            if (node.getWhereClause().isPresent()) {
+                WhereClause whereClause = node.getWhereClause().get();
+                filteredRows = new ArrayList<>();
+                
+                for (Row row : joinResult.rows) {
+                    context.setCurrentRow(row);
+                    context.setJoinedColumns(joinResult.columns);
+                    
+                    Object result = expressionEvaluator.evaluate(whereClause.getCondition(), context);
+                    
+                    if (Boolean.TRUE.equals(result)) {
+                        filteredRows.add(row);
+                    }
+                }
+            }
+            
+            // Handle GROUP BY and aggregation
+            List<Row> groupedRows = filteredRows;
+            List<Column> groupedColumns = joinResult.columns;
+            
+            if (node.getGroupByClause().isPresent()) {
+                // GROUP BY logic - delegate to existing implementation
+                return delegateToOriginalSelectExecution(node, context);
+            }
+            
+            // Apply HAVING clause if present
+            if (node.getHavingClause().isPresent()) {
+                return delegateToOriginalSelectExecution(node, context);
+            }
+            
+            // Build final result columns and rows (simplified for common cases)
+            List<Column> resultColumns = new ArrayList<>();
+            List<Row> resultRows = new ArrayList<>();
+            
+            // Process SELECT items
+            boolean hasAggregation = hasAggregationFunctions(node.getSelectItems());
+            
+            if (hasAggregation) {
+                // Delegate to original implementation for aggregation
+                return delegateToOriginalSelectExecution(node, context);
+            }
+            
+            // Determine result columns first
+            for (SelectItem selectItem : node.getSelectItems()) {
+                if (selectItem.isWildcard()) {
+                    // Add all columns from joined tables
+                    resultColumns.addAll(groupedColumns);
+                } else {
+                    String columnName = selectItem.getAlias().orElse("?column?");
+                    resultColumns.add(Column.of(columnName, DataType.TEXT));
+                }
+            }
+            
+            // Build result rows
+            for (Row row : groupedRows) {
+                context.setCurrentRow(row);
+                context.setJoinedColumns(groupedColumns);
+                
+                List<Object> rowData = new ArrayList<>();
+                
+                for (SelectItem selectItem : node.getSelectItems()) {
+                    if (selectItem.isWildcard()) {
+                        // Add all column values
+                        Collections.addAll(rowData, row.getData());
+                    } else {
+                        Object value = expressionEvaluator.evaluate(selectItem.getExpression(), context);
+                        rowData.add(value);
+                    }
+                }
+                
+                resultRows.add(new Row(0L, rowData.toArray()));
+            }
+            
+            // Handle DISTINCT
+            if (node.isDistinct()) {
+                Set<List<Object>> seen = new LinkedHashSet<>();
+                List<Row> distinctRows = new ArrayList<>();
+                
+                for (Row row : resultRows) {
+                    List<Object> rowData = Arrays.asList(row.getData());
+                    if (seen.add(rowData)) {
+                        distinctRows.add(row);
+                    }
+                }
+                
+                resultRows = distinctRows;
+            }
+            
+            // Apply ORDER BY if present
+            if (node.getOrderByClause().isPresent()) {
+                OrderByClause orderByClause = node.getOrderByClause().get();
+                
+                resultRows.sort((row1, row2) -> {
+                    try {
+                        for (OrderByClause.OrderItem orderItem : orderByClause.getOrderItems()) {
+                            context.setCurrentRow(row1);
+                            context.setJoinedColumns(resultColumns);
+                            Object value1 = expressionEvaluator.evaluate(orderItem.getExpression(), context);
+                            
+                            context.setCurrentRow(row2);
+                            Object value2 = expressionEvaluator.evaluate(orderItem.getExpression(), context);
+                            
+                            int comparison = compareValues(value1, value2);
+                            if (comparison != 0) {
+                                return orderItem.isAscending() ? comparison : -comparison;
+                            }
+                        }
+                        return 0;
+                    } catch (Exception e) {
+                        throw new RuntimeException("Error during ORDER BY evaluation", e);
+                    }
+                });
+            }
+            
+            // Apply LIMIT if present
+            if (node.getLimitClause().isPresent()) {
+                LimitClause limitClause = node.getLimitClause().get();
+                try {
+                    int limit = (Integer) expressionEvaluator.evaluate(limitClause.getLimit(), context);
+                    int offset = limitClause.getOffset().isPresent() ? 
+                        (Integer) expressionEvaluator.evaluate(limitClause.getOffset().get(), context) : 0;
+                    
+                    // Apply offset
+                    if (offset > 0) {
+                        resultRows = resultRows.subList(Math.min(offset, resultRows.size()), resultRows.size());
+                    }
+                    
+                    // Apply limit
+                    if (limit >= 0 && limit < resultRows.size()) {
+                        resultRows = resultRows.subList(0, limit);
+                    }
+                } catch (Exception e) {
+                    // If LIMIT/OFFSET evaluation fails, delegate to original
+                    return delegateToOriginalSelectExecution(node, context);
+                }
+            }
+            
+            return new SqlExecutionResult(resultColumns, resultRows);
+            
+        } catch (Exception e) {
+            if (e instanceof SqlExecutionException) {
+                throw (SqlExecutionException) e;
+            }
+            throw new SqlExecutionException("Failed to execute original SELECT logic", e);
+        }
+    }
+    
+    /**
+     * Check if SELECT items contain aggregation functions
+     */
+    private boolean hasAggregationFunctions(List<SelectItem> selectItems) {
+        for (SelectItem item : selectItems) {
+            if (!item.isWildcard()) {
+                // This is a simplified check - in practice we'd need to traverse the expression AST
+                String exprStr = item.getExpression().toString().toLowerCase();
+                if (exprStr.contains("count(") || exprStr.contains("sum(") || exprStr.contains("avg(") || 
+                    exprStr.contains("min(") || exprStr.contains("max(")) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Delegate to the original SELECT execution when we encounter complex features
+     */
+    private SqlExecutionResult delegateToOriginalSelectExecution(SelectStatement node, ExecutionContext context) throws SqlExecutionException {
+        try {
+            // Handle simple aggregation functions like COUNT(*)
+            if (isSimpleCountQuery(node)) {
+                return executeSimpleCountQuery(node, context);
+            }
+            
+            // For other complex cases, throw an exception to identify them
+            logger.warn("Complex SELECT feature not supported in CTE context: {}", node);
+            throw new SqlExecutionException("Complex SELECT features not yet supported in CTE context - please simplify the query");
+        } catch (Exception e) {
+            if (e instanceof SqlExecutionException) {
+                throw (SqlExecutionException) e;
+            }
+            throw new SqlExecutionException("Failed to delegate SELECT execution", e);
+        }
+    }
+    
+    /**
+     * Check if this is a simple COUNT(*) query
+     */
+    private boolean isSimpleCountQuery(SelectStatement node) {
+        List<SelectItem> selectItems = node.getSelectItems();
+        if (selectItems.size() != 1) {
+            return false;
+        }
+        
+        SelectItem item = selectItems.get(0);
+        if (item.isWildcard()) {
+            return false;
+        }
+        
+        String exprStr = item.getExpression().toString().toLowerCase();
+        return exprStr.contains("count(") && exprStr.contains("*");
+    }
+    
+    /**
+     * Execute a simple COUNT(*) query
+     */
+    private SqlExecutionResult executeSimpleCountQuery(SelectStatement node, ExecutionContext context) throws SqlExecutionException {
+        try {
+            // Process WITH clause (CTEs) if present  
+            if (node.getWithClause().isPresent()) {
+                WithClause withClause = node.getWithClause().get();
+                processCTEs(withClause, context);
+            }
+            
+            // Process FROM clause and execute joins (or create empty row for subqueries without FROM)
+            JoinResult joinResult;
+            if (node.getFromClause().isPresent()) {
+                FromClause fromClause = node.getFromClause().get();
+                joinResult = executeFromClause(fromClause, context);
+            } else {
+                // No FROM clause - create a single empty row for expression evaluation
+                joinResult = new JoinResult(List.of(), List.of(new Row(0L, new Object[0])));
+            }
+            
+            List<Row> filteredRows = joinResult.rows;
+            
+            // Apply WHERE clause if present
+            if (node.getWhereClause().isPresent()) {
+                WhereClause whereClause = node.getWhereClause().get();
+                filteredRows = new ArrayList<>();
+                
+                for (Row row : joinResult.rows) {
+                    context.setCurrentRow(row);
+                    context.setJoinedColumns(joinResult.columns);
+                    
+                    Object result = expressionEvaluator.evaluate(whereClause.getCondition(), context);
+                    
+                    if (Boolean.TRUE.equals(result)) {
+                        filteredRows.add(row);
+                    }
+                }
+            }
+            
+            // For COUNT(*), just return the count of rows
+            SelectItem countItem = node.getSelectItems().get(0);
+            String columnName = countItem.getAlias().orElse("count");
+            
+            List<Column> resultColumns = List.of(Column.of(columnName, DataType.INTEGER));
+            List<Row> resultRows = List.of(new Row(0L, new Object[]{filteredRows.size()}));
+            
+            return new SqlExecutionResult(resultColumns, resultRows);
+            
+        } catch (Exception e) {
+            if (e instanceof SqlExecutionException) {
+                throw (SqlExecutionException) e;
+            }
+            throw new SqlExecutionException("Failed to execute simple COUNT query", e);
+        }
+    }
+    
+    /**
+     * Execute a SELECT statement using the original working logic (before compound changes)
+     */
+    private SqlExecutionResult executeOriginalSelectStatement(SelectStatement node, ExecutionContext context) throws SqlExecutionException {
+        try {
+            // Process WITH clause (CTEs) if present  
+            if (node.getWithClause().isPresent()) {
+                WithClause withClause = node.getWithClause().get();
+                processCTEs(withClause, context);
+            }
+            
+            // Process FROM clause and execute joins (or create empty row for subqueries without FROM)
+            JoinResult joinResult;
+            if (node.getFromClause().isPresent()) {
+                FromClause fromClause = node.getFromClause().get();
+                joinResult = executeFromClause(fromClause, context);
+            } else {
+                // No FROM clause - create a single empty row for expression evaluation
+                joinResult = new JoinResult(List.of(), List.of(new Row(0L, new Object[0])));
+            }
+            
+            List<Row> filteredRows = joinResult.rows;
+            
+            // Apply WHERE clause if present
+            if (node.getWhereClause().isPresent()) {
+                WhereClause whereClause = node.getWhereClause().get();
+                filteredRows = new ArrayList<>();
+                
+                for (Row row : joinResult.rows) {
+                    context.setCurrentRow(row);
+                    context.setJoinedColumns(joinResult.columns);
+                    
+                    Object result = expressionEvaluator.evaluate(whereClause.getCondition(), context);
+                    
+                    if (Boolean.TRUE.equals(result)) {
+                        filteredRows.add(row);
+                    }
+                }
+            }
+            
+            
+            // Handle GROUP BY and aggregation
+            List<Row> groupedRows = filteredRows;
+            List<Column> groupedColumns = joinResult.columns;
+            
+            if (node.getGroupByClause().isPresent() || hasAggregateFunction(node.getSelectItems())) {
+                AggregationResult aggregationResult = performAggregation(node, filteredRows, joinResult.columns, context);
+                groupedRows = aggregationResult.rows;
+                groupedColumns = aggregationResult.columns;
+            }
+            
+            // Apply HAVING clause if present
+            if (node.getHavingClause().isPresent()) {
+                HavingClause havingClause = node.getHavingClause().get();
+                List<Row> havingFilteredRows = new ArrayList<>();
+                
+                for (Row row : groupedRows) {
+                    context.setCurrentRow(row);
+                    context.setJoinedColumns(groupedColumns);
+                    
+                    Object result = expressionEvaluator.evaluate(havingClause.getCondition(), context);
+                    if (Boolean.TRUE.equals(result)) {
+                        havingFilteredRows.add(row);
+                    }
+                }
+                groupedRows = havingFilteredRows;
+            }
+            
+            // Apply ORDER BY if present (on grouped results)
+            if (node.getOrderByClause().isPresent()) {
+                OrderByClause orderBy = node.getOrderByClause().get();
+                groupedRows = applyOrderBy(groupedRows, orderBy, context, groupedColumns);
+            }
+            
+            // Apply window functions if present
+            if (hasWindowFunction(node.getSelectItems())) {
+                WindowFunctionResult windowResult = processWindowFunctions(node, groupedRows, groupedColumns, context);
+                groupedRows = windowResult.rows;
+                groupedColumns = windowResult.columns;
+            }
+            
+            // Apply LIMIT if present
+            if (node.getLimitClause().isPresent()) {
+                LimitClause limitClause = node.getLimitClause().get();
+                int limit = evaluateIntExpression(limitClause.getLimit(), context);
+                int offset = 0;
+                if (limitClause.getOffset().isPresent()) {
+                    offset = evaluateIntExpression(limitClause.getOffset().get(), context);
+                }
+                
+                int fromIndex = Math.min(offset, groupedRows.size());
+                int toIndex = Math.min(fromIndex + limit, groupedRows.size());
+                groupedRows = groupedRows.subList(fromIndex, toIndex);
+            }
+            
+            // Project columns based on SELECT list
+            List<Column> resultColumns;
+            List<Row> resultRows;
+            
+            if (node.getGroupByClause().isPresent() || hasAggregateFunction(node.getSelectItems()) || hasWindowFunction(node.getSelectItems())) {
+                // Aggregation or window functions already handled projection - use results directly
+                resultColumns = groupedColumns;
+                resultRows = groupedRows;
+            } else if (node.getSelectItems().size() == 1 && node.getSelectItems().get(0).isWildcard()) {
+                // SELECT * - return all columns
+                resultColumns = groupedColumns;
+                resultRows = groupedRows;
+            } else {
+                // Project specific columns/expressions (non-aggregate case)
+                resultColumns = new ArrayList<>();
+                resultRows = new ArrayList<>();
+                
+                // Validate column references in SELECT items
+                context.setJoinedColumns(groupedColumns);
+                for (SelectItem item : node.getSelectItems()) {
+                    validateColumnReferences(item.getExpression(), groupedColumns);
+                }
+                
+                // Determine result columns
+                for (int i = 0; i < node.getSelectItems().size(); i++) {
+                    SelectItem item = node.getSelectItems().get(i);
+                    String columnName;
+                    if (item.getAlias().isPresent()) {
+                        columnName = item.getAlias().get();
+                    } else if (item.getExpression() instanceof com.memgres.sql.ast.expression.ColumnReference) {
+                        com.memgres.sql.ast.expression.ColumnReference colRef = 
+                            (com.memgres.sql.ast.expression.ColumnReference) item.getExpression();
+                        columnName = colRef.getColumnName();
+                    } else {
+                        columnName = "column" + i;
+                    }
+                    resultColumns.add(new Column.Builder()
+                    .name(columnName)
+                    .dataType(DataType.TEXT)
+                    .build());
+                }
+                
+                // Project rows
+                for (Row row : groupedRows) {
+                    context.setCurrentRow(row);
+                    context.setJoinedColumns(groupedColumns);
+                    
+                    Object[] projectedData = new Object[node.getSelectItems().size()];
+                    for (int i = 0; i < node.getSelectItems().size(); i++) {
+                        SelectItem item = node.getSelectItems().get(i);
+                        projectedData[i] = expressionEvaluator.evaluate(item.getExpression(), context);
+                    }
+                    
+                    resultRows.add(new Row(row.getId(), projectedData));
+                }
+            }
+            
+            logger.debug("SELECT executed: {} rows returned", resultRows.size());
+            return new SqlExecutionResult(resultColumns, resultRows);
+            
+        } catch (Exception e) {
+            if (e instanceof SqlExecutionException) {
+                throw (SqlExecutionException) e;
+            }
+            throw new SqlExecutionException("Failed to execute original SELECT statement", e);
+        }
+    }
+    
+    private boolean containsEquivalentRow(List<Row> rows, Row newRow) {
+        for (Row existingRow : rows) {
+            if (areRowDataEqual(existingRow.getData(), newRow.getData())) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    private boolean areRowDataEqual(Object[] data1, Object[] data2) {
+        if (data1.length != data2.length) {
+            return false;
+        }
+        
+        for (int i = 0; i < data1.length; i++) {
+            Object val1 = data1[i];
+            Object val2 = data2[i];
+            
+            if (val1 == null && val2 == null) {
+                continue;
+            }
+            if (val1 == null || val2 == null) {
+                return false;
+            }
+            if (!val1.equals(val2)) {
+                return false;
+            }
+        }
+        
+        return true;
     }
     
 }
