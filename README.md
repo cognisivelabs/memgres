@@ -12,7 +12,7 @@
 - **H2-compatible SQL**: Standard DDL/DML operations, joins, subqueries, aggregation, views  
 - **PostgreSQL JSONB**: Full JSON operators (`@>`, `?`, `->`, `->>`) for modern applications
 - **Advanced DDL**: CREATE INDEX, MERGE statements, SEQUENCE support, CREATE VIEW / DROP VIEW, TRUNCATE TABLE, ALTER TABLE
-- **Advanced SQL**: Window Functions, Recursive Common Table Expressions (CTEs), UNION/UNION ALL operations
+- **Advanced SQL**: Window Functions, Recursive CTEs, Complete Set Operations (UNION, UNION ALL, INTERSECT, EXCEPT)
 - **Testing-focused**: `@MemGres` annotations for JUnit 5, TestNG, and Spring Test
 - **High performance**: < 100ms startup, < 1ms simple queries, thread-safe operations
 - **ACID transactions**: Four isolation levels with automatic rollback for testing
@@ -49,7 +49,7 @@ void testWithMemGres(SqlExecutionEngine sql) {
     // Window functions (Phase 3.2 Complete!)
     sql.execute("SELECT name, ROW_NUMBER() OVER (ORDER BY id) as row_num FROM adult_users");
     
-    // Recursive CTEs for hierarchical data (NEW in Phase 3.2!)
+    // Recursive CTEs for hierarchical data (Phase 3.2!)
     sql.execute("""
         WITH RECURSIVE sequence_numbers(n) AS (
             SELECT 1 
@@ -58,6 +58,10 @@ void testWithMemGres(SqlExecutionEngine sql) {
         )
         SELECT n FROM sequence_numbers ORDER BY n
         """);
+    
+    // Complete Set Operations (NEW in Phase 3.3!)
+    sql.execute("SELECT id FROM users WHERE id < 10 INTERSECT SELECT id FROM users WHERE id > 5");
+    sql.execute("SELECT id FROM users WHERE id < 10 EXCEPT SELECT id FROM users WHERE id > 8");
     
     var result = sql.execute("SELECT name FROM adult_users");
     assertEquals("Alice", result.getRows().get(0).getValue(0));
@@ -81,7 +85,7 @@ void testWithMemGres(SqlExecutionEngine sql) {
 
 ## Status
 
-**Current**: Phase 3.2 Complete (500+ tests passing - 100% success rate)
+**Current**: Phase 3.3 In Progress (510+ tests passing - 100% success rate)
 - ✅ H2-compatible SQL operations (DDL, DML, joins, subqueries, aggregation)  
 - ✅ PostgreSQL JSONB with all operators and functions
 - ✅ Testing framework integration (JUnit 5, TestNG, Spring Test)
@@ -89,10 +93,10 @@ void testWithMemGres(SqlExecutionEngine sql) {
 - ✅ Advanced H2 features (CREATE VIEW / DROP VIEW, TRUNCATE TABLE, ALTER TABLE)
 - ✅ H2 System & Math Functions (DATABASE(), USER(), SQRT(), POWER(), ABS(), ROUND(), RAND())
 - ✅ Window Functions (ROW_NUMBER, RANK, DENSE_RANK, PERCENT_RANK, CUME_DIST with OVER clause)
-- ✅ **NEW**: Common Table Expressions (WITH clause, RECURSIVE CTEs with iterative execution)
-- ✅ **NEW**: Set Operations (UNION, UNION ALL with proper duplicate handling)
+- ✅ Common Table Expressions (WITH clause, RECURSIVE CTEs with iterative execution)
+- ✅ **Complete Set Operations**: UNION, UNION ALL, INTERSECT, EXCEPT with proper duplicate handling
 
-**Next**: Phase 3.3 - Set Operations completion (INTERSECT, EXCEPT) and Advanced Data Types
+**Next**: Phase 3.3 - Advanced Data Types (CLOB, BINARY, INTERVAL) and Triggers
 
 ## License
 

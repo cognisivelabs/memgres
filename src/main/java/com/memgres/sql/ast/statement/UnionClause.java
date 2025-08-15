@@ -6,13 +6,16 @@ import com.memgres.sql.ast.AstVisitor;
 import java.util.Objects;
 
 /**
- * Represents a UNION or UNION ALL clause between SELECT statements.
+ * Represents a set operation clause between SELECT statements.
+ * Supports UNION, UNION ALL, INTERSECT, and EXCEPT operations.
  */
 public class UnionClause extends AstNode {
     
     public enum UnionType {
         UNION,      // UNION (removes duplicates)
-        UNION_ALL   // UNION ALL (keeps duplicates)
+        UNION_ALL,  // UNION ALL (keeps duplicates)
+        INTERSECT,  // INTERSECT (returns common rows, removes duplicates)
+        EXCEPT      // EXCEPT (returns rows from first set not in second, removes duplicates)
     }
     
     private final UnionType unionType;
@@ -27,6 +30,14 @@ public class UnionClause extends AstNode {
     
     public boolean isUnionAll() {
         return unionType == UnionType.UNION_ALL;
+    }
+    
+    public boolean isIntersect() {
+        return unionType == UnionType.INTERSECT;
+    }
+    
+    public boolean isExcept() {
+        return unionType == UnionType.EXCEPT;
     }
     
     @Override
@@ -49,6 +60,15 @@ public class UnionClause extends AstNode {
     
     @Override
     public String toString() {
-        return unionType == UnionType.UNION_ALL ? "UNION ALL" : "UNION";
+        switch (unionType) {
+            case UNION_ALL:
+                return "UNION ALL";
+            case INTERSECT:
+                return "INTERSECT";
+            case EXCEPT:
+                return "EXCEPT";
+            default:
+                return "UNION";
+        }
     }
 }
