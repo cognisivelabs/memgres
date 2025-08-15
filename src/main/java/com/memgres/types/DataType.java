@@ -349,6 +349,86 @@ public enum DataType {
         }
     },
     
+    BINARY("binary") {
+        @Override
+        public boolean isValidValue(Object value) {
+            return value instanceof byte[];
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+            if (value instanceof String) {
+                String str = (String) value;
+                if (str.startsWith("\\x") || str.startsWith("0x")) {
+                    // Hex string format
+                    str = str.substring(2);
+                    return hexStringToByteArray(str);
+                }
+                return str.getBytes();
+            }
+            return value;
+        }
+    },
+    
+    VARBINARY("varbinary") {
+        @Override
+        public boolean isValidValue(Object value) {
+            return value instanceof byte[];
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+            if (value instanceof String) {
+                String str = (String) value;
+                if (str.startsWith("\\x") || str.startsWith("0x")) {
+                    // Hex string format
+                    str = str.substring(2);
+                    return hexStringToByteArray(str);
+                }
+                return str.getBytes();
+            }
+            return value;
+        }
+    },
+    
+    CLOB("clob") {
+        @Override
+        public boolean isValidValue(Object value) {
+            return value instanceof String || value instanceof java.sql.Clob;
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+            if (value instanceof java.sql.Clob) {
+                try {
+                    java.sql.Clob clob = (java.sql.Clob) value;
+                    return clob.getSubString(1, (int) clob.length());
+                } catch (Exception e) {
+                    throw new IllegalArgumentException("Failed to convert CLOB to string", e);
+                }
+            }
+            return value != null ? value.toString() : null;
+        }
+    },
+    
+    INTERVAL("interval") {
+        @Override
+        public boolean isValidValue(Object value) {
+            return value instanceof Interval || value instanceof String;
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+            if (value instanceof Interval) {
+                return value;
+            }
+            if (value instanceof String) {
+                return Interval.parse((String) value);
+            }
+            return value;
+        }
+    },
+    
     // Array types
     INTEGER_ARRAY("integer[]") {
         @Override
@@ -570,6 +650,23 @@ public enum DataType {
     }
     
     /**
+     * Convert a hex string to byte array
+     * @param hexString the hex string (without 0x prefix)
+     * @return the byte array
+     */
+    private static byte[] hexStringToByteArray(String hexString) {
+        if (hexString.length() % 2 != 0) {
+            throw new IllegalArgumentException("Hex string must have even length");
+        }
+        
+        byte[] bytes = new byte[hexString.length() / 2];
+        for (int i = 0; i < hexString.length(); i += 2) {
+            bytes[i / 2] = (byte) Integer.parseInt(hexString.substring(i, i + 2), 16);
+        }
+        return bytes;
+    }
+    
+    /**
      * Get a data type by its SQL name
      * @param sqlName the SQL name (case-insensitive)
      * @return the matching data type or null if not found
@@ -619,6 +716,26 @@ public enum DataType {
                 return VARCHAR;
             case "bool":
                 return BOOLEAN;
+            case "character large object":
+                return CLOB;
+            case "char large object":
+                return CLOB;
+            case "binary varying":
+                return VARBINARY;
+            case "interval year":
+            case "interval month":
+            case "interval day":
+            case "interval hour":
+            case "interval minute":
+            case "interval second":
+            case "interval year to month":
+            case "interval day to hour":
+            case "interval day to minute":
+            case "interval day to second":
+            case "interval hour to minute":
+            case "interval hour to second":
+            case "interval minute to second":
+                return INTERVAL;
             default:
                 return null;
         }

@@ -119,6 +119,14 @@ TIMESTAMPTZ: [Tt][Ii][Mm][Ee][Ss][Tt][Aa][Mm][Pp][Tt][Zz];
 UUID: [Uu][Uu][Ii][Dd];
 JSONB: [Jj][Ss][Oo][Nn][Bb];
 BYTEA: [Bb][Yy][Tt][Ee][Aa];
+CLOB: [Cc][Ll][Oo][Bb];
+CHARACTER: [Cc][Hh][Aa][Rr][Aa][Cc][Tt][Ee][Rr];
+LARGE: [Ll][Aa][Rr][Gg][Ee];
+OBJECT: [Oo][Bb][Jj][Ee][Cc][Tt];
+BINARY: [Bb][Ii][Nn][Aa][Rr][Yy];
+VARBINARY: [Vv][Aa][Rr][Bb][Ii][Nn][Aa][Rr][Yy];
+VARYING: [Vv][Aa][Rr][Yy][Ii][Nn][Gg];
+INTERVAL: [Ii][Nn][Tt][Ee][Rr][Vv][Aa][Ll];
 
 // UUID generation functions
 GEN_RANDOM_UUID: [Gg][Ee][Nn]'_'[Rr][Aa][Nn][Dd][Oo][Mm]'_'[Uu][Uu][Ii][Dd];

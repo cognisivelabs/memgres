@@ -105,11 +105,20 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
                     
                     // Convert and validate data type
                     Column column = tableColumns.get(i);
-                    rowData[i] = column.getDataType().convertValue(rowData[i]);
                     
-                    if (!column.getDataType().isValidValue(rowData[i])) {
-                        throw new SqlExecutionException("Invalid value for column " + 
-                            column.getName() + ": " + rowData[i]);
+                    // Check null constraint first
+                    if (rowData[i] == null && !column.isNullable()) {
+                        throw new SqlExecutionException("NULL value not allowed for column " + column.getName());
+                    }
+                    
+                    // Only convert and validate non-null values
+                    if (rowData[i] != null) {
+                        rowData[i] = column.getDataType().convertValue(rowData[i]);
+                        
+                        if (!column.getDataType().isValidValue(rowData[i])) {
+                            throw new SqlExecutionException("Invalid value for column " + 
+                                column.getName() + ": " + rowData[i]);
+                        }
                     }
                 }
                 
