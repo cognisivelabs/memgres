@@ -896,6 +896,36 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
         return new DataTypeNode(DataType.BYTEA);
     }
     
+    @Override
+    public DataTypeNode visitClobType(MemGresParser.ClobTypeContext ctx) {
+        return new DataTypeNode(DataType.CLOB);
+    }
+    
+    @Override
+    public DataTypeNode visitCharacterLargeObjectType(MemGresParser.CharacterLargeObjectTypeContext ctx) {
+        return new DataTypeNode(DataType.CLOB);
+    }
+    
+    @Override
+    public DataTypeNode visitBinaryType(MemGresParser.BinaryTypeContext ctx) {
+        return new DataTypeNode(DataType.BINARY);
+    }
+    
+    @Override
+    public DataTypeNode visitVarbinaryType(MemGresParser.VarbinaryTypeContext ctx) {
+        return new DataTypeNode(DataType.VARBINARY);
+    }
+    
+    @Override
+    public DataTypeNode visitBinaryVaryingType(MemGresParser.BinaryVaryingTypeContext ctx) {
+        return new DataTypeNode(DataType.VARBINARY);
+    }
+    
+    @Override
+    public DataTypeNode visitIntervalType(MemGresParser.IntervalTypeContext ctx) {
+        return new DataTypeNode(DataType.INTERVAL);
+    }
+    
     /**
      * Convert ANTLR4 binary operator context to our BinaryExpression.Operator enum.
      */

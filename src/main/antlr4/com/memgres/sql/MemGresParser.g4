@@ -371,6 +371,12 @@ dataType
     | UUID                                              # uuidType
     | JSONB                                             # jsonbType
     | BYTEA                                             # byteaType
+    | CLOB (LPAREN INTEGER_LITERAL RPAREN)?            # clobType
+    | CHARACTER LARGE OBJECT (LPAREN INTEGER_LITERAL RPAREN)? # characterLargeObjectType
+    | BINARY (LPAREN INTEGER_LITERAL RPAREN)?          # binaryType
+    | VARBINARY (LPAREN INTEGER_LITERAL RPAREN)?       # varbinaryType
+    | BINARY VARYING (LPAREN INTEGER_LITERAL RPAREN)?  # binaryVaryingType
+    | INTERVAL                                          # intervalType
     ;
 
 // MERGE statement - supports both simple and advanced H2 MERGE syntax
