@@ -135,8 +135,19 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
     
     @Override
     public UnionClause visitUnionClause(MemGresParser.UnionClauseContext ctx) {
-        UnionClause.UnionType unionType = ctx.ALL() != null ? 
-            UnionClause.UnionType.UNION_ALL : UnionClause.UnionType.UNION;
+        UnionClause.UnionType unionType;
+        
+        if (ctx.INTERSECT() != null) {
+            unionType = UnionClause.UnionType.INTERSECT;
+        } else if (ctx.EXCEPT() != null) {
+            unionType = UnionClause.UnionType.EXCEPT;
+        } else if (ctx.UNION() != null) {
+            unionType = ctx.ALL() != null ? 
+                UnionClause.UnionType.UNION_ALL : UnionClause.UnionType.UNION;
+        } else {
+            throw new IllegalArgumentException("Unknown union clause type");
+        }
+        
         return new UnionClause(unionType);
     }
     

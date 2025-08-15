@@ -46,6 +46,8 @@ simpleSelectStatement
 
 unionClause
     : UNION ALL?
+    | INTERSECT
+    | EXCEPT
     ;
 
 selectModifier

@@ -3205,8 +3205,9 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
                 SqlExecutionResult selectResult = executeSelectStatementDirectly(legacyStmt, context);
                 
                 // Validate column compatibility
+                String operationName = unionClause.toString();
                 if (selectResult.getColumns().size() != resultColumns.size()) {
-                    throw new SqlExecutionException("UNION: column count mismatch - first query has " + 
+                    throw new SqlExecutionException(operationName + ": column count mismatch - first query has " + 
                         resultColumns.size() + " columns, query " + (i + 1) + " has " + 
                         selectResult.getColumns().size() + " columns");
                 }
@@ -3214,6 +3215,12 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
                 if (unionClause.isUnionAll()) {
                     // UNION ALL - keep all rows including duplicates
                     allRows.addAll(selectResult.getRows());
+                } else if (unionClause.isIntersect()) {
+                    // INTERSECT - keep only rows that exist in both sets (remove duplicates)
+                    allRows = performIntersect(allRows, selectResult.getRows());
+                } else if (unionClause.isExcept()) {
+                    // EXCEPT - keep only rows from first set that don't exist in second set
+                    allRows = performExcept(allRows, selectResult.getRows());
                 } else {
                     // UNION - remove duplicates
                     for (Row newRow : selectResult.getRows()) {
@@ -3224,7 +3231,7 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
                 }
             }
             
-            logger.debug("UNION executed: {} total rows from {} SELECT statements", 
+            logger.debug("Set operation executed: {} total rows from {} SELECT statements", 
                         allRows.size(), selectStatements.size());
             
             return new SqlExecutionResult(resultColumns, allRows);
@@ -3233,7 +3240,7 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             if (e instanceof SqlExecutionException) {
                 throw (SqlExecutionException) e;
             }
-            throw new SqlExecutionException("Failed to execute UNION operations", e);
+            throw new SqlExecutionException("Failed to execute set operations", e);
         }
     }
     
@@ -3249,8 +3256,8 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             simpleStmt.getWhereClause(),
             simpleStmt.getGroupByClause(),
             simpleStmt.getHavingClause(),
-            simpleStmt.getOrderByClause(),
-            simpleStmt.getLimitClause()
+            Optional.empty(), // Remove ORDER BY from individual statements in compound operations
+            Optional.empty()  // Remove LIMIT from individual statements in compound operations
         );
     }
     
@@ -3747,6 +3754,53 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
         }
         
         return true;
+    }
+    
+    /**
+     * Performs INTERSECT operation - returns rows that exist in both lists
+     */
+    private List<Row> performIntersect(List<Row> leftRows, List<Row> rightRows) {
+        List<Row> result = new ArrayList<>();
+        
+        for (Row leftRow : leftRows) {
+            for (Row rightRow : rightRows) {
+                if (areRowDataEqual(leftRow.getData(), rightRow.getData())) {
+                    // Check if we already added this row to avoid duplicates
+                    if (!containsEquivalentRow(result, leftRow)) {
+                        result.add(leftRow);
+                    }
+                    break; // Found match, no need to check more
+                }
+            }
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Performs EXCEPT operation - returns rows from left that don't exist in right
+     */
+    private List<Row> performExcept(List<Row> leftRows, List<Row> rightRows) {
+        List<Row> result = new ArrayList<>();
+        
+        for (Row leftRow : leftRows) {
+            boolean existsInRight = false;
+            for (Row rightRow : rightRows) {
+                if (areRowDataEqual(leftRow.getData(), rightRow.getData())) {
+                    existsInRight = true;
+                    break;
+                }
+            }
+            
+            if (!existsInRight) {
+                // Check if we already added this row to avoid duplicates
+                if (!containsEquivalentRow(result, leftRow)) {
+                    result.add(leftRow);
+                }
+            }
+        }
+        
+        return result;
     }
     
 }
