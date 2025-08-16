@@ -13,6 +13,7 @@
 - **PostgreSQL JSONB**: Full JSON operators (`@>`, `?`, `->`, `->>`) for modern applications
 - **Advanced DDL**: CREATE INDEX, MERGE statements, SEQUENCE support, CREATE VIEW / DROP VIEW, TRUNCATE TABLE, ALTER TABLE
 - **Advanced SQL**: Window Functions, Recursive CTEs, Complete Set Operations (UNION, UNION ALL, INTERSECT, EXCEPT)
+- **H2 Triggers**: BEFORE/AFTER triggers with INSERT/UPDATE/DELETE events, FOR EACH ROW/STATEMENT scope
 - **Testing-focused**: `@MemGres` annotations for JUnit 5, TestNG, and Spring Test
 - **High performance**: < 100ms startup, < 1ms simple queries, thread-safe operations
 - **ACID transactions**: Four isolation levels with automatic rollback for testing
@@ -59,9 +60,12 @@ void testWithMemGres(SqlExecutionEngine sql) {
         SELECT n FROM sequence_numbers ORDER BY n
         """);
     
-    // Complete Set Operations (NEW in Phase 3.3!)
+    // Complete Set Operations (Phase 3.3!)
     sql.execute("SELECT id FROM users WHERE id < 10 INTERSECT SELECT id FROM users WHERE id > 5");
     sql.execute("SELECT id FROM users WHERE id < 10 EXCEPT SELECT id FROM users WHERE id > 8");
+    
+    // H2 Triggers for audit logging (NEW in Phase 3.3!)
+    sql.execute("CREATE TRIGGER audit_trigger AFTER INSERT ON users CALL 'com.example.AuditTrigger'");
     
     var result = sql.execute("SELECT name FROM adult_users");
     assertEquals("Alice", result.getRows().get(0).getValue(0));
@@ -85,7 +89,7 @@ void testWithMemGres(SqlExecutionEngine sql) {
 
 ## Status
 
-**Current**: Phase 3.3 In Progress (510+ tests passing - 100% success rate)
+**Current**: Phase 3.3 In Progress (525+ tests passing - 100% success rate)
 - ✅ H2-compatible SQL operations (DDL, DML, joins, subqueries, aggregation)  
 - ✅ PostgreSQL JSONB with all operators and functions
 - ✅ Testing framework integration (JUnit 5, TestNG, Spring Test)
@@ -95,8 +99,9 @@ void testWithMemGres(SqlExecutionEngine sql) {
 - ✅ Window Functions (ROW_NUMBER, RANK, DENSE_RANK, PERCENT_RANK, CUME_DIST with OVER clause)
 - ✅ Common Table Expressions (WITH clause, RECURSIVE CTEs with iterative execution)
 - ✅ **Complete Set Operations**: UNION, UNION ALL, INTERSECT, EXCEPT with proper duplicate handling
+- ✅ **H2 Triggers**: Complete trigger system with BEFORE/AFTER timing, Java class implementation
 
-**Next**: Phase 3.3 - Advanced Data Types (CLOB, BINARY, INTERVAL) and Triggers
+**Next**: Phase 3.3 - Advanced Views (Updatable/Materialized Views) and remaining features
 
 ## License
 

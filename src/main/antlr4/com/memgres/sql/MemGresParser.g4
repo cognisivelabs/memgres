@@ -19,6 +19,9 @@ statement
     | truncateTableStatement
     | createViewStatement
     | dropViewStatement
+    | createMaterializedViewStatement
+    | dropMaterializedViewStatement
+    | refreshMaterializedViewStatement
     | createIndexStatement
     | dropIndexStatement
     | createSequenceStatement
@@ -207,6 +210,21 @@ createViewStatement
 // DROP VIEW statement
 dropViewStatement
     : DROP VIEW (IF EXISTS)? viewName (restrictOrCascade)?
+    ;
+
+// CREATE MATERIALIZED VIEW statement
+createMaterializedViewStatement
+    : CREATE (OR REPLACE)? MATERIALIZED VIEW (IF NOT EXISTS)? viewName (LPAREN columnNameList RPAREN)? AS selectStatement
+    ;
+
+// DROP MATERIALIZED VIEW statement
+dropMaterializedViewStatement
+    : DROP MATERIALIZED VIEW (IF EXISTS)? viewName (restrictOrCascade)?
+    ;
+
+// REFRESH MATERIALIZED VIEW statement
+refreshMaterializedViewStatement
+    : REFRESH MATERIALIZED VIEW viewName
     ;
 
 restrictOrCascade

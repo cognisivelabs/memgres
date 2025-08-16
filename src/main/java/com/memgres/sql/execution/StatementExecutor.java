@@ -6,6 +6,7 @@ import com.memgres.functions.UuidFunctions;
 import com.memgres.sql.ast.AstVisitor;
 import com.memgres.sql.ast.expression.*;
 import com.memgres.sql.ast.statement.*;
+import com.memgres.storage.MaterializedView;
 import com.memgres.storage.Schema;
 import com.memgres.storage.Sequence;
 import com.memgres.storage.Table;
@@ -3931,6 +3932,130 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             case FOR_EACH_ROW: return TriggerDefinition.Scope.FOR_EACH_ROW;
             case FOR_EACH_STATEMENT: return TriggerDefinition.Scope.FOR_EACH_STATEMENT;
             default: throw new IllegalArgumentException("Unknown scope: " + scope);
+        }
+    }
+    
+    @Override
+    public SqlExecutionResult visitCreateMaterializedViewStatement(CreateMaterializedViewStatement node, ExecutionContext context) throws Exception {
+        try {
+            String viewName = node.getViewName();
+            List<String> columnNames = node.getColumnNames();
+            SelectStatement selectStatement = node.getSelectStatement();
+            boolean orReplace = node.isOrReplace();
+            boolean ifNotExists = node.isIfNotExists();
+            
+            Schema schema = engine.getSchema("public");
+            
+            // Check if materialized view already exists
+            if (schema.materializedViewExists(viewName)) {
+                if (orReplace) {
+                    // Drop existing materialized view
+                    schema.dropMaterializedView(viewName);
+                    logger.info("Replaced existing materialized view: {}", viewName);
+                } else if (ifNotExists) {
+                    // Silently ignore
+                    return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, 
+                        true, "Materialized view " + viewName + " already exists");
+                } else {
+                    throw new SqlExecutionException("Materialized view already exists: " + viewName);
+                }
+            }
+            
+            // Create the materialized view (initially empty)
+            MaterializedView materializedView = new MaterializedView(viewName, columnNames, selectStatement);
+            
+            if (schema.createMaterializedView(materializedView)) {
+                logger.info("Created materialized view: {}", viewName);
+                return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, 
+                    true, "Materialized view " + viewName + " created");
+            } else {
+                throw new SqlExecutionException("Failed to create materialized view: " + viewName);
+            }
+            
+        } catch (Exception e) {
+            logger.error("Failed to create materialized view {}: {}", node.getViewName(), e.getMessage());
+            if (e instanceof SqlExecutionException) {
+                throw (SqlExecutionException) e;
+            }
+            throw new SqlExecutionException("Failed to create materialized view: " + e.getMessage(), e);
+        }
+    }
+    
+    @Override
+    public SqlExecutionResult visitDropMaterializedViewStatement(DropMaterializedViewStatement node, ExecutionContext context) throws Exception {
+        try {
+            String viewName = node.getViewName();
+            boolean ifExists = node.isIfExists();
+            DropMaterializedViewStatement.RestrictOrCascade restrictOrCascade = node.getRestrictOrCascade();
+            
+            Schema schema = engine.getSchema("public");
+            
+            // Check if materialized view exists
+            if (!schema.materializedViewExists(viewName)) {
+                if (ifExists) {
+                    // Silently ignore
+                    return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, 
+                        true, "Materialized view " + viewName + " does not exist");
+                } else {
+                    throw new SqlExecutionException("Materialized view does not exist: " + viewName);
+                }
+            }
+            
+            // TODO: Handle RESTRICT/CASCADE logic if dependencies are implemented
+            if (restrictOrCascade == DropMaterializedViewStatement.RestrictOrCascade.CASCADE) {
+                logger.warn("CASCADE option not fully implemented for materialized views");
+            }
+            
+            if (schema.dropMaterializedView(viewName)) {
+                logger.info("Dropped materialized view: {}", viewName);
+                return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, 
+                    true, "Materialized view " + viewName + " dropped");
+            } else {
+                throw new SqlExecutionException("Failed to drop materialized view: " + viewName);
+            }
+            
+        } catch (Exception e) {
+            logger.error("Failed to drop materialized view {}: {}", node.getViewName(), e.getMessage());
+            if (e instanceof SqlExecutionException) {
+                throw (SqlExecutionException) e;
+            }
+            throw new SqlExecutionException("Failed to drop materialized view: " + e.getMessage(), e);
+        }
+    }
+    
+    @Override
+    public SqlExecutionResult visitRefreshMaterializedViewStatement(RefreshMaterializedViewStatement node, ExecutionContext context) throws Exception {
+        try {
+            String viewName = node.getViewName();
+            
+            Schema schema = engine.getSchema("public");
+            MaterializedView materializedView = schema.getMaterializedView(viewName);
+            
+            if (materializedView == null) {
+                throw new SqlExecutionException("Materialized view does not exist: " + viewName);
+            }
+            
+            // Execute the underlying SELECT statement to get fresh data
+            SelectStatement selectStatement = materializedView.getSelectStatement();
+            SqlExecutionResult result = visitSelectStatement(selectStatement, context);
+            
+            if (!result.isSuccess()) {
+                throw new SqlExecutionException("Failed to execute materialized view query: " + result.getMessage());
+            }
+            
+            // Refresh the materialized view with new data
+            materializedView.refresh(result.getRows());
+            
+            logger.info("Refreshed materialized view: {} with {} rows", viewName, result.getRows().size());
+            return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, 
+                true, "Materialized view " + viewName + " refreshed with " + result.getRows().size() + " rows");
+            
+        } catch (Exception e) {
+            logger.error("Failed to refresh materialized view {}: {}", node.getViewName(), e.getMessage());
+            if (e instanceof SqlExecutionException) {
+                throw (SqlExecutionException) e;
+            }
+            throw new SqlExecutionException("Failed to refresh materialized view: " + e.getMessage(), e);
         }
     }
     

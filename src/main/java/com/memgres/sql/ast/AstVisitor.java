@@ -24,6 +24,9 @@ public interface AstVisitor<T, C> {
     T visitDropTableStatement(DropTableStatement node, C context) throws Exception;
     T visitCreateViewStatement(CreateViewStatement node, C context) throws Exception;
     T visitDropViewStatement(DropViewStatement node, C context) throws Exception;
+    T visitCreateMaterializedViewStatement(CreateMaterializedViewStatement node, C context) throws Exception;
+    T visitDropMaterializedViewStatement(DropMaterializedViewStatement node, C context) throws Exception;
+    T visitRefreshMaterializedViewStatement(RefreshMaterializedViewStatement node, C context) throws Exception;
     T visitTruncateTableStatement(TruncateTableStatement node, C context) throws Exception;
     T visitCreateIndexStatement(CreateIndexStatement node, C context) throws Exception;
     T visitDropIndexStatement(DropIndexStatement node, C context) throws Exception;

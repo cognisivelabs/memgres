@@ -53,6 +53,12 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
             return (Statement) visit(ctx.createViewStatement());
         } else if (ctx.dropViewStatement() != null) {
             return (Statement) visit(ctx.dropViewStatement());
+        } else if (ctx.createMaterializedViewStatement() != null) {
+            return (Statement) visit(ctx.createMaterializedViewStatement());
+        } else if (ctx.dropMaterializedViewStatement() != null) {
+            return (Statement) visit(ctx.dropMaterializedViewStatement());
+        } else if (ctx.refreshMaterializedViewStatement() != null) {
+            return (Statement) visit(ctx.refreshMaterializedViewStatement());
         } else if (ctx.createIndexStatement() != null) {
             return (Statement) visit(ctx.createIndexStatement());
         } else if (ctx.dropIndexStatement() != null) {
@@ -1356,5 +1362,52 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
         String triggerName = ctx.triggerName().identifier().getText();
         
         return new DropTriggerStatement(triggerName, ifExists);
+    }
+    
+    // CREATE MATERIALIZED VIEW statement
+    @Override
+    public CreateMaterializedViewStatement visitCreateMaterializedViewStatement(MemGresParser.CreateMaterializedViewStatementContext ctx) {
+        boolean orReplace = ctx.OR() != null && ctx.REPLACE() != null;
+        boolean ifNotExists = ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null;
+        String viewName = ctx.viewName().getText();
+        
+        // Extract column names if specified
+        List<String> columnNames = null;
+        if (ctx.columnNameList() != null) {
+            columnNames = new ArrayList<>();
+            for (MemGresParser.ColumnNameContext colCtx : ctx.columnNameList().columnName()) {
+                columnNames.add(colCtx.getText());
+            }
+        }
+        
+        SelectStatement selectStatement = visitSelectStatement(ctx.selectStatement());
+        
+        return new CreateMaterializedViewStatement(orReplace, ifNotExists, viewName, columnNames, selectStatement);
+    }
+    
+    // DROP MATERIALIZED VIEW statement
+    @Override
+    public DropMaterializedViewStatement visitDropMaterializedViewStatement(MemGresParser.DropMaterializedViewStatementContext ctx) {
+        boolean ifExists = ctx.IF() != null && ctx.EXISTS() != null;
+        String viewName = ctx.viewName().getText();
+        
+        DropMaterializedViewStatement.RestrictOrCascade restrictOrCascade = null;
+        if (ctx.restrictOrCascade() != null) {
+            if (ctx.restrictOrCascade() instanceof MemGresParser.RestrictOptionContext) {
+                restrictOrCascade = DropMaterializedViewStatement.RestrictOrCascade.RESTRICT;
+            } else if (ctx.restrictOrCascade() instanceof MemGresParser.CascadeOptionContext) {
+                restrictOrCascade = DropMaterializedViewStatement.RestrictOrCascade.CASCADE;
+            }
+        }
+        
+        return new DropMaterializedViewStatement(ifExists, viewName, restrictOrCascade);
+    }
+    
+    // REFRESH MATERIALIZED VIEW statement
+    @Override
+    public RefreshMaterializedViewStatement visitRefreshMaterializedViewStatement(MemGresParser.RefreshMaterializedViewStatementContext ctx) {
+        String viewName = ctx.viewName().getText();
+        
+        return new RefreshMaterializedViewStatement(viewName);
     }
 }
