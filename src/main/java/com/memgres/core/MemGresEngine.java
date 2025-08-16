@@ -21,12 +21,14 @@ public class MemGresEngine {
     
     private final ConcurrentMap<String, Schema> schemas;
     private final TransactionManager transactionManager;
+    private final TriggerManager triggerManager;
     private final ReadWriteLock engineLock;
     private volatile boolean initialized;
     
     public MemGresEngine() {
         this.schemas = new ConcurrentHashMap<>();
         this.transactionManager = new TransactionManager();
+        this.triggerManager = new TriggerManager();
         this.engineLock = new ReentrantReadWriteLock();
         this.initialized = false;
         logger.info("MemGres Engine created");
@@ -66,6 +68,7 @@ public class MemGresEngine {
             }
             
             transactionManager.shutdown();
+            triggerManager.shutdown();
             schemas.clear();
             initialized = false;
             logger.info("MemGres Engine shutdown successfully");
@@ -232,6 +235,14 @@ public class MemGresEngine {
     public TransactionManager getTransactionManager() {
         validateInitialized();
         return transactionManager;
+    }
+    
+    /**
+     * Get the trigger manager for this engine.
+     */
+    public TriggerManager getTriggerManager() {
+        validateInitialized();
+        return triggerManager;
     }
     
     /**

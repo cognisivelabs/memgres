@@ -23,6 +23,8 @@ statement
     | dropIndexStatement
     | createSequenceStatement
     | dropSequenceStatement
+    | createTriggerStatement
+    | dropTriggerStatement
     ;
 
 // SELECT statement (can be compound with UNION)
@@ -460,6 +462,40 @@ commonTableExpression
 // Signed integer literal
 signedIntegerLiteral
     : (PLUS | MINUS)? INTEGER_LITERAL
+    ;
+
+// CREATE TRIGGER statement
+createTriggerStatement
+    : CREATE TRIGGER (IF NOT EXISTS)? triggerName
+      triggerTiming
+      triggerEvent (COMMA triggerEvent)*
+      ON tableName
+      (FOR EACH (ROW | STATEMENT))?
+      (QUEUE INTEGER_LITERAL)?
+      NOWAIT?
+      triggerImplementation
+    ;
+
+// DROP TRIGGER statement
+dropTriggerStatement
+    : DROP TRIGGER (IF EXISTS)? triggerName
+    ;
+
+triggerName
+    : identifier
+    ;
+
+triggerTiming
+    : BEFORE | AFTER | (INSTEAD OF)
+    ;
+
+triggerEvent
+    : INSERT | UPDATE | DELETE | SELECT
+    ;
+
+triggerImplementation
+    : CALL STRING                           # callTriggerImplementation
+    | AS STRING                             # sourceTriggerImplementation
     ;
 
 // Identifiers (case-insensitive)

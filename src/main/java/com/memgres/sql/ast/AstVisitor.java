@@ -29,6 +29,8 @@ public interface AstVisitor<T, C> {
     T visitDropIndexStatement(DropIndexStatement node, C context) throws Exception;
     T visitCreateSequenceStatement(CreateSequenceStatement node, C context) throws Exception;
     T visitDropSequenceStatement(DropSequenceStatement node, C context) throws Exception;
+    T visitCreateTriggerStatement(CreateTriggerStatement node, C context) throws Exception;
+    T visitDropTriggerStatement(DropTriggerStatement node, C context) throws Exception;
     
     // Expression visitors
     T visitLiteralExpression(LiteralExpression node, C context) throws Exception;

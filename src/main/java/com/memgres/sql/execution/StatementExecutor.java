@@ -1,6 +1,7 @@
 package com.memgres.sql.execution;
 
 import com.memgres.core.MemGresEngine;
+import com.memgres.core.TriggerDefinition;
 import com.memgres.functions.UuidFunctions;
 import com.memgres.sql.ast.AstVisitor;
 import com.memgres.sql.ast.expression.*;
@@ -122,9 +123,17 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
                     }
                 }
                 
+                // Fire BEFORE INSERT triggers
+                engine.getTriggerManager().fireBefore("public", tableName, 
+                    TriggerDefinition.Event.INSERT, null, rowData, null);
+                
                 // Insert row
                 table.insertRow(rowData);
                 affectedRows++;
+                
+                // Fire AFTER INSERT triggers
+                engine.getTriggerManager().fireAfter("public", tableName, 
+                    TriggerDefinition.Event.INSERT, null, rowData, null);
             }
             
             logger.debug("INSERT executed: {} rows inserted into {}", affectedRows, tableName);
@@ -198,9 +207,17 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
                     newData[columnIndex] = newValue;
                 }
                 
+                // Fire BEFORE UPDATE triggers
+                engine.getTriggerManager().fireBefore("public", tableName, 
+                    TriggerDefinition.Event.UPDATE, row.getData(), newData, null);
+                
                 // Update the row
                 table.updateRow(row.getId(), newData);
                 affectedRows++;
+                
+                // Fire AFTER UPDATE triggers
+                engine.getTriggerManager().fireAfter("public", tableName, 
+                    TriggerDefinition.Event.UPDATE, row.getData(), newData, null);
             }
             
             logger.debug("UPDATE executed: {} rows updated in {}", affectedRows, tableName);
@@ -243,8 +260,16 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             
             // Delete matching rows
             for (Row row : rowsToDelete) {
+                // Fire BEFORE DELETE triggers
+                engine.getTriggerManager().fireBefore("public", tableName, 
+                    TriggerDefinition.Event.DELETE, row.getData(), null, null);
+                
                 if (table.deleteRow(row.getId())) {
                     affectedRows++;
+                    
+                    // Fire AFTER DELETE triggers
+                    engine.getTriggerManager().fireAfter("public", tableName, 
+                        TriggerDefinition.Event.DELETE, row.getData(), null, null);
                 }
             }
             
@@ -3810,6 +3835,103 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
         }
         
         return result;
+    }
+    
+    /**
+     * CREATE TRIGGER statement execution.
+     */
+    @Override
+    public SqlExecutionResult visitCreateTriggerStatement(CreateTriggerStatement node, ExecutionContext context) 
+            throws Exception {
+        logger.debug("Executing CREATE TRIGGER: {}", node.getTriggerName());
+        
+        try {
+            // Build TriggerDefinition from AST node
+            TriggerDefinition.Builder builder = new TriggerDefinition.Builder()
+                .name(node.getTriggerName())
+                .schemaName("public")  // TODO: Support schema names in triggers
+                .tableName(node.getTableName())
+                .timing(convertTiming(node.getTiming()))
+                .scope(convertScope(node.getScope()))
+                .ifNotExists(node.isIfNotExists())
+                .queueSize(node.getQueueSize())
+                .nowait(node.isNowait());
+            
+            // Set the first event (H2 triggers currently support one event per trigger)
+            if (!node.getEvents().isEmpty()) {
+                builder.event(convertEvent(node.getEvents().get(0)));
+            }
+            
+            // Set implementation
+            if (node.getImplementation().getType() == CreateTriggerStatement.Implementation.Type.CALL) {
+                builder.javaClass(node.getImplementation().getValue());
+            } else {
+                builder.sourceCode(node.getImplementation().getValue());
+            }
+            
+            TriggerDefinition triggerDef = builder.build();
+            
+            // Create the trigger using TriggerManager
+            // TODO: Get proper database connection from context
+            engine.getTriggerManager().createTrigger(triggerDef, null);
+            
+            logger.debug("CREATE TRIGGER executed successfully");
+            return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, 
+                "Trigger " + node.getTriggerName() + " created");
+            
+        } catch (Exception e) {
+            logger.error("Failed to create trigger {}: {}", node.getTriggerName(), e.getMessage());
+            throw new SqlExecutionException("Failed to create trigger: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * DROP TRIGGER statement execution.
+     */
+    @Override
+    public SqlExecutionResult visitDropTriggerStatement(DropTriggerStatement node, ExecutionContext context) 
+            throws Exception {
+        logger.debug("Executing DROP TRIGGER: {}", node.getTriggerName());
+        
+        try {
+            engine.getTriggerManager().dropTrigger("public", node.getTriggerName(), node.isIfExists());
+            
+            logger.debug("DROP TRIGGER executed successfully");
+            return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, 
+                "Trigger " + node.getTriggerName() + " dropped");
+            
+        } catch (Exception e) {
+            logger.error("Failed to drop trigger {}: {}", node.getTriggerName(), e.getMessage());
+            throw new SqlExecutionException("Failed to drop trigger: " + e.getMessage(), e);
+        }
+    }
+    
+    // Helper methods to convert AST enums to TriggerDefinition enums
+    private TriggerDefinition.Timing convertTiming(CreateTriggerStatement.Timing timing) {
+        switch (timing) {
+            case BEFORE: return TriggerDefinition.Timing.BEFORE;
+            case AFTER: return TriggerDefinition.Timing.AFTER;
+            case INSTEAD_OF: return TriggerDefinition.Timing.INSTEAD_OF;
+            default: throw new IllegalArgumentException("Unknown timing: " + timing);
+        }
+    }
+    
+    private TriggerDefinition.Event convertEvent(CreateTriggerStatement.Event event) {
+        switch (event) {
+            case INSERT: return TriggerDefinition.Event.INSERT;
+            case UPDATE: return TriggerDefinition.Event.UPDATE;
+            case DELETE: return TriggerDefinition.Event.DELETE;
+            case SELECT: return TriggerDefinition.Event.SELECT;
+            default: throw new IllegalArgumentException("Unknown event: " + event);
+        }
+    }
+    
+    private TriggerDefinition.Scope convertScope(CreateTriggerStatement.Scope scope) {
+        switch (scope) {
+            case FOR_EACH_ROW: return TriggerDefinition.Scope.FOR_EACH_ROW;
+            case FOR_EACH_STATEMENT: return TriggerDefinition.Scope.FOR_EACH_STATEMENT;
+            default: throw new IllegalArgumentException("Unknown scope: " + scope);
+        }
     }
     
 }
