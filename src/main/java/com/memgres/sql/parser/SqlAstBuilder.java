@@ -61,6 +61,10 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
             return (Statement) visit(ctx.createSequenceStatement());
         } else if (ctx.dropSequenceStatement() != null) {
             return (Statement) visit(ctx.dropSequenceStatement());
+        } else if (ctx.createTriggerStatement() != null) {
+            return (Statement) visit(ctx.createTriggerStatement());
+        } else if (ctx.dropTriggerStatement() != null) {
+            return (Statement) visit(ctx.dropTriggerStatement());
         }
         return null;
     }
@@ -1270,5 +1274,87 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
         SelectStatement selectStatement = (SelectStatement) visit(ctx.selectStatement());
         
         return new CommonTableExpression(name, columnNames, selectStatement);
+    }
+    
+    // CREATE TRIGGER statement
+    @Override
+    public CreateTriggerStatement visitCreateTriggerStatement(MemGresParser.CreateTriggerStatementContext ctx) {
+        boolean ifNotExists = ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null;
+        String triggerName = ctx.triggerName().identifier().getText();
+        
+        // Parse timing
+        CreateTriggerStatement.Timing timing;
+        if (ctx.triggerTiming().BEFORE() != null) {
+            timing = CreateTriggerStatement.Timing.BEFORE;
+        } else if (ctx.triggerTiming().AFTER() != null) {
+            timing = CreateTriggerStatement.Timing.AFTER;
+        } else {
+            timing = CreateTriggerStatement.Timing.INSTEAD_OF;
+        }
+        
+        // Parse events
+        List<CreateTriggerStatement.Event> events = new ArrayList<>();
+        for (MemGresParser.TriggerEventContext eventCtx : ctx.triggerEvent()) {
+            if (eventCtx.INSERT() != null) {
+                events.add(CreateTriggerStatement.Event.INSERT);
+            } else if (eventCtx.UPDATE() != null) {
+                events.add(CreateTriggerStatement.Event.UPDATE);
+            } else if (eventCtx.DELETE() != null) {
+                events.add(CreateTriggerStatement.Event.DELETE);
+            } else if (eventCtx.SELECT() != null) {
+                events.add(CreateTriggerStatement.Event.SELECT);
+            }
+        }
+        
+        String tableName = ctx.tableName().identifier().getText();
+        
+        // Parse scope (default to FOR EACH ROW)
+        CreateTriggerStatement.Scope scope = CreateTriggerStatement.Scope.FOR_EACH_ROW;
+        if (ctx.FOR() != null && ctx.EACH() != null) {
+            if (ctx.STATEMENT() != null) {
+                scope = CreateTriggerStatement.Scope.FOR_EACH_STATEMENT;
+            }
+        }
+        
+        // Parse queue size
+        Integer queueSize = null;
+        if (ctx.QUEUE() != null && ctx.INTEGER_LITERAL() != null) {
+            queueSize = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
+        }
+        
+        // Parse nowait
+        boolean nowait = ctx.NOWAIT() != null;
+        
+        // Parse implementation
+        CreateTriggerStatement.Implementation implementation;
+        if (ctx.triggerImplementation() instanceof MemGresParser.CallTriggerImplementationContext) {
+            MemGresParser.CallTriggerImplementationContext callCtx = 
+                (MemGresParser.CallTriggerImplementationContext) ctx.triggerImplementation();
+            String className = callCtx.STRING().getText();
+            // Remove quotes from string literal
+            className = className.substring(1, className.length() - 1);
+            implementation = new CreateTriggerStatement.Implementation(
+                CreateTriggerStatement.Implementation.Type.CALL, className);
+        } else {
+            MemGresParser.SourceTriggerImplementationContext sourceCtx = 
+                (MemGresParser.SourceTriggerImplementationContext) ctx.triggerImplementation();
+            String sourceCode = sourceCtx.STRING().getText();
+            // Remove quotes from string literal
+            sourceCode = sourceCode.substring(1, sourceCode.length() - 1);
+            implementation = new CreateTriggerStatement.Implementation(
+                CreateTriggerStatement.Implementation.Type.AS, sourceCode);
+        }
+        
+        return new CreateTriggerStatement(triggerName, ifNotExists, timing, events, 
+                                        tableName, scope, queueSize, nowait, implementation);
+    }
+    
+    // DROP TRIGGER statement
+    @Override
+    public DropTriggerStatement visitDropTriggerStatement(MemGresParser.DropTriggerStatementContext ctx) {
+        boolean ifExists = ctx.IF() != null && ctx.EXISTS() != null;
+        String triggerName = ctx.triggerName().identifier().getText();
+        
+        return new DropTriggerStatement(triggerName, ifExists);
     }
 }

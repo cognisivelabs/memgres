@@ -97,6 +97,15 @@ REPLACE: [Rr][Ee][Pp][Ll][Aa][Cc][Ee];
 FORCE: [Ff][Oo][Rr][Cc][Ee];
 RESTRICT: [Rr][Ee][Ss][Tt][Rr][Ii][Cc][Tt];
 CASCADE: [Cc][Aa][Ss][Cc][Aa][Dd][Ee];
+TRIGGER: [Tt][Rr][Ii][Gg][Gg][Ee][Rr];
+INSTEAD: [Ii][Nn][Ss][Tt][Ee][Aa][Dd];
+OF: [Oo][Ff];
+EACH: [Ee][Aa][Cc][Hh];
+ROW: [Rr][Oo][Ww];
+STATEMENT: [Ss][Tt][Aa][Tt][Ee][Mm][Ee][Nn][Tt];
+CALL: [Cc][Aa][Ll][Ll];
+QUEUE: [Qq][Uu][Ee][Uu][Ee];
+NOWAIT: [Nn][Oo][Ww][Aa][Ii][Tt];
 
 // Data types
 SMALLINT: [Ss][Mm][Aa][Ll][Ll][Ii][Nn][Tt];
