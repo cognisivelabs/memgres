@@ -1,6 +1,7 @@
 package com.memgres.functions;
 
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -498,5 +499,303 @@ public class StringFunctions {
         }
         
         return string.substring(string.length() - length);
+    }
+    
+    // ===== H2-COMPATIBLE FUNCTIONS =====
+    
+    /**
+     * Replace substrings matching a regular expression (H2 compatible REGEXP_REPLACE).
+     * @param inputString the source string
+     * @param regexString the regular expression pattern
+     * @param replacementString the replacement string
+     * @return the string with regex replacements made
+     */
+    public static String regexpReplace(String inputString, String regexString, String replacementString) {
+        return regexpReplace(inputString, regexString, replacementString, null);
+    }
+    
+    /**
+     * Replace substrings matching a regular expression with flags (H2 compatible REGEXP_REPLACE).
+     * @param inputString the source string
+     * @param regexString the regular expression pattern
+     * @param replacementString the replacement string
+     * @param flagsString optional flags ('i' for case insensitive, 'c' for case sensitive, 'n' for newline, 'm' for multiline)
+     * @return the string with regex replacements made
+     */
+    public static String regexpReplace(String inputString, String regexString, String replacementString, String flagsString) {
+        if (inputString == null || regexString == null) {
+            return inputString;
+        }
+        
+        if (replacementString == null) {
+            replacementString = "";
+        }
+        
+        try {
+            int flags = 0;
+            
+            // Parse H2 flags
+            if (flagsString != null) {
+                if (flagsString.contains("i")) {
+                    flags |= Pattern.CASE_INSENSITIVE;
+                }
+                if (flagsString.contains("n")) {
+                    flags |= Pattern.DOTALL;
+                }
+                if (flagsString.contains("m")) {
+                    flags |= Pattern.MULTILINE;
+                }
+                // 'c' flag for case sensitive is default behavior
+            }
+            
+            Pattern pattern = Pattern.compile(regexString, flags);
+            return pattern.matcher(inputString).replaceAll(replacementString);
+            
+        } catch (Exception e) {
+            // Return original string if regex is invalid, similar to H2 behavior
+            return inputString;
+        }
+    }
+    
+    /**
+     * Generate a Soundex phonetic code for a string (H2 compatible SOUNDEX).
+     * Returns a 4-character uppercase code representing the sound of the string.
+     * Based on the standard Soundex algorithm.
+     * @param string the input string
+     * @return the 4-character Soundex code, or null if input is null
+     */
+    public static String soundex(String string) {
+        if (string == null || string.trim().isEmpty()) {
+            return null;
+        }
+        
+        string = string.trim().toUpperCase();
+        
+        // Remove non-alphabetic characters
+        string = string.replaceAll("[^A-Z]", "");
+        
+        if (string.isEmpty()) {
+            return null;
+        }
+        
+        StringBuilder soundex = new StringBuilder();
+        
+        // First character is always kept
+        char firstChar = string.charAt(0);
+        soundex.append(firstChar);
+        
+        // Map consonants to their Soundex codes
+        // B, F, P, V -> 1
+        // C, G, J, K, Q, S, X, Z -> 2  
+        // D, T -> 3
+        // L -> 4
+        // M, N -> 5
+        // R -> 6
+        // H, W, Y -> ignored
+        // A, E, I, O, U -> ignored (except first character)
+        
+        String prevCode = getSoundexCode(firstChar);
+        
+        for (int i = 1; i < string.length() && soundex.length() < 4; i++) {
+            char c = string.charAt(i);
+            String code = getSoundexCode(c);
+            
+            // Add code if it's different from previous and not empty
+            if (!code.isEmpty() && !code.equals(prevCode)) {
+                soundex.append(code);
+            }
+            
+            // Update previous code only if current code is not empty
+            if (!code.isEmpty()) {
+                prevCode = code;
+            }
+        }
+        
+        // Pad with zeros to make it 4 characters
+        while (soundex.length() < 4) {
+            soundex.append('0');
+        }
+        
+        return soundex.toString();
+    }
+    
+    /**
+     * Get the Soundex code for a single character.
+     * @param c the character
+     * @return the Soundex code (single digit) or empty string if ignored
+     */
+    private static String getSoundexCode(char c) {
+        switch (c) {
+            case 'B': case 'F': case 'P': case 'V':
+                return "1";
+            case 'C': case 'G': case 'J': case 'K': case 'Q': case 'S': case 'X': case 'Z':
+                return "2";
+            case 'D': case 'T':
+                return "3";
+            case 'L':
+                return "4";
+            case 'M': case 'N':
+                return "5";
+            case 'R':
+                return "6";
+            case 'H': case 'W': case 'Y':
+            case 'A': case 'E': case 'I': case 'O': case 'U':
+                return ""; // Ignored characters
+            default:
+                return ""; // Non-alphabetic characters
+        }
+    }
+    
+    /**
+     * Check if a string matches a regular expression (H2 compatible REGEXP_LIKE).
+     * @param inputString the source string
+     * @param regexString the regular expression pattern
+     * @return true if the string matches the pattern, false otherwise
+     */
+    public static Boolean regexpLike(String inputString, String regexString) {
+        return regexpLike(inputString, regexString, null);
+    }
+    
+    /**
+     * Check if a string matches a regular expression with flags (H2 compatible REGEXP_LIKE).
+     * @param inputString the source string
+     * @param regexString the regular expression pattern
+     * @param flagsString optional flags ('i' for case insensitive, 'c' for case sensitive, 'n' for newline, 'm' for multiline)
+     * @return true if the string matches the pattern, false otherwise
+     */
+    public static Boolean regexpLike(String inputString, String regexString, String flagsString) {
+        if (inputString == null || regexString == null) {
+            return null;
+        }
+        
+        try {
+            int flags = 0;
+            
+            // Parse H2 flags
+            if (flagsString != null) {
+                if (flagsString.contains("i")) {
+                    flags |= Pattern.CASE_INSENSITIVE;
+                }
+                if (flagsString.contains("n")) {
+                    flags |= Pattern.DOTALL;
+                }
+                if (flagsString.contains("m")) {
+                    flags |= Pattern.MULTILINE;
+                }
+            }
+            
+            Pattern pattern = Pattern.compile(regexString, flags);
+            return pattern.matcher(inputString).find();
+            
+        } catch (Exception e) {
+            // Return false if regex is invalid, similar to H2 behavior
+            return false;
+        }
+    }
+    
+    /**
+     * Extract substring using regular expression (H2 compatible REGEXP_SUBSTR).
+     * @param inputString the source string
+     * @param regexString the regular expression pattern
+     * @return the first match of the pattern, or null if no match
+     */
+    public static String regexpSubstr(String inputString, String regexString) {
+        return regexpSubstr(inputString, regexString, 1, 1, null);
+    }
+    
+    /**
+     * Extract substring using regular expression with position and occurrence (H2 compatible REGEXP_SUBSTR).
+     * @param inputString the source string
+     * @param regexString the regular expression pattern
+     * @param position the starting position (1-based)
+     * @param occurrence which occurrence to return (1-based)
+     * @param flagsString optional flags
+     * @return the matched substring, or null if no match
+     */
+    public static String regexpSubstr(String inputString, String regexString, Integer position, Integer occurrence, String flagsString) {
+        if (inputString == null || regexString == null) {
+            return null;
+        }
+        
+        if (position == null) position = 1;
+        if (occurrence == null) occurrence = 1;
+        
+        if (position < 1 || occurrence < 1) {
+            return null;
+        }
+        
+        try {
+            int flags = 0;
+            
+            // Parse H2 flags
+            if (flagsString != null) {
+                if (flagsString.contains("i")) {
+                    flags |= Pattern.CASE_INSENSITIVE;
+                }
+                if (flagsString.contains("n")) {
+                    flags |= Pattern.DOTALL;
+                }
+                if (flagsString.contains("m")) {
+                    flags |= Pattern.MULTILINE;
+                }
+            }
+            
+            Pattern pattern = Pattern.compile(regexString, flags);
+            Matcher matcher = pattern.matcher(inputString);
+            
+            // Start from the specified position (convert to 0-based)
+            int startIndex = Math.max(0, position - 1);
+            if (startIndex >= inputString.length()) {
+                return null;
+            }
+            
+            // Find the nth occurrence
+            int currentOccurrence = 0;
+            matcher.region(startIndex, inputString.length());
+            
+            while (matcher.find()) {
+                currentOccurrence++;
+                if (currentOccurrence == occurrence) {
+                    return matcher.group();
+                }
+            }
+            
+            return null; // Occurrence not found
+            
+        } catch (Exception e) {
+            // Return null if regex is invalid
+            return null;
+        }
+    }
+    
+    /**
+     * Convert string to initcap format (H2 compatible INITCAP).
+     * Capitalizes the first letter of each word.
+     * @param string the input string
+     * @return the string with initial caps
+     */
+    public static String initcap(String string) {
+        if (string == null || string.isEmpty()) {
+            return string;
+        }
+        
+        StringBuilder result = new StringBuilder();
+        boolean capitalizeNext = true;
+        
+        for (char c : string.toCharArray()) {
+            if (Character.isLetter(c)) {
+                if (capitalizeNext) {
+                    result.append(Character.toUpperCase(c));
+                    capitalizeNext = false;
+                } else {
+                    result.append(Character.toLowerCase(c));
+                }
+            } else {
+                result.append(c);
+                capitalizeNext = true;
+            }
+        }
+        
+        return result.toString();
     }
 }

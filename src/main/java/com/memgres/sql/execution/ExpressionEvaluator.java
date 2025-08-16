@@ -1,6 +1,7 @@
 package com.memgres.sql.execution;
 
 import com.memgres.core.MemGresEngine;
+import com.memgres.functions.StringFunctions;
 import com.memgres.functions.UuidFunctions;
 import com.memgres.sql.ast.expression.AggregateFunction;
 import com.memgres.sql.ast.expression.BinaryExpression;
@@ -327,6 +328,18 @@ public class ExpressionEvaluator {
                 return evaluateRoundFunction(arguments, context);
             case "rand":
                 return evaluateRandFunction();
+                
+            // H2 String Functions
+            case "regexp_replace":
+                return evaluateRegexpReplaceFunction(arguments, context);
+            case "soundex":
+                return evaluateSoundexFunction(arguments, context);
+            case "regexp_like":
+                return evaluateRegexpLikeFunction(arguments, context);
+            case "regexp_substr":
+                return evaluateRegexpSubstrFunction(arguments, context);
+            case "initcap":
+                return evaluateInitcapFunction(arguments, context);
                 
             default:
                 throw new UnsupportedOperationException("Function not supported: " + functionName);
@@ -742,5 +755,122 @@ public class ExpressionEvaluator {
             logger.error("Failed to evaluate CURRENT VALUE FOR {}: {}", expr.getSequenceName(), e.getMessage());
             throw new IllegalStateException("Failed to evaluate CURRENT VALUE FOR: " + e.getMessage(), e);
         }
+    }
+    
+    // H2 String Function Implementations
+    
+    /**
+     * Evaluate REGEXP_REPLACE function.
+     */
+    private String evaluateRegexpReplaceFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() < 3 || arguments.size() > 4) {
+            throw new IllegalArgumentException("REGEXP_REPLACE function requires 3 or 4 arguments");
+        }
+        
+        Object inputValue = evaluate(arguments.get(0), context);
+        Object regexValue = evaluate(arguments.get(1), context);
+        Object replacementValue = evaluate(arguments.get(2), context);
+        Object flagsValue = arguments.size() > 3 ? evaluate(arguments.get(3), context) : null;
+        
+        if (inputValue == null || regexValue == null) {
+            return (String) inputValue;
+        }
+        
+        String inputString = inputValue.toString();
+        String regexString = regexValue.toString();
+        String replacementString = replacementValue != null ? replacementValue.toString() : "";
+        String flagsString = flagsValue != null ? flagsValue.toString() : null;
+        
+        return StringFunctions.regexpReplace(inputString, regexString, replacementString, flagsString);
+    }
+    
+    /**
+     * Evaluate SOUNDEX function.
+     */
+    private String evaluateSoundexFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() != 1) {
+            throw new IllegalArgumentException("SOUNDEX function requires exactly 1 argument");
+        }
+        
+        Object value = evaluate(arguments.get(0), context);
+        if (value == null) {
+            return null;
+        }
+        
+        String inputString = value.toString();
+        return StringFunctions.soundex(inputString);
+    }
+    
+    /**
+     * Evaluate REGEXP_LIKE function.
+     */
+    private Boolean evaluateRegexpLikeFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() < 2 || arguments.size() > 3) {
+            throw new IllegalArgumentException("REGEXP_LIKE function requires 2 or 3 arguments");
+        }
+        
+        Object inputValue = evaluate(arguments.get(0), context);
+        Object regexValue = evaluate(arguments.get(1), context);
+        Object flagsValue = arguments.size() > 2 ? evaluate(arguments.get(2), context) : null;
+        
+        if (inputValue == null || regexValue == null) {
+            return null;
+        }
+        
+        String inputString = inputValue.toString();
+        String regexString = regexValue.toString();
+        String flagsString = flagsValue != null ? flagsValue.toString() : null;
+        
+        return StringFunctions.regexpLike(inputString, regexString, flagsString);
+    }
+    
+    /**
+     * Evaluate REGEXP_SUBSTR function.
+     */
+    private String evaluateRegexpSubstrFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() < 2 || arguments.size() > 5) {
+            throw new IllegalArgumentException("REGEXP_SUBSTR function requires 2 to 5 arguments");
+        }
+        
+        Object inputValue = evaluate(arguments.get(0), context);
+        Object regexValue = evaluate(arguments.get(1), context);
+        
+        if (inputValue == null || regexValue == null) {
+            return null;
+        }
+        
+        String inputString = inputValue.toString();
+        String regexString = regexValue.toString();
+        
+        if (arguments.size() == 2) {
+            return StringFunctions.regexpSubstr(inputString, regexString);
+        }
+        
+        Object positionValue = arguments.size() > 2 ? evaluate(arguments.get(2), context) : 1;
+        Object occurrenceValue = arguments.size() > 3 ? evaluate(arguments.get(3), context) : 1;
+        Object flagsValue = arguments.size() > 4 ? evaluate(arguments.get(4), context) : null;
+        
+        Integer position = positionValue instanceof Number ? ((Number) positionValue).intValue() : 1;
+        Integer occurrence = occurrenceValue instanceof Number ? ((Number) occurrenceValue).intValue() : 1;
+        String flagsString = flagsValue != null ? flagsValue.toString() : null;
+        
+        return StringFunctions.regexpSubstr(inputString, regexString, position, occurrence, flagsString);
+    }
+    
+    /**
+     * Evaluate INITCAP function.
+     */
+    private String evaluateInitcapFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() != 1) {
+            throw new IllegalArgumentException("INITCAP function requires exactly 1 argument");
+        }
+        
+        Object value = evaluate(arguments.get(0), context);
+        if (value == null) {
+            return null;
+        }
+        
+        String inputString = value.toString();
+        return StringFunctions.initcap(inputString);
     }
 }
