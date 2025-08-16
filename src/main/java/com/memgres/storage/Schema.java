@@ -18,6 +18,7 @@ public class Schema {
     private final String name;
     private final ConcurrentMap<String, Table> tables;
     private final ConcurrentMap<String, View> views;
+    private final ConcurrentMap<String, MaterializedView> materializedViews;
     private final ConcurrentMap<String, Sequence> sequences;
     private final ReadWriteLock schemaLock;
     
@@ -29,6 +30,7 @@ public class Schema {
         this.name = name.toLowerCase(); // PostgreSQL converts schema names to lowercase
         this.tables = new ConcurrentHashMap<>();
         this.views = new ConcurrentHashMap<>();
+        this.materializedViews = new ConcurrentHashMap<>();
         this.sequences = new ConcurrentHashMap<>();
         this.schemaLock = new ReentrantReadWriteLock();
         
@@ -289,6 +291,117 @@ public class Schema {
         }
     }
     
+    // ===== MATERIALIZED VIEW MANAGEMENT METHODS =====
+    
+    /**
+     * Create a materialized view in this schema
+     * @param materializedView the materialized view to create
+     * @return true if materialized view was created, false if it already exists
+     */
+    public boolean createMaterializedView(MaterializedView materializedView) {
+        if (materializedView == null) {
+            throw new IllegalArgumentException("Materialized view cannot be null");
+        }
+        
+        String viewName = materializedView.getName().toLowerCase();
+        
+        schemaLock.writeLock().lock();
+        try {
+            if (materializedViews.containsKey(viewName)) {
+                logger.warn("Materialized view already exists in schema {}: {}", name, viewName);
+                return false;
+            }
+            
+            materializedViews.put(viewName, materializedView);
+            logger.debug("Created materialized view {} in schema {}", viewName, name);
+            return true;
+        } finally {
+            schemaLock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Drop a materialized view from this schema
+     * @param viewName the materialized view name to drop
+     * @return true if materialized view was dropped, false if it doesn't exist
+     */
+    public boolean dropMaterializedView(String viewName) {
+        if (viewName == null || viewName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Materialized view name cannot be null or empty");
+        }
+        
+        String normalizedName = viewName.toLowerCase();
+        
+        schemaLock.writeLock().lock();
+        try {
+            MaterializedView removedView = materializedViews.remove(normalizedName);
+            if (removedView != null) {
+                logger.debug("Dropped materialized view {} from schema {}", normalizedName, name);
+                return true;
+            } else {
+                logger.warn("Materialized view does not exist in schema {}: {}", name, normalizedName);
+                return false;
+            }
+        } finally {
+            schemaLock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Get a materialized view by name
+     * @param viewName the materialized view name
+     * @return the materialized view or null if not found
+     */
+    public MaterializedView getMaterializedView(String viewName) {
+        if (viewName == null || viewName.trim().isEmpty()) {
+            return null;
+        }
+        
+        String normalizedName = viewName.toLowerCase();
+        
+        schemaLock.readLock().lock();
+        try {
+            return materializedViews.get(normalizedName);
+        } finally {
+            schemaLock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Check if a materialized view exists in this schema
+     * @param viewName the materialized view name
+     * @return true if the materialized view exists
+     */
+    public boolean materializedViewExists(String viewName) {
+        return getMaterializedView(viewName) != null;
+    }
+    
+    /**
+     * Get all materialized view names in this schema
+     * @return set of materialized view names
+     */
+    public Set<String> getMaterializedViewNames() {
+        schemaLock.readLock().lock();
+        try {
+            return Set.copyOf(materializedViews.keySet());
+        } finally {
+            schemaLock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Get the number of materialized views in this schema
+     * @return materialized view count
+     */
+    public int getMaterializedViewCount() {
+        schemaLock.readLock().lock();
+        try {
+            return materializedViews.size();
+        } finally {
+            schemaLock.readLock().unlock();
+        }
+    }
+    
     // ===== SEQUENCE MANAGEMENT METHODS =====
     
     /**
@@ -406,6 +519,7 @@ public class Schema {
                 "name='" + name + '\'' +
                 ", tableCount=" + getTableCount() +
                 ", viewCount=" + getViewCount() +
+                ", materializedViewCount=" + getMaterializedViewCount() +
                 '}';
     }
     

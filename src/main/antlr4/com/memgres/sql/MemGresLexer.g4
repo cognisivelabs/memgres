@@ -93,6 +93,8 @@ FOR: [Ff][Oo][Rr];
 CURRENT: [Cc][Uu][Rr][Rr][Ee][Nn][Tt];
 NEXT: [Nn][Ee][Xx][Tt];
 VIEW: [Vv][Ii][Ee][Ww];
+MATERIALIZED: [Mm][Aa][Tt][Ee][Rr][Ii][Aa][Ll][Ii][Zz][Ee][Dd];
+REFRESH: [Rr][Ee][Ff][Rr][Ee][Ss][Hh];
 REPLACE: [Rr][Ee][Pp][Ll][Aa][Cc][Ee];
 FORCE: [Ff][Oo][Rr][Cc][Ee];
 RESTRICT: [Rr][Ee][Ss][Tt][Rr][Ii][Cc][Tt];
