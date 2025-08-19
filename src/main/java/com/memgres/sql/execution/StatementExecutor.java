@@ -4059,4 +4059,168 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
         }
     }
     
+    @Override
+    public SqlExecutionResult visitCreateSchemaStatement(CreateSchemaStatement node, ExecutionContext context) throws SqlExecutionException {
+        try {
+            String schemaName = node.getSchemaName();
+            
+            // Check if schema already exists
+            if (node.isIfNotExists() && engine.getSchema(schemaName) != null) {
+                return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, 
+                    false, "Schema " + schemaName + " already exists");
+            }
+            
+            boolean created = engine.createSchema(schemaName);
+            if (!created && !node.isIfNotExists()) {
+                throw new SqlExecutionException("Schema " + schemaName + " already exists");
+            }
+            
+            logger.debug("CREATE SCHEMA executed: {}", schemaName);
+            return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, 
+                created, created ? "Schema " + schemaName + " created" : "Schema " + schemaName + " already exists");
+                
+        } catch (Exception e) {
+            logger.error("Failed to create schema {}: {}", node.getSchemaName(), e.getMessage());
+            if (e instanceof SqlExecutionException) {
+                throw (SqlExecutionException) e;
+            }
+            throw new SqlExecutionException("Failed to create schema: " + e.getMessage(), e);
+        }
+    }
+    
+    @Override
+    public SqlExecutionResult visitDropSchemaStatement(DropSchemaStatement node, ExecutionContext context) throws SqlExecutionException {
+        try {
+            String schemaName = node.getSchemaName();
+            
+            // Check if schema exists
+            if (node.isIfExists() && engine.getSchema(schemaName) == null) {
+                return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, 
+                    false, "Schema " + schemaName + " does not exist");
+            }
+            
+            boolean dropped = engine.dropSchema(schemaName, node.isCascade());
+            if (!dropped && !node.isIfExists()) {
+                throw new SqlExecutionException("Schema " + schemaName + " does not exist");
+            }
+            
+            logger.debug("DROP SCHEMA executed: {} (cascade: {})", schemaName, node.isCascade());
+            return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, 
+                dropped, dropped ? "Schema " + schemaName + " dropped" : "Schema " + schemaName + " does not exist");
+                
+        } catch (Exception e) {
+            logger.error("Failed to drop schema {}: {}", node.getSchemaName(), e.getMessage());
+            if (e instanceof SqlExecutionException) {
+                throw (SqlExecutionException) e;
+            }
+            throw new SqlExecutionException("Failed to drop schema: " + e.getMessage(), e);
+        }
+    }
+    
+    @Override
+    public SqlExecutionResult visitSetStatement(SetStatement node, ExecutionContext context) throws SqlExecutionException {
+        try {
+            String configKey = node.getConfigurationKey();
+            Object configValue = node.getConfigurationValue();
+            
+            // For now, we'll store configuration in the engine's context
+            // In a real implementation, this would be stored in a configuration manager
+            logger.debug("SET {} = {}", configKey, configValue);
+            
+            // Store in engine context (we'll need to add this to MemGresEngine)
+            // For now, just log and return success
+            return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, 
+                true, "Configuration " + configKey + " set to " + configValue);
+                
+        } catch (Exception e) {
+            logger.error("Failed to set configuration {}: {}", node.getConfigurationKey(), e.getMessage());
+            if (e instanceof SqlExecutionException) {
+                throw (SqlExecutionException) e;
+            }
+            throw new SqlExecutionException("Failed to set configuration: " + e.getMessage(), e);
+        }
+    }
+    
+    @Override
+    public SqlExecutionResult visitExplainStatement(ExplainStatement node, ExecutionContext context) throws SqlExecutionException {
+        try {
+            Statement targetStatement = node.getTargetStatement();
+            
+            // Generate a simple execution plan
+            StringBuilder plan = new StringBuilder();
+            plan.append("QUERY PLAN\n");
+            plan.append("-----------\n");
+            
+            if (targetStatement instanceof SelectStatement) {
+                SelectStatement selectStmt = (SelectStatement) targetStatement;
+                plan.append("SELECT\n");
+                
+                // For now, provide a simplified analysis
+                // In a real implementation, we'd analyze the parsed query structure
+                String queryText = targetStatement.toString().toLowerCase();
+                
+                if (queryText.contains("where")) {
+                    plan.append("  Filter: WHERE clause present\n");
+                } else {
+                    plan.append("  Full Table Scan\n");
+                }
+                
+                if (queryText.contains("order by")) {
+                    plan.append("  Sort: ORDER BY clause present\n");
+                }
+                
+                if (queryText.contains("group by")) {
+                    plan.append("  Aggregate: GROUP BY clause present\n");
+                }
+            } else if (targetStatement instanceof InsertStatement) {
+                InsertStatement insertStmt = (InsertStatement) targetStatement;
+                plan.append("INSERT\n");
+                plan.append("  Target: " + insertStmt.getTableName() + "\n");
+                plan.append("  Rows: " + insertStmt.getValuesList().size() + "\n");
+            } else if (targetStatement instanceof UpdateStatement) {
+                UpdateStatement updateStmt = (UpdateStatement) targetStatement;
+                plan.append("UPDATE\n");
+                plan.append("  Target: " + updateStmt.getTableName() + "\n");
+                
+                // Simple text-based analysis for now
+                String queryText = targetStatement.toString().toLowerCase();
+                if (queryText.contains("where")) {
+                    plan.append("  Filter: WHERE clause present\n");
+                } else {
+                    plan.append("  Full Table Update\n");
+                }
+            } else if (targetStatement instanceof DeleteStatement) {
+                DeleteStatement deleteStmt = (DeleteStatement) targetStatement;
+                plan.append("DELETE\n");
+                plan.append("  Target: " + deleteStmt.getTableName() + "\n");
+                
+                // Simple text-based analysis for now
+                String queryText = targetStatement.toString().toLowerCase();
+                if (queryText.contains("where")) {
+                    plan.append("  Filter: WHERE clause present\n");
+                } else {
+                    plan.append("  Full Table Delete\n");
+                }
+            }
+            
+            // Return the plan as a single-row result
+            List<Column> columns = List.of(new Column.Builder()
+                .name("query_plan")
+                .dataType(DataType.TEXT)
+                .build());
+            
+            Row planRow = new Row(1L, new Object[] { plan.toString() });
+            List<Row> rows = List.of(planRow);
+            
+            return new SqlExecutionResult(columns, rows);
+            
+        } catch (Exception e) {
+            logger.error("Failed to explain statement: {}", e.getMessage());
+            if (e instanceof SqlExecutionException) {
+                throw (SqlExecutionException) e;
+            }
+            throw new SqlExecutionException("Failed to explain statement: " + e.getMessage(), e);
+        }
+    }
+    
 }

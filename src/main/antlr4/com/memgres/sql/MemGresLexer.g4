@@ -99,6 +99,8 @@ REPLACE: [Rr][Ee][Pp][Ll][Aa][Cc][Ee];
 FORCE: [Ff][Oo][Rr][Cc][Ee];
 RESTRICT: [Rr][Ee][Ss][Tt][Rr][Ii][Cc][Tt];
 CASCADE: [Cc][Aa][Ss][Cc][Aa][Dd][Ee];
+SCHEMA: [Ss][Cc][Hh][Ee][Mm][Aa];
+EXPLAIN: [Ee][Xx][Pp][Ll][Aa][Ii][Nn];
 TRIGGER: [Tt][Rr][Ii][Gg][Gg][Ee][Rr];
 INSTEAD: [Ii][Nn][Ss][Tt][Ee][Aa][Dd];
 OF: [Oo][Ff];

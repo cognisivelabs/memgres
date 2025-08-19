@@ -28,6 +28,10 @@ statement
     | dropSequenceStatement
     | createTriggerStatement
     | dropTriggerStatement
+    | createSchemaStatement
+    | dropSchemaStatement
+    | setStatement
+    | explainStatement
     ;
 
 // SELECT statement (can be compound with UNION)
@@ -532,6 +536,43 @@ triggerEvent
 triggerImplementation
     : CALL STRING                           # callTriggerImplementation
     | AS STRING                             # sourceTriggerImplementation
+    ;
+
+// CREATE SCHEMA statement
+createSchemaStatement
+    : CREATE SCHEMA (IF NOT EXISTS)? schemaName
+    ;
+
+// DROP SCHEMA statement
+dropSchemaStatement
+    : DROP SCHEMA (IF EXISTS)? schemaName (CASCADE | RESTRICT)?
+    ;
+
+// SET statement for configuration
+setStatement
+    : SET configurationKey EQ configurationValue
+    | SET configurationKey TO configurationValue
+    ;
+
+// EXPLAIN statement for query plans
+explainStatement
+    : EXPLAIN selectStatement
+    | EXPLAIN insertStatement
+    | EXPLAIN updateStatement
+    | EXPLAIN deleteStatement
+    ;
+
+schemaName
+    : identifier
+    ;
+
+configurationKey
+    : identifier (DOT identifier)*
+    ;
+
+configurationValue
+    : literal
+    | identifier
     ;
 
 // Function names (includes identifiers and reserved keywords that can be function names)
