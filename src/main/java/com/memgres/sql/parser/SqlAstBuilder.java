@@ -71,6 +71,14 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
             return (Statement) visit(ctx.createTriggerStatement());
         } else if (ctx.dropTriggerStatement() != null) {
             return (Statement) visit(ctx.dropTriggerStatement());
+        } else if (ctx.createSchemaStatement() != null) {
+            return (Statement) visit(ctx.createSchemaStatement());
+        } else if (ctx.dropSchemaStatement() != null) {
+            return (Statement) visit(ctx.dropSchemaStatement());
+        } else if (ctx.setStatement() != null) {
+            return (Statement) visit(ctx.setStatement());
+        } else if (ctx.explainStatement() != null) {
+            return (Statement) visit(ctx.explainStatement());
         }
         return null;
     }
@@ -1502,5 +1510,56 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
     public FunctionCall visitRawToHexFunction(MemGresParser.RawToHexFunctionContext ctx) {
         Expression rawValue = (Expression) visit(ctx.expression());
         return new FunctionCall("RAWTOHEX", List.of(rawValue));
+    }
+    
+    // CREATE SCHEMA statement
+    @Override
+    public CreateSchemaStatement visitCreateSchemaStatement(MemGresParser.CreateSchemaStatementContext ctx) {
+        boolean ifNotExists = ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null;
+        String schemaName = ctx.schemaName().identifier().getText();
+        return new CreateSchemaStatement(schemaName, ifNotExists);
+    }
+    
+    // DROP SCHEMA statement
+    @Override
+    public DropSchemaStatement visitDropSchemaStatement(MemGresParser.DropSchemaStatementContext ctx) {
+        boolean ifExists = ctx.IF() != null && ctx.EXISTS() != null;
+        String schemaName = ctx.schemaName().identifier().getText();
+        boolean cascade = ctx.CASCADE() != null;
+        return new DropSchemaStatement(schemaName, ifExists, cascade);
+    }
+    
+    // SET statement
+    @Override
+    public SetStatement visitSetStatement(MemGresParser.SetStatementContext ctx) {
+        String configKey = ctx.configurationKey().getText();
+        
+        // Get the configuration value
+        Object configValue;
+        if (ctx.configurationValue().literal() != null) {
+            configValue = visit(ctx.configurationValue().literal());
+        } else {
+            configValue = ctx.configurationValue().identifier().getText();
+        }
+        
+        return new SetStatement(configKey, configValue);
+    }
+    
+    // EXPLAIN statement
+    @Override
+    public ExplainStatement visitExplainStatement(MemGresParser.ExplainStatementContext ctx) {
+        Statement targetStatement = null;
+        
+        if (ctx.selectStatement() != null) {
+            targetStatement = visitSelectStatement(ctx.selectStatement());
+        } else if (ctx.insertStatement() != null) {
+            targetStatement = visitInsertStatement(ctx.insertStatement());
+        } else if (ctx.updateStatement() != null) {
+            targetStatement = visitUpdateStatement(ctx.updateStatement());
+        } else if (ctx.deleteStatement() != null) {
+            targetStatement = visitDeleteStatement(ctx.deleteStatement());
+        }
+        
+        return new ExplainStatement(targetStatement);
     }
 }
