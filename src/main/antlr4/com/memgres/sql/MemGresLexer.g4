@@ -164,6 +164,24 @@ POWER: [Pp][Oo][Ww][Ee][Rr];
 ABS: [Aa][Bb][Ss];
 ROUND: [Rr][Oo][Uu][Nn][Dd];
 RAND: [Rr][Aa][Nn][Dd];
+// H2 Date/Time functions
+CURRENT_TIMESTAMP: [Cc][Uu][Rr][Rr][Ee][Nn][Tt]'_'[Tt][Ii][Mm][Ee][Ss][Tt][Aa][Mm][Pp];
+CURRENT_DATE: [Cc][Uu][Rr][Rr][Ee][Nn][Tt]'_'[Dd][Aa][Tt][Ee];
+CURRENT_TIME: [Cc][Uu][Rr][Rr][Ee][Nn][Tt]'_'[Tt][Ii][Mm][Ee];
+DATEADD: [Dd][Aa][Tt][Ee][Aa][Dd][Dd];
+DATEDIFF: [Dd][Aa][Tt][Ee][Dd][Ii][Ff][Ff];
+FORMATDATETIME: [Ff][Oo][Rr][Mm][Aa][Tt][Dd][Aa][Tt][Ee][Tt][Ii][Mm][Ee];
+PARSEDATETIME: [Pp][Aa][Rr][Ss][Ee][Dd][Aa][Tt][Ee][Tt][Ii][Mm][Ee];
+// H2 System functions
+H2VERSION: [Hh][2][Vv][Ee][Rr][Ss][Ii][Oo][Nn];
+DATABASE_PATH: [Dd][Aa][Tt][Aa][Bb][Aa][Ss][Ee]'_'[Pp][Aa][Tt][Hh];
+MEMORY_USED: [Mm][Ee][Mm][Oo][Rr][Yy]'_'[Uu][Ss][Ee][Dd];
+MEMORY_FREE: [Mm][Ee][Mm][Oo][Rr][Yy]'_'[Ff][Rr][Ee][Ee];
+// H2 String utility functions (non-conflicting)
+POSITION: [Pp][Oo][Ss][Ii][Tt][Ii][Oo][Nn];
+ASCII: [Aa][Ss][Cc][Ii][Ii];
+HEXTORAW: [Hh][Ee][Xx][Tt][Oo][Rr][Aa][Ww];
+RAWTOHEX: [Rr][Aa][Ww][Tt][Oo][Hh][Ee][Xx];
 
 // Window functions
 ROW_NUMBER: [Rr][Oo][Ww]'_'[Nn][Uu][Mm][Bb][Ee][Rr];

@@ -371,7 +371,7 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
     
     @Override
     public FunctionCall visitGenericFunction(MemGresParser.GenericFunctionContext ctx) {
-        String functionName = ctx.identifier().getText();
+        String functionName = ctx.functionName().getText();
         List<Expression> arguments = new ArrayList<>();
         if (ctx.expressionList() != null) {
             for (MemGresParser.ExpressionContext exprCtx : ctx.expressionList().expression()) {
@@ -1409,5 +1409,98 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
         String viewName = ctx.viewName().getText();
         
         return new RefreshMaterializedViewStatement(viewName);
+    }
+    
+    // H2 Date/Time Functions
+    @Override
+    public FunctionCall visitCurrentTimestampFunction(MemGresParser.CurrentTimestampFunctionContext ctx) {
+        return new FunctionCall("CURRENT_TIMESTAMP", List.of());
+    }
+    
+    @Override
+    public FunctionCall visitCurrentDateFunction(MemGresParser.CurrentDateFunctionContext ctx) {
+        return new FunctionCall("CURRENT_DATE", List.of());
+    }
+    
+    @Override
+    public FunctionCall visitCurrentTimeFunction(MemGresParser.CurrentTimeFunctionContext ctx) {
+        return new FunctionCall("CURRENT_TIME", List.of());
+    }
+    
+    @Override
+    public FunctionCall visitDateAddFunction(MemGresParser.DateAddFunctionContext ctx) {
+        Expression unit = (Expression) visit(ctx.expression(0));
+        Expression amount = (Expression) visit(ctx.expression(1));
+        Expression date = (Expression) visit(ctx.expression(2));
+        return new FunctionCall("DATEADD", List.of(unit, amount, date));
+    }
+    
+    @Override
+    public FunctionCall visitDateDiffFunction(MemGresParser.DateDiffFunctionContext ctx) {
+        Expression unit = (Expression) visit(ctx.expression(0));
+        Expression startDate = (Expression) visit(ctx.expression(1));
+        Expression endDate = (Expression) visit(ctx.expression(2));
+        return new FunctionCall("DATEDIFF", List.of(unit, startDate, endDate));
+    }
+    
+    @Override
+    public FunctionCall visitFormatDateTimeFunction(MemGresParser.FormatDateTimeFunctionContext ctx) {
+        Expression date = (Expression) visit(ctx.expression(0));
+        Expression pattern = (Expression) visit(ctx.expression(1));
+        return new FunctionCall("FORMATDATETIME", List.of(date, pattern));
+    }
+    
+    @Override
+    public FunctionCall visitParseDateTimeFunction(MemGresParser.ParseDateTimeFunctionContext ctx) {
+        Expression dateString = (Expression) visit(ctx.expression(0));
+        Expression pattern = (Expression) visit(ctx.expression(1));
+        return new FunctionCall("PARSEDATETIME", List.of(dateString, pattern));
+    }
+    
+    // H2 System Functions
+    @Override
+    public FunctionCall visitH2VersionFunction(MemGresParser.H2VersionFunctionContext ctx) {
+        return new FunctionCall("H2VERSION", List.of());
+    }
+    
+    @Override
+    public FunctionCall visitDatabasePathFunction(MemGresParser.DatabasePathFunctionContext ctx) {
+        return new FunctionCall("DATABASE_PATH", List.of());
+    }
+    
+    @Override
+    public FunctionCall visitMemoryUsedFunction(MemGresParser.MemoryUsedFunctionContext ctx) {
+        return new FunctionCall("MEMORY_USED", List.of());
+    }
+    
+    @Override
+    public FunctionCall visitMemoryFreeFunction(MemGresParser.MemoryFreeFunctionContext ctx) {
+        return new FunctionCall("MEMORY_FREE", List.of());
+    }
+    
+    // H2 String Utility Functions
+    @Override
+    public FunctionCall visitPositionFunction(MemGresParser.PositionFunctionContext ctx) {
+        Expression substring = (Expression) visit(ctx.expression(0));
+        Expression string = (Expression) visit(ctx.expression(1));
+        return new FunctionCall("POSITION", List.of(substring, string));
+    }
+    
+    @Override
+    public FunctionCall visitAsciiFunction(MemGresParser.AsciiFunctionContext ctx) {
+        Expression string = (Expression) visit(ctx.expression());
+        return new FunctionCall("ASCII", List.of(string));
+    }
+    
+    @Override
+    public FunctionCall visitHexToRawFunction(MemGresParser.HexToRawFunctionContext ctx) {
+        Expression hexString = (Expression) visit(ctx.expression());
+        return new FunctionCall("HEXTORAW", List.of(hexString));
+    }
+    
+    @Override
+    public FunctionCall visitRawToHexFunction(MemGresParser.RawToHexFunctionContext ctx) {
+        Expression rawValue = (Expression) visit(ctx.expression());
+        return new FunctionCall("RAWTOHEX", List.of(rawValue));
     }
 }

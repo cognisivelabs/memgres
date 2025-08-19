@@ -347,7 +347,25 @@ functionCall
     | ABS LPAREN expression RPAREN                     # absFunction
     | ROUND LPAREN expression (COMMA expression)? RPAREN # roundFunction
     | RAND LPAREN RPAREN                               # randFunction
-    | identifier LPAREN (expressionList)? RPAREN       # genericFunction
+    // H2 Date/Time functions
+    | CURRENT_TIMESTAMP LPAREN RPAREN                  # currentTimestampFunction
+    | CURRENT_DATE LPAREN RPAREN                       # currentDateFunction
+    | CURRENT_TIME LPAREN RPAREN                       # currentTimeFunction
+    | DATEADD LPAREN expression COMMA expression COMMA expression RPAREN # dateAddFunction
+    | DATEDIFF LPAREN expression COMMA expression COMMA expression RPAREN # dateDiffFunction
+    | FORMATDATETIME LPAREN expression COMMA expression RPAREN # formatDateTimeFunction
+    | PARSEDATETIME LPAREN expression COMMA expression RPAREN # parseDateTimeFunction
+    // H2 System functions
+    | H2VERSION LPAREN RPAREN                          # h2VersionFunction
+    | DATABASE_PATH LPAREN RPAREN                      # databasePathFunction
+    | MEMORY_USED LPAREN RPAREN                        # memoryUsedFunction
+    | MEMORY_FREE LPAREN RPAREN                        # memoryFreeFunction
+    // H2 String utility functions (non-conflicting tokens)
+    | POSITION LPAREN expression COMMA expression RPAREN # positionFunction
+    | ASCII LPAREN expression RPAREN                   # asciiFunction
+    | HEXTORAW LPAREN expression RPAREN                # hexToRawFunction
+    | RAWTOHEX LPAREN expression RPAREN                # rawToHexFunction
+    | functionName LPAREN (expressionList)? RPAREN     # genericFunction
     ;
 
 // Window functions
@@ -514,6 +532,14 @@ triggerEvent
 triggerImplementation
     : CALL STRING                           # callTriggerImplementation
     | AS STRING                             # sourceTriggerImplementation
+    ;
+
+// Function names (includes identifiers and reserved keywords that can be function names)
+functionName
+    : identifier
+    | LEFT          // H2 string function LEFT(string, length)
+    | RIGHT         // H2 string function RIGHT(string, length)  
+    | CHAR          // H2 string function CHAR(ascii_code)
     ;
 
 // Identifiers (case-insensitive)
