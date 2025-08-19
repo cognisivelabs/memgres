@@ -2,6 +2,7 @@ package com.memgres.storage;
 
 import com.memgres.types.Column;
 import com.memgres.types.Row;
+import com.memgres.storage.statistics.StatisticsManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,8 +25,10 @@ public class Table {
     private final Map<String, Column> columnMap;
     private final List<Row> rows;
     private final ConcurrentMap<String, Index> indexes;
+    private final ConcurrentMap<String, CompositeIndex> compositeIndexes;
     private final ReadWriteLock tableLock;
     private final AtomicLong rowIdGenerator;
+    private volatile StatisticsManager statisticsManager;
     
     public Table(String name, List<Column> columns) {
         if (name == null || name.trim().isEmpty()) {
@@ -40,6 +43,7 @@ public class Table {
         this.columnMap = new HashMap<>();
         this.rows = new ArrayList<>();
         this.indexes = new ConcurrentHashMap<>();
+        this.compositeIndexes = new ConcurrentHashMap<>();
         this.tableLock = new ReentrantReadWriteLock();
         this.rowIdGenerator = new AtomicLong(0);
         
@@ -113,6 +117,12 @@ public class Table {
             
             // Update indexes
             updateIndexesForInsert(row);
+            updateCompositeIndexesForInsert(row);
+            
+            // Update statistics if available
+            if (statisticsManager != null) {
+                statisticsManager.updateTableStatistics(name, this);
+            }
             
             logger.debug("Inserted row {} into table {}", rowId, name);
             return rowId;
@@ -151,6 +161,12 @@ public class Table {
                     
                     // Update indexes
                     updateIndexesForUpdate(oldRow, newRow);
+                    updateCompositeIndexesForUpdate(oldRow, newRow);
+                    
+                    // Update statistics if available
+                    if (statisticsManager != null) {
+                        statisticsManager.updateTableStatistics(name, this);
+                    }
                     
                     logger.debug("Updated row {} in table {}", rowId, name);
                     return true;
@@ -180,6 +196,12 @@ public class Table {
                     
                     // Update indexes
                     updateIndexesForDelete(row);
+                    updateCompositeIndexesForDelete(row);
+                    
+                    // Update statistics if available
+                    if (statisticsManager != null) {
+                        statisticsManager.updateTableStatistics(name, this);
+                    }
                     
                     logger.debug("Deleted row {} from table {}", rowId, name);
                     return true;
@@ -448,6 +470,7 @@ public class Table {
             
             // Update indexes
             updateIndexesForInsert(row);
+            updateCompositeIndexesForInsert(row);
             
             // Update row ID generator to ensure we don't reuse this ID
             if (rowId >= rowIdGenerator.get()) {
@@ -721,6 +744,11 @@ public class Table {
                 logger.info("CONTINUE IDENTITY applied for table {} - row ID generator preserved", name);
             }
             
+            // Update statistics to reflect empty table
+            if (statisticsManager != null) {
+                statisticsManager.updateTableStatistics(name, this);
+            }
+            
             logger.info("Truncated table {} (restart identity: {}): {} rows removed", name, restartIdentity, rowCount);
             
         } finally {
@@ -752,10 +780,145 @@ public class Table {
             // Reset row ID generator
             rowIdGenerator.set(0);
             
+            // Update statistics to reflect empty table
+            if (statisticsManager != null) {
+                statisticsManager.updateTableStatistics(name, this);
+            }
+            
             logger.info("Truncated table {}: {} rows removed", name, rowCount);
             return rowCount;
         } finally {
             tableLock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Set the statistics manager for this table.
+     */
+    public void setStatisticsManager(StatisticsManager statisticsManager) {
+        this.statisticsManager = statisticsManager;
+    }
+    
+    /**
+     * Get the statistics manager for this table.
+     */
+    public StatisticsManager getStatisticsManager() {
+        return statisticsManager;
+    }
+    
+    /**
+     * Trigger statistics update for this table.
+     */
+    public void updateStatistics() {
+        if (statisticsManager != null) {
+            statisticsManager.updateTableStatistics(name, this);
+        }
+    }
+    
+    /**
+     * Force immediate statistics update.
+     */
+    public void forceUpdateStatistics() {
+        if (statisticsManager != null) {
+            statisticsManager.forceUpdateStatistics(name, this);
+        }
+    }
+    
+    /**
+     * Create a composite index on multiple columns.
+     */
+    public boolean createCompositeIndex(String indexName, List<String> columnNames, boolean unique, boolean ifNotExists) {
+        if (columnNames == null || columnNames.isEmpty()) {
+            throw new IllegalArgumentException("Composite index must have at least one column");
+        }
+        
+        // Validate all columns exist
+        List<Column> indexColumns = new ArrayList<>();
+        for (String columnName : columnNames) {
+            Column column = getColumn(columnName);
+            if (column == null) {
+                throw new IllegalArgumentException("Column does not exist: " + columnName);
+            }
+            indexColumns.add(column);
+        }
+        
+        // Generate index name if not provided
+        if (indexName == null || indexName.trim().isEmpty()) {
+            indexName = "idx_composite_" + name + "_" + String.join("_", columnNames);
+        }
+        
+        tableLock.writeLock().lock();
+        try {
+            if (compositeIndexes.containsKey(indexName)) {
+                if (ifNotExists) {
+                    logger.debug("Composite index {} already exists, skipping creation due to IF NOT EXISTS", indexName);
+                    return false;
+                } else {
+                    throw new IllegalArgumentException("Composite index already exists: " + indexName);
+                }
+            }
+            
+            CompositeIndex compositeIndex = new CompositeIndex(indexName, indexColumns, this, unique);
+            compositeIndexes.put(indexName, compositeIndex);
+            
+            logger.debug("Created{} composite index {} on columns {} for table {}",
+                         unique ? " unique" : "", indexName, columnNames, name);
+            return true;
+        } finally {
+            tableLock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Get a composite index by name.
+     */
+    public CompositeIndex getCompositeIndex(String indexName) {
+        return compositeIndexes.get(indexName);
+    }
+    
+    /**
+     * Drop a composite index by name.
+     */
+    public boolean dropCompositeIndex(String indexName, boolean ifExists) {
+        tableLock.writeLock().lock();
+        try {
+            CompositeIndex removed = compositeIndexes.remove(indexName);
+            if (removed != null) {
+                logger.debug("Dropped composite index {} from table {}", indexName, name);
+                return true;
+            } else if (ifExists) {
+                logger.debug("Composite index {} does not exist, skipping drop due to IF EXISTS", indexName);
+                return false;
+            } else {
+                throw new IllegalArgumentException("Composite index does not exist: " + indexName);
+            }
+        } finally {
+            tableLock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Get all composite indexes.
+     */
+    public Map<String, CompositeIndex> getAllCompositeIndexes() {
+        return new HashMap<>(compositeIndexes);
+    }
+    
+    private void updateCompositeIndexesForInsert(Row row) {
+        for (CompositeIndex compositeIndex : compositeIndexes.values()) {
+            compositeIndex.insert(row);
+        }
+    }
+    
+    private void updateCompositeIndexesForUpdate(Row oldRow, Row newRow) {
+        for (CompositeIndex compositeIndex : compositeIndexes.values()) {
+            compositeIndex.update(oldRow, newRow);
+        }
+    }
+    
+    private void updateCompositeIndexesForDelete(Row row) {
+        for (CompositeIndex compositeIndex : compositeIndexes.values()) {
+            compositeIndex.delete(row);
         }
     }
     
