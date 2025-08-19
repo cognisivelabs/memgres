@@ -25,6 +25,12 @@ import java.util.List;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -340,6 +346,48 @@ public class ExpressionEvaluator {
                 return evaluateRegexpSubstrFunction(arguments, context);
             case "initcap":
                 return evaluateInitcapFunction(arguments, context);
+                
+            // H2 Date/Time Functions
+            case "current_timestamp":
+                return evaluateCurrentTimestampFunction();
+            case "current_date":
+                return evaluateCurrentDateFunction();
+            case "current_time":
+                return evaluateCurrentTimeFunction();
+            case "dateadd":
+                return evaluateDateAddFunction(arguments, context);
+            case "datediff":
+                return evaluateDateDiffFunction(arguments, context);
+            case "formatdatetime":
+                return evaluateFormatDateTimeFunction(arguments, context);
+            case "parsedatetime":
+                return evaluateParseDateTimeFunction(arguments, context);
+                
+            // H2 System Functions
+            case "h2version":
+                return evaluateH2VersionFunction();
+            case "database_path":
+                return evaluateDatabasePathFunction();
+            case "memory_used":
+                return evaluateMemoryUsedFunction();
+            case "memory_free":
+                return evaluateMemoryFreeFunction();
+                
+            // H2 String Utility Functions
+            case "left":
+                return evaluateLeftFunction(arguments, context);
+            case "right":
+                return evaluateRightFunction(arguments, context);
+            case "position":
+                return evaluatePositionFunction(arguments, context);
+            case "ascii":
+                return evaluateAsciiFunction(arguments, context);
+            case "char":
+                return evaluateCharFunction(arguments, context);
+            case "hextoraw":
+                return evaluateHexToRawFunction(arguments, context);
+            case "rawtohex":
+                return evaluateRawToHexFunction(arguments, context);
                 
             default:
                 throw new UnsupportedOperationException("Function not supported: " + functionName);
@@ -872,5 +920,448 @@ public class ExpressionEvaluator {
         
         String inputString = value.toString();
         return StringFunctions.initcap(inputString);
+    }
+    
+    // ===== H2 DATE/TIME FUNCTION IMPLEMENTATIONS =====
+    
+    /**
+     * Evaluate CURRENT_TIMESTAMP function.
+     */
+    private LocalDateTime evaluateCurrentTimestampFunction() {
+        return LocalDateTime.now();
+    }
+    
+    /**
+     * Evaluate CURRENT_DATE function.
+     */
+    private LocalDate evaluateCurrentDateFunction() {
+        return LocalDate.now();
+    }
+    
+    /**
+     * Evaluate CURRENT_TIME function.
+     */
+    private LocalTime evaluateCurrentTimeFunction() {
+        return LocalTime.now();
+    }
+    
+    /**
+     * Evaluate DATEADD function.
+     * DATEADD(unit, amount, date)
+     */
+    private Object evaluateDateAddFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() != 3) {
+            throw new IllegalArgumentException("DATEADD function requires exactly 3 arguments");
+        }
+        
+        Object unitValue = evaluate(arguments.get(0), context);
+        Object amountValue = evaluate(arguments.get(1), context);
+        Object dateValue = evaluate(arguments.get(2), context);
+        
+        if (unitValue == null || amountValue == null || dateValue == null) {
+            return null;
+        }
+        
+        String unit = unitValue.toString().toUpperCase();
+        long amount = ((Number) amountValue).longValue();
+        
+        if (dateValue instanceof LocalDateTime) {
+            LocalDateTime dateTime = (LocalDateTime) dateValue;
+            return addToDateTime(dateTime, unit, amount);
+        } else if (dateValue instanceof LocalDate) {
+            LocalDate date = (LocalDate) dateValue;
+            LocalDateTime dateTime = date.atStartOfDay();
+            LocalDateTime result = addToDateTime(dateTime, unit, amount);
+            // For date operations, return date if time part is unchanged
+            if (result.toLocalTime().equals(LocalTime.MIDNIGHT)) {
+                return result.toLocalDate();
+            }
+            return result;
+        } else if (dateValue instanceof LocalTime) {
+            LocalTime time = (LocalTime) dateValue;
+            if (unit.equals("HOUR") || unit.equals("MINUTE") || unit.equals("SECOND")) {
+                return addToTime(time, unit, amount);
+            } else {
+                throw new IllegalArgumentException("Cannot add " + unit + " to TIME value");
+            }
+        }
+        
+        throw new IllegalArgumentException("DATEADD requires a date/time value");
+    }
+    
+    private LocalDateTime addToDateTime(LocalDateTime dateTime, String unit, long amount) {
+        switch (unit) {
+            case "YEAR":
+                return dateTime.plusYears(amount);
+            case "MONTH":
+                return dateTime.plusMonths(amount);
+            case "DAY":
+                return dateTime.plusDays(amount);
+            case "HOUR":
+                return dateTime.plusHours(amount);
+            case "MINUTE":
+                return dateTime.plusMinutes(amount);
+            case "SECOND":
+                return dateTime.plusSeconds(amount);
+            case "MILLISECOND":
+                return dateTime.plus(amount, ChronoUnit.MILLIS);
+            default:
+                throw new IllegalArgumentException("Unsupported DATEADD unit: " + unit);
+        }
+    }
+    
+    private LocalTime addToTime(LocalTime time, String unit, long amount) {
+        switch (unit) {
+            case "HOUR":
+                return time.plusHours(amount);
+            case "MINUTE":
+                return time.plusMinutes(amount);
+            case "SECOND":
+                return time.plusSeconds(amount);
+            default:
+                throw new IllegalArgumentException("Unsupported time unit: " + unit);
+        }
+    }
+    
+    /**
+     * Evaluate DATEDIFF function.
+     * DATEDIFF(unit, start_date, end_date)
+     */
+    private Long evaluateDateDiffFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() != 3) {
+            throw new IllegalArgumentException("DATEDIFF function requires exactly 3 arguments");
+        }
+        
+        Object unitValue = evaluate(arguments.get(0), context);
+        Object startValue = evaluate(arguments.get(1), context);
+        Object endValue = evaluate(arguments.get(2), context);
+        
+        if (unitValue == null || startValue == null || endValue == null) {
+            return null;
+        }
+        
+        String unit = unitValue.toString().toUpperCase();
+        
+        LocalDateTime startDateTime = convertToDateTime(startValue);
+        LocalDateTime endDateTime = convertToDateTime(endValue);
+        
+        switch (unit) {
+            case "YEAR":
+                return ChronoUnit.YEARS.between(startDateTime, endDateTime);
+            case "MONTH":
+                return ChronoUnit.MONTHS.between(startDateTime, endDateTime);
+            case "DAY":
+                return ChronoUnit.DAYS.between(startDateTime, endDateTime);
+            case "HOUR":
+                return ChronoUnit.HOURS.between(startDateTime, endDateTime);
+            case "MINUTE":
+                return ChronoUnit.MINUTES.between(startDateTime, endDateTime);
+            case "SECOND":
+                return ChronoUnit.SECONDS.between(startDateTime, endDateTime);
+            case "MILLISECOND":
+                return ChronoUnit.MILLIS.between(startDateTime, endDateTime);
+            default:
+                throw new IllegalArgumentException("Unsupported DATEDIFF unit: " + unit);
+        }
+    }
+    
+    private LocalDateTime convertToDateTime(Object value) {
+        if (value instanceof LocalDateTime) {
+            return (LocalDateTime) value;
+        } else if (value instanceof LocalDate) {
+            return ((LocalDate) value).atStartOfDay();
+        } else if (value instanceof LocalTime) {
+            return LocalDate.now().atTime((LocalTime) value);
+        } else {
+            throw new IllegalArgumentException("Cannot convert to DateTime: " + value.getClass());
+        }
+    }
+    
+    /**
+     * Evaluate FORMATDATETIME function.
+     * FORMATDATETIME(date, pattern)
+     */
+    private String evaluateFormatDateTimeFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() != 2) {
+            throw new IllegalArgumentException("FORMATDATETIME function requires exactly 2 arguments");
+        }
+        
+        Object dateValue = evaluate(arguments.get(0), context);
+        Object patternValue = evaluate(arguments.get(1), context);
+        
+        if (dateValue == null || patternValue == null) {
+            return null;
+        }
+        
+        String pattern = patternValue.toString();
+        
+        try {
+            if (dateValue instanceof LocalDateTime) {
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern);
+                return ((LocalDateTime) dateValue).format(formatter);
+            } else if (dateValue instanceof LocalDate) {
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern);
+                return ((LocalDate) dateValue).format(formatter);
+            } else if (dateValue instanceof LocalTime) {
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern);
+                return ((LocalTime) dateValue).format(formatter);
+            } else {
+                throw new IllegalArgumentException("FORMATDATETIME requires a date/time value");
+            }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid date format pattern: " + pattern, e);
+        }
+    }
+    
+    /**
+     * Evaluate PARSEDATETIME function.
+     * PARSEDATETIME(string, pattern)
+     */
+    private LocalDateTime evaluateParseDateTimeFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() != 2) {
+            throw new IllegalArgumentException("PARSEDATETIME function requires exactly 2 arguments");
+        }
+        
+        Object stringValue = evaluate(arguments.get(0), context);
+        Object patternValue = evaluate(arguments.get(1), context);
+        
+        if (stringValue == null || patternValue == null) {
+            return null;
+        }
+        
+        String dateString = stringValue.toString();
+        String pattern = patternValue.toString();
+        
+        try {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern);
+            return LocalDateTime.parse(dateString, formatter);
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException("Cannot parse date '" + dateString + "' with pattern '" + pattern + "'", e);
+        }
+    }
+    
+    // ===== H2 SYSTEM FUNCTION IMPLEMENTATIONS =====
+    
+    /**
+     * Evaluate H2VERSION function.
+     */
+    private String evaluateH2VersionFunction() {
+        // Return MemGres version with H2 compatibility note
+        return "MemGres 1.0.0 (H2 Compatible)";
+    }
+    
+    /**
+     * Evaluate DATABASE_PATH function.
+     */
+    private String evaluateDatabasePathFunction() {
+        // For in-memory database, return a virtual path
+        return "mem:memgres";
+    }
+    
+    /**
+     * Evaluate MEMORY_USED function.
+     */
+    private Long evaluateMemoryUsedFunction() {
+        Runtime runtime = Runtime.getRuntime();
+        long totalMemory = runtime.totalMemory();
+        long freeMemory = runtime.freeMemory();
+        return totalMemory - freeMemory;
+    }
+    
+    /**
+     * Evaluate MEMORY_FREE function.
+     */
+    private Long evaluateMemoryFreeFunction() {
+        Runtime runtime = Runtime.getRuntime();
+        return runtime.freeMemory();
+    }
+    
+    // ===== H2 STRING UTILITY FUNCTION IMPLEMENTATIONS =====
+    
+    /**
+     * Evaluate LEFT function.
+     * LEFT(string, length)
+     */
+    private String evaluateLeftFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() != 2) {
+            throw new IllegalArgumentException("LEFT function requires exactly 2 arguments");
+        }
+        
+        Object stringValue = evaluate(arguments.get(0), context);
+        Object lengthValue = evaluate(arguments.get(1), context);
+        
+        if (stringValue == null) {
+            return null;
+        }
+        
+        if (lengthValue == null || !(lengthValue instanceof Number)) {
+            throw new IllegalArgumentException("LEFT function requires a numeric length argument");
+        }
+        
+        String inputString = stringValue.toString();
+        int length = ((Number) lengthValue).intValue();
+        
+        return StringFunctions.left(inputString, length);
+    }
+    
+    /**
+     * Evaluate RIGHT function.
+     * RIGHT(string, length)
+     */
+    private String evaluateRightFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() != 2) {
+            throw new IllegalArgumentException("RIGHT function requires exactly 2 arguments");
+        }
+        
+        Object stringValue = evaluate(arguments.get(0), context);
+        Object lengthValue = evaluate(arguments.get(1), context);
+        
+        if (stringValue == null) {
+            return null;
+        }
+        
+        if (lengthValue == null || !(lengthValue instanceof Number)) {
+            throw new IllegalArgumentException("RIGHT function requires a numeric length argument");
+        }
+        
+        String inputString = stringValue.toString();
+        int length = ((Number) lengthValue).intValue();
+        
+        return StringFunctions.right(inputString, length);
+    }
+    
+    /**
+     * Evaluate POSITION function.
+     * POSITION(substring, string)
+     */
+    private Integer evaluatePositionFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() != 2) {
+            throw new IllegalArgumentException("POSITION function requires exactly 2 arguments");
+        }
+        
+        Object substringValue = evaluate(arguments.get(0), context);
+        Object stringValue = evaluate(arguments.get(1), context);
+        
+        if (substringValue == null || stringValue == null) {
+            return null;
+        }
+        
+        String substring = substringValue.toString();
+        String string = stringValue.toString();
+        
+        return StringFunctions.position(substring, string);
+    }
+    
+    /**
+     * Evaluate ASCII function.
+     * ASCII(string)
+     */
+    private Integer evaluateAsciiFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() != 1) {
+            throw new IllegalArgumentException("ASCII function requires exactly 1 argument");
+        }
+        
+        Object stringValue = evaluate(arguments.get(0), context);
+        
+        if (stringValue == null) {
+            return null;
+        }
+        
+        String inputString = stringValue.toString();
+        if (inputString.isEmpty()) {
+            return null;
+        }
+        
+        return (int) inputString.charAt(0);
+    }
+    
+    /**
+     * Evaluate CHAR function.
+     * CHAR(ascii_code)
+     */
+    private String evaluateCharFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() != 1) {
+            throw new IllegalArgumentException("CHAR function requires exactly 1 argument");
+        }
+        
+        Object codeValue = evaluate(arguments.get(0), context);
+        
+        if (codeValue == null || !(codeValue instanceof Number)) {
+            return null;
+        }
+        
+        int asciiCode = ((Number) codeValue).intValue();
+        
+        if (asciiCode < 0 || asciiCode > 127) {
+            throw new IllegalArgumentException("ASCII code must be between 0 and 127");
+        }
+        
+        return String.valueOf((char) asciiCode);
+    }
+    
+    /**
+     * Evaluate HEXTORAW function.
+     * HEXTORAW(hex_string)
+     */
+    private byte[] evaluateHexToRawFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() != 1) {
+            throw new IllegalArgumentException("HEXTORAW function requires exactly 1 argument");
+        }
+        
+        Object hexValue = evaluate(arguments.get(0), context);
+        
+        if (hexValue == null) {
+            return null;
+        }
+        
+        String hexString = hexValue.toString().trim();
+        
+        if (hexString.length() % 2 != 0) {
+            throw new IllegalArgumentException("Hex string must have even length");
+        }
+        
+        try {
+            byte[] result = new byte[hexString.length() / 2];
+            for (int i = 0; i < result.length; i++) {
+                int index = i * 2;
+                int value = Integer.parseInt(hexString.substring(index, index + 2), 16);
+                result[i] = (byte) value;
+            }
+            return result;
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid hex string: " + hexString, e);
+        }
+    }
+    
+    /**
+     * Evaluate RAWTOHEX function.
+     * RAWTOHEX(byte_array)
+     */
+    private String evaluateRawToHexFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() != 1) {
+            throw new IllegalArgumentException("RAWTOHEX function requires exactly 1 argument");
+        }
+        
+        Object rawValue = evaluate(arguments.get(0), context);
+        
+        if (rawValue == null) {
+            return null;
+        }
+        
+        byte[] bytes;
+        if (rawValue instanceof byte[]) {
+            bytes = (byte[]) rawValue;
+        } else if (rawValue instanceof String) {
+            bytes = ((String) rawValue).getBytes();
+        } else {
+            throw new IllegalArgumentException("RAWTOHEX requires byte array or string input");
+        }
+        
+        StringBuilder result = new StringBuilder();
+        for (byte b : bytes) {
+            result.append(String.format("%02X", b & 0xFF));
+        }
+        
+        return result.toString();
     }
 }
