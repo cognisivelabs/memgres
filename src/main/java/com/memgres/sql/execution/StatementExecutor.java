@@ -6,6 +6,8 @@ import com.memgres.functions.UuidFunctions;
 import com.memgres.sql.ast.AstVisitor;
 import com.memgres.sql.ast.expression.*;
 import com.memgres.sql.ast.statement.*;
+import com.memgres.sql.optimizer.QueryPlanner;
+import com.memgres.sql.optimizer.QueryExecutionPlan;
 import com.memgres.storage.MaterializedView;
 import com.memgres.storage.Schema;
 import com.memgres.storage.Sequence;
@@ -28,10 +30,25 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
     
     private final MemGresEngine engine;
     private final ExpressionEvaluator expressionEvaluator;
+    private QueryPlanner queryPlanner;
     
     public StatementExecutor(MemGresEngine engine) {
         this.engine = engine;
         this.expressionEvaluator = new ExpressionEvaluator(engine);
+        // Initialize query planner if statistics manager is available
+        Schema publicSchema = engine.getSchema("public");
+        if (publicSchema != null) {
+            // Query planner will be set when statistics manager is available
+            this.queryPlanner = null;
+        }
+    }
+    
+    /**
+     * Set the query planner for cost-based optimization.
+     */
+    public void setQueryPlanner(QueryPlanner queryPlanner) {
+        this.queryPlanner = queryPlanner;
+        logger.info("Query planner enabled for cost-based optimization");
     }
     
     /**
@@ -3601,6 +3618,17 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
      */
     private SqlExecutionResult executeOriginalSelectStatement(SelectStatement node, ExecutionContext context) throws SqlExecutionException {
         try {
+            // Create query execution plan if planner is available
+            QueryExecutionPlan executionPlan = null;
+            if (queryPlanner != null) {
+                try {
+                    executionPlan = queryPlanner.planQuery(node);
+                    logger.debug("Query execution plan: {}", executionPlan.getExecutionSummary());
+                } catch (Exception e) {
+                    logger.warn("Query planning failed, falling back to standard execution: {}", e.getMessage());
+                }
+            }
+            
             // Process WITH clause (CTEs) if present  
             if (node.getWithClause().isPresent()) {
                 WithClause withClause = node.getWithClause().get();
