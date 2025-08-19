@@ -109,7 +109,7 @@ public class MemGresEngine {
     public boolean dropSchema(String schemaName, boolean cascade) {
         validateInitialized();
         if ("public".equals(schemaName)) {
-            throw new IllegalArgumentException("Cannot drop public schema");
+            throw new IllegalArgumentException("Cannot drop schema \"public\"");
         }
         
         engineLock.writeLock().lock();
@@ -120,7 +120,7 @@ public class MemGresEngine {
             }
             
             if (!cascade && schema.hasTable()) {
-                throw new IllegalStateException("Schema contains tables. Use CASCADE to force drop.");
+                throw new IllegalStateException("Cannot drop schema \"" + schemaName + "\" because it contains objects; use CASCADE");
             }
             
             schemas.remove(schemaName);
