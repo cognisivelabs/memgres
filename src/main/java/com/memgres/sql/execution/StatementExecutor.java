@@ -87,7 +87,7 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             String tableName = node.getTableName();
             Table table = engine.getTable("public", tableName);
             if (table == null) {
-                throw new SqlExecutionException("Table not found: " + tableName);
+                throw new SqlExecutionException(SqlErrorCode.TABLE_NOT_FOUND, tableName);
             }
             
             List<Column> tableColumns = table.getColumns();
@@ -151,7 +151,7 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             String tableName = node.getTableName();
             Table table = engine.getTable("public", tableName);
             if (table == null) {
-                throw new SqlExecutionException("Table not found: " + tableName);
+                throw new SqlExecutionException(SqlErrorCode.TABLE_NOT_FOUND, tableName);
             }
             
             // Get all rows and filter by WHERE clause if present
@@ -235,7 +235,7 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             String tableName = node.getTableName();
             Table table = engine.getTable("public", tableName);
             if (table == null) {
-                throw new SqlExecutionException("Table not found: " + tableName);
+                throw new SqlExecutionException(SqlErrorCode.TABLE_NOT_FOUND, tableName);
             }
             
             // Get all rows and filter by WHERE clause if present
@@ -2670,7 +2670,7 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             Schema schema = engine.getSchema("public");
             Table table = schema.getTable(tableName);
             if (table == null) {
-                throw new SqlExecutionException("Table not found: " + tableName);
+                throw new SqlExecutionException(SqlErrorCode.TABLE_NOT_FOUND, tableName);
             }
             
             // Convert ColumnDefinition AST to Column object
@@ -2757,7 +2757,7 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             Schema schema = engine.getSchema("public");
             Table table = schema.getTable(tableName);
             if (table == null) {
-                throw new SqlExecutionException("Table not found: " + tableName);
+                throw new SqlExecutionException(SqlErrorCode.TABLE_NOT_FOUND, tableName);
             }
             
             String columnName = node.getColumnName();
@@ -2798,7 +2798,7 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             Schema schema = engine.getSchema("public");
             Table table = schema.getTable(tableName);
             if (table == null) {
-                throw new SqlExecutionException("Table not found: " + tableName);
+                throw new SqlExecutionException(SqlErrorCode.TABLE_NOT_FOUND, tableName);
             }
             
             String oldColumnName = node.getOldColumnName();
@@ -2859,7 +2859,7 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             Schema schema = engine.getSchema("public");
             Table table = schema.getTable(tableName);
             if (table == null) {
-                throw new SqlExecutionException("Table not found: " + tableName);
+                throw new SqlExecutionException(SqlErrorCode.TABLE_NOT_FOUND, tableName);
             }
             
             // Handle identity option properly with new truncate method
@@ -4072,7 +4072,7 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             
             boolean created = engine.createSchema(schemaName);
             if (!created && !node.isIfNotExists()) {
-                throw new SqlExecutionException("Schema " + schemaName + " already exists");
+                throw new SqlExecutionException(SqlErrorCode.SCHEMA_ALREADY_EXISTS, schemaName);
             }
             
             logger.debug("CREATE SCHEMA executed: {}", schemaName);
@@ -4101,7 +4101,7 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             
             boolean dropped = engine.dropSchema(schemaName, node.isCascade());
             if (!dropped && !node.isIfExists()) {
-                throw new SqlExecutionException("Schema " + schemaName + " does not exist");
+                throw new SqlExecutionException(SqlErrorCode.SCHEMA_NOT_FOUND, schemaName);
             }
             
             logger.debug("DROP SCHEMA executed: {} (cascade: {})", schemaName, node.isCascade());
