@@ -1,5 +1,7 @@
 package com.memgres.core;
 
+import com.memgres.memory.MemoryManager;
+import com.memgres.memory.MemoryOptimizer;
 import com.memgres.storage.Schema;
 import com.memgres.storage.Sequence;
 import com.memgres.storage.Table;
@@ -7,6 +9,7 @@ import com.memgres.transaction.TransactionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -22,6 +25,8 @@ public class MemGresEngine {
     private final ConcurrentMap<String, Schema> schemas;
     private final TransactionManager transactionManager;
     private final TriggerManager triggerManager;
+    private final MemoryManager memoryManager;
+    private final MemoryOptimizer memoryOptimizer;
     private final ReadWriteLock engineLock;
     private volatile boolean initialized;
     
@@ -29,6 +34,8 @@ public class MemGresEngine {
         this.schemas = new ConcurrentHashMap<>();
         this.transactionManager = new TransactionManager();
         this.triggerManager = new TriggerManager();
+        this.memoryManager = MemoryManager.getInstance();
+        this.memoryOptimizer = new MemoryOptimizer(this);
         this.engineLock = new ReentrantReadWriteLock();
         this.initialized = false;
         logger.info("MemGres Engine created");
@@ -49,6 +56,15 @@ public class MemGresEngine {
             Schema publicSchema = new Schema("public");
             schemas.put("public", publicSchema);
             
+            // Register memory alert handler
+            memoryManager.registerAlertHandler(alert -> {
+                logger.warn("Memory alert: {} - {}", alert.getLevel(), alert.getMessage());
+                if (alert.getLevel() == MemoryManager.MemoryAlert.Level.CRITICAL) {
+                    // Trigger immediate optimization on critical memory pressure
+                    memoryOptimizer.optimize();
+                }
+            });
+            
             initialized = true;
             logger.info("MemGres Engine initialized successfully");
         } finally {
@@ -67,6 +83,7 @@ public class MemGresEngine {
                 return;
             }
             
+            memoryOptimizer.shutdown();
             transactionManager.shutdown();
             triggerManager.shutdown();
             schemas.clear();
@@ -243,6 +260,35 @@ public class MemGresEngine {
     public TriggerManager getTriggerManager() {
         validateInitialized();
         return triggerManager;
+    }
+    
+    /**
+     * Get the memory manager for this engine.
+     */
+    public MemoryManager getMemoryManager() {
+        validateInitialized();
+        return memoryManager;
+    }
+    
+    /**
+     * Get the memory optimizer for this engine.
+     */
+    public MemoryOptimizer getMemoryOptimizer() {
+        validateInitialized();
+        return memoryOptimizer;
+    }
+    
+    /**
+     * Get all schemas in the engine.
+     */
+    public Collection<Schema> getAllSchemas() {
+        validateInitialized();
+        engineLock.readLock().lock();
+        try {
+            return schemas.values();
+        } finally {
+            engineLock.readLock().unlock();
+        }
     }
     
     /**

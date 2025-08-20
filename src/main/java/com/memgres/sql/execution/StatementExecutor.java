@@ -3,6 +3,9 @@ package com.memgres.sql.execution;
 import com.memgres.core.MemGresEngine;
 import com.memgres.core.TriggerDefinition;
 import com.memgres.functions.UuidFunctions;
+import com.memgres.monitoring.PerformanceMonitor;
+import com.memgres.monitoring.QueryAnalyzer;
+import com.memgres.monitoring.QueryAnalysis;
 import com.memgres.sql.ast.AstVisitor;
 import com.memgres.sql.ast.expression.*;
 import com.memgres.sql.ast.statement.*;
@@ -30,11 +33,15 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
     
     private final MemGresEngine engine;
     private final ExpressionEvaluator expressionEvaluator;
+    private final PerformanceMonitor performanceMonitor;
+    private final QueryAnalyzer queryAnalyzer;
     private QueryPlanner queryPlanner;
     
     public StatementExecutor(MemGresEngine engine) {
         this.engine = engine;
         this.expressionEvaluator = new ExpressionEvaluator(engine);
+        this.performanceMonitor = PerformanceMonitor.getInstance();
+        this.queryAnalyzer = QueryAnalyzer.getInstance();
         // Initialize query planner if statistics manager is available
         Schema publicSchema = engine.getSchema("public");
         if (publicSchema != null) {
@@ -55,14 +62,44 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
      * Execute a statement and return the result.
      */
     public SqlExecutionResult execute(Statement statement) throws SqlExecutionException {
+        return executeWithMonitoring(statement, null);
+    }
+    
+    /**
+     * Execute a statement and return the result with SQL string for monitoring.
+     */
+    public SqlExecutionResult executeWithMonitoring(Statement statement, String sql) throws SqlExecutionException {
+        long startTime = System.currentTimeMillis();
+        boolean success = false;
+        SqlExecutionResult result = null;
+        
         try {
             ExecutionContext context = new ExecutionContext();
-            return statement.accept(this, context);
+            result = statement.accept(this, context);
+            success = true;
+            return result;
         } catch (Exception e) {
             if (e instanceof SqlExecutionException) {
                 throw (SqlExecutionException) e;
             }
             throw new SqlExecutionException("Failed to execute statement", e);
+        } finally {
+            // Record performance metrics
+            long executionTime = System.currentTimeMillis() - startTime;
+            if (sql != null) {
+                performanceMonitor.recordQuery(sql, executionTime, success);
+                
+                // Analyze query if it was successful and returned results
+                if (success && result != null) {
+                    int rowCount = result.getRows() != null ? result.getRows().size() : 0;
+                    QueryAnalysis analysis = queryAnalyzer.analyzeQuery(sql, executionTime, rowCount);
+                    
+                    // Log analysis if there are issues
+                    if (analysis.hasIssues()) {
+                        logger.debug("Query analysis completed - {} issues found", analysis.getIssues().size());
+                    }
+                }
+            }
         }
     }
     
