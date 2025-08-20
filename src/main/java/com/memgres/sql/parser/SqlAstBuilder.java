@@ -201,28 +201,55 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
     }
     
     @Override
-    public JoinClause visitJoinClause(MemGresParser.JoinClauseContext ctx) {
+    public JoinClause visitNaturalJoinClause(MemGresParser.NaturalJoinClauseContext ctx) {
+        // Get join type  
+        JoinClause.JoinType joinType = getJoinType(ctx.joinType());
+        
+        // Get the table being joined
+        TableReference table = (TableReference) visit(ctx.tableReference());
+        
+        // NATURAL join - no explicit condition
+        return new JoinClause(joinType, table);
+    }
+    
+    @Override
+    public JoinClause visitRegularJoinClause(MemGresParser.RegularJoinClauseContext ctx) {
         // Get join type
         JoinClause.JoinType joinType = getJoinType(ctx.joinType());
         
         // Get the table being joined
         TableReference table = (TableReference) visit(ctx.tableReference());
         
-        // Get join condition
-        Optional<Expression> onCondition = Optional.empty();
+        // Get join condition based on the type
         if (ctx.joinCondition() != null) {
             MemGresParser.JoinConditionContext condCtx = ctx.joinCondition();
-            // Check if it's an ON condition (onJoinCondition alternative)
+            
             if (condCtx instanceof MemGresParser.OnJoinConditionContext) {
+                // ON condition - JOIN ... ON expression
                 MemGresParser.OnJoinConditionContext onCtx = (MemGresParser.OnJoinConditionContext) condCtx;
                 Expression condition = (Expression) visit(onCtx.expression());
-                onCondition = Optional.of(condition);
+                return new JoinClause(joinType, table, condition);
+                
+            } else if (condCtx instanceof MemGresParser.UsingJoinConditionContext) {
+                // USING condition - JOIN ... USING (column1, column2, ...)
+                MemGresParser.UsingJoinConditionContext usingCtx = (MemGresParser.UsingJoinConditionContext) condCtx;
+                List<String> usingColumns = new ArrayList<>();
+                
+                // Extract column names from the column list
+                for (MemGresParser.ColumnNameContext colNameCtx : usingCtx.columnList().columnName()) {
+                    usingColumns.add(colNameCtx.getText());
+                }
+                
+                return new JoinClause(joinType, table, usingColumns);
+                
+            } else if (condCtx instanceof MemGresParser.NaturalJoinConditionContext) {
+                // NATURAL join - no explicit condition
+                return new JoinClause(joinType, table);
             }
-            // TODO: Implement USING and NATURAL joins
         }
-        // Note: USING and NATURAL joins are not implemented yet
         
-        return new JoinClause(joinType, table, onCondition);
+        // Default to NATURAL join if no condition specified
+        return new JoinClause(joinType, table);
     }
     
     /**

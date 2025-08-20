@@ -57,6 +57,7 @@ OUTER: [Oo][Uu][Tt][Ee][Rr];
 JOIN: [Jj][Oo][Ii][Nn];
 ON: [Oo][Nn];
 USING: [Uu][Ss][Ii][Nn][Gg];
+NATURAL: [Nn][Aa][Tt][Uu][Rr][Aa][Ll];
 UNION: [Uu][Nn][Ii][Oo][Nn];
 INTERSECT: [Ii][Nn][Tt][Ee][Rr][Ss][Ee][Cc][Tt];
 EXCEPT: [Ee][Xx][Cc][Ee][Pp][Tt];
