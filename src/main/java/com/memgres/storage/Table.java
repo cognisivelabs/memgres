@@ -293,12 +293,32 @@ public class Table {
     }
     
     /**
-     * Get an index by name
+     * Get an index by name (single column index only)
      * @param indexName the index name
      * @return the index or null if not found
      */
     public Index getIndex(String indexName) {
         return indexes.get(indexName);
+    }
+    
+    /**
+     * Check if an index exists (checks both single and composite indexes)
+     * @param indexName the index name
+     * @return true if the index exists
+     */
+    public boolean hasIndex(String indexName) {
+        return indexes.containsKey(indexName) || compositeIndexes.containsKey(indexName);
+    }
+    
+    /**
+     * Get all index names (both single and composite indexes)
+     * @return set of all index names
+     */
+    public Set<String> getIndexNames() {
+        Set<String> allIndexNames = new HashSet<>();
+        allIndexNames.addAll(indexes.keySet());
+        allIndexNames.addAll(compositeIndexes.keySet());
+        return allIndexNames;
     }
     
     /**
@@ -328,11 +348,13 @@ public class Table {
         // Generate index name if not provided
         if (indexName == null || indexName.trim().isEmpty()) {
             indexName = generateIndexName(columnNames);
+            logger.debug("Generated index name: {} for columns: {}", indexName, columnNames);
         }
         
         tableLock.writeLock().lock();
         try {
-            if (indexes.containsKey(indexName)) {
+            // Check if index already exists in either collection
+            if (indexes.containsKey(indexName) || compositeIndexes.containsKey(indexName)) {
                 if (ifNotExists) {
                     logger.debug("Index {} already exists, skipping creation due to IF NOT EXISTS", indexName);
                     return false;
@@ -341,11 +363,17 @@ public class Table {
                 }
             }
             
-            // For now, create a simple index on the first column
-            // TODO: Implement proper multi-column index support
-            Column firstColumn = indexColumns.get(0);
-            Index index = new Index(indexName, firstColumn, this);
-            indexes.put(indexName, index);
+            // Create appropriate index type based on number of columns
+            if (indexColumns.size() == 1) {
+                // Single column index - use simple Index
+                Column column = indexColumns.get(0);
+                Index index = new Index(indexName, column, this);
+                indexes.put(indexName, index);
+            } else {
+                // Multi-column index - use CompositeIndex
+                CompositeIndex compositeIndex = new CompositeIndex(indexName, indexColumns, this, unique);
+                compositeIndexes.put(indexName, compositeIndex);
+            }
             
             logger.debug("Created{} index {} on columns {} for table {}", 
                          unique ? " unique" : "", indexName, columnNames, name);
@@ -375,11 +403,20 @@ public class Table {
     public boolean dropIndex(String indexName) {
         tableLock.writeLock().lock();
         try {
-            Index removed = indexes.remove(indexName);
-            if (removed != null) {
+            // Try to remove from single-column indexes first
+            Index removedIndex = indexes.remove(indexName);
+            if (removedIndex != null) {
                 logger.debug("Dropped index {} from table {}", indexName, name);
                 return true;
             }
+            
+            // Try to remove from composite indexes
+            CompositeIndex removedCompositeIndex = compositeIndexes.remove(indexName);
+            if (removedCompositeIndex != null) {
+                logger.debug("Dropped composite index {} from table {}", indexName, name);
+                return true;
+            }
+            
             return false;
         } finally {
             tableLock.writeLock().unlock();
@@ -396,11 +433,22 @@ public class Table {
     public boolean dropIndex(String indexName, boolean ifExists) {
         tableLock.writeLock().lock();
         try {
-            Index removed = indexes.remove(indexName);
-            if (removed != null) {
+            // Try to remove from single-column indexes first
+            Index removedIndex = indexes.remove(indexName);
+            if (removedIndex != null) {
                 logger.debug("Dropped index {} from table {}", indexName, name);
                 return true;
-            } else if (ifExists) {
+            }
+            
+            // Try to remove from composite indexes
+            CompositeIndex removedCompositeIndex = compositeIndexes.remove(indexName);
+            if (removedCompositeIndex != null) {
+                logger.debug("Dropped composite index {} from table {}", indexName, name);
+                return true;
+            }
+            
+            // Index not found in either collection
+            if (ifExists) {
                 logger.debug("Index {} does not exist, skipping drop due to IF EXISTS", indexName);
                 return false;
             } else {

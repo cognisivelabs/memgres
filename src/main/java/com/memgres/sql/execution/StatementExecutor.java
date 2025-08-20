@@ -11,6 +11,7 @@ import com.memgres.sql.ast.expression.*;
 import com.memgres.sql.ast.statement.*;
 import com.memgres.sql.optimizer.QueryPlanner;
 import com.memgres.sql.optimizer.QueryExecutionPlan;
+import com.memgres.storage.Index;
 import com.memgres.storage.MaterializedView;
 import com.memgres.storage.Schema;
 import com.memgres.storage.Sequence;
@@ -393,6 +394,15 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             if (table == null) {
                 return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, false, 
                     "Table " + tableName + " does not exist");
+            }
+            
+            // Before dropping the table, unregister all its indexes from the schema registry
+            Table tableToDelete = schema.getTable(tableName);
+            if (tableToDelete != null) {
+                Set<String> indexNames = tableToDelete.getIndexNames();
+                for (String indexName : indexNames) {
+                    schema.unregisterIndex(indexName);
+                }
             }
             
             // Drop the table
@@ -1951,6 +1961,8 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             columnNames.add(indexCol.getColumnName());
         }
         
+        logger.debug("CREATE INDEX: table={}, indexName={}, columns={}", tableName, indexName, columnNames);
+        
         // Get the table from the engine
         Table table = engine.getTable("public", tableName);
         if (table == null) {
@@ -1958,11 +1970,47 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
         }
         
         try {
+            // Validate inputs to prevent NullPointerException
+            if (columnNames == null || columnNames.isEmpty()) {
+                throw new IllegalArgumentException("Index must have at least one column");
+            }
+            
+            // Check for null column names
+            for (String columnName : columnNames) {
+                if (columnName == null || columnName.trim().isEmpty()) {
+                    throw new IllegalArgumentException("Index column names cannot be null or empty");
+                }
+            }
+            
+            // Generate index name if not provided (same logic as in Table.generateIndexName)
+            if (indexName == null || indexName.trim().isEmpty()) {
+                StringBuilder nameBuilder = new StringBuilder("idx_");
+                nameBuilder.append(tableName);
+                for (String columnName : columnNames) {
+                    nameBuilder.append("_").append(columnName);
+                }
+                indexName = nameBuilder.toString();
+                logger.debug("Generated index name: {} for columns: {}", indexName, columnNames);
+            }
+            
             // Create the index with H2-compatible options
             boolean created = table.createIndex(indexName, columnNames, node.isUnique(), node.isIfNotExists());
             
             String message;
             if (created) {
+                // Register the index in the schema-level registry
+                Schema publicSchema = engine.getSchema("public");
+                if (publicSchema != null) {
+                    Index index = table.getIndex(indexName);
+                    if (index != null) {
+                        publicSchema.registerIndex(indexName, tableName, index);
+                    } else {
+                        // Check if it's a composite index - for now, we skip schema registration for composite indexes
+                        // since the schema registry only supports single-column Index objects
+                        logger.debug("Skipping schema registration for index {} - may be a composite index", indexName);
+                    }
+                }
+                
                 message = "Index " + (indexName != null ? indexName : "unnamed") + " created successfully";
                 logger.info("Created index on table {}: {}", tableName, message);
             } else {
@@ -2538,39 +2586,45 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
     public SqlExecutionResult visitDropIndexStatement(DropIndexStatement node, ExecutionContext context) throws Exception {
         String indexName = node.getIndexName();
         
-        // Note: In H2, DROP INDEX only requires the index name, not the table name
-        // For now, we'll search through all tables to find the index
-        // TODO: Implement schema-level index registry for better performance
-        
-        // Search for the index across all tables in the public schema
+        // Use schema-level index registry for efficient lookup
         Schema publicSchema = engine.getSchema("public");
         if (publicSchema == null) {
             throw new IllegalArgumentException("Default schema 'public' not found");
         }
         
         try {
-            boolean found = false;
-            for (String tableName : publicSchema.getTableNames()) {
-                Table table = publicSchema.getTable(tableName);
-                if (table != null && table.getIndex(indexName) != null) {
-                    boolean dropped = table.dropIndex(indexName, node.isIfExists());
-                    if (dropped) {
-                        String message = "Index " + indexName + " dropped successfully";
-                        logger.info("Dropped index {} from table {}", indexName, tableName);
-                        return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, message);
-                    }
-                    found = true;
-                    break;
+            // Look up the index in the schema-level registry
+            Schema.IndexInfo indexInfo = publicSchema.getIndexInfo(indexName);
+            
+            if (indexInfo == null) {
+                if (!node.isIfExists()) {
+                    throw new IllegalArgumentException("Index does not exist: " + indexName);
+                } else {
+                    String message = "Index " + indexName + " does not exist, drop skipped";
+                    logger.info("Skipped dropping non-existent index: {}", indexName);
+                    return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, message);
                 }
             }
             
-            if (!found && !node.isIfExists()) {
-                throw new IllegalArgumentException("Index does not exist: " + indexName);
+            // Get the table and drop the index
+            String tableName = indexInfo.getTableName();
+            Table table = publicSchema.getTable(tableName);
+            if (table != null) {
+                boolean dropped = table.dropIndex(indexName, node.isIfExists());
+                if (dropped) {
+                    // Unregister the index from the schema-level registry
+                    publicSchema.unregisterIndex(indexName);
+                    
+                    String message = "Index " + indexName + " dropped successfully";
+                    logger.info("Dropped index {} from table {}", indexName, tableName);
+                    return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, message);
+                }
             }
             
-            String message = "Index " + indexName + (found ? " already dropped" : " does not exist, drop skipped");
-            logger.info("Drop index {}: {}", indexName, message);
-            return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, message);
+            // If we get here, something went wrong
+            String message = "Failed to drop index " + indexName;
+            logger.warn("Failed to drop index {}: table lookup failed", indexName);
+            return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, false, message);
             
         } catch (Exception e) {
             logger.error("Failed to drop index {}: {}", indexName, e.getMessage());

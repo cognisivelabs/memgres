@@ -132,10 +132,10 @@ public class TriggerDefinition {
     
     /**
      * Create trigger instance from source code.
-     * TODO: Implement source code compilation in Phase 2
+     * Compiles and instantiates Java code that implements the Trigger interface.
      */
     private Trigger createSourceCodeTrigger() throws Exception {
-        throw new UnsupportedOperationException("Source code triggers not yet implemented");
+        return SourceCodeTriggerCompiler.compileAndCreateTrigger(implementation, name);
     }
     
     @Override

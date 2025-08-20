@@ -20,6 +20,7 @@ public class Schema {
     private final ConcurrentMap<String, View> views;
     private final ConcurrentMap<String, MaterializedView> materializedViews;
     private final ConcurrentMap<String, Sequence> sequences;
+    private final ConcurrentMap<String, IndexInfo> indexes; // Schema-level index registry
     private final ReadWriteLock schemaLock;
     
     public Schema(String name) {
@@ -32,6 +33,7 @@ public class Schema {
         this.views = new ConcurrentHashMap<>();
         this.materializedViews = new ConcurrentHashMap<>();
         this.sequences = new ConcurrentHashMap<>();
+        this.indexes = new ConcurrentHashMap<>();
         this.schemaLock = new ReentrantReadWriteLock();
         
         logger.debug("Created schema: {}", this.name);
@@ -565,6 +567,104 @@ public class Schema {
             schemaLock.writeLock().unlock();
         }
     }
+    
+    // ===== INDEX REGISTRY METHODS =====
+    
+    /**
+     * Register an index in the schema-level registry
+     * @param indexName the index name
+     * @param tableName the table name that owns the index
+     * @param index the index object
+     */
+    public void registerIndex(String indexName, String tableName, Index index) {
+        if (indexName == null || indexName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Index name cannot be null or empty");
+        }
+        if (tableName == null || tableName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Table name cannot be null or empty");
+        }
+        if (index == null) {
+            throw new IllegalArgumentException("Index cannot be null");
+        }
+        
+        String normalizedIndexName = indexName.toLowerCase();
+        String normalizedTableName = tableName.toLowerCase();
+        
+        schemaLock.writeLock().lock();
+        try {
+            indexes.put(normalizedIndexName, new IndexInfo(normalizedIndexName, normalizedTableName, index));
+            logger.debug("Registered index {} for table {} in schema {}", normalizedIndexName, normalizedTableName, name);
+        } finally {
+            schemaLock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Unregister an index from the schema-level registry
+     * @param indexName the index name
+     * @return true if the index was found and removed
+     */
+    public boolean unregisterIndex(String indexName) {
+        if (indexName == null || indexName.trim().isEmpty()) {
+            return false;
+        }
+        
+        String normalizedIndexName = indexName.toLowerCase();
+        
+        schemaLock.writeLock().lock();
+        try {
+            IndexInfo removedIndex = indexes.remove(normalizedIndexName);
+            if (removedIndex != null) {
+                logger.debug("Unregistered index {} from schema {}", normalizedIndexName, name);
+                return true;
+            }
+            return false;
+        } finally {
+            schemaLock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Get index information by index name
+     * @param indexName the index name
+     * @return IndexInfo or null if not found
+     */
+    public IndexInfo getIndexInfo(String indexName) {
+        if (indexName == null || indexName.trim().isEmpty()) {
+            return null;
+        }
+        
+        String normalizedIndexName = indexName.toLowerCase();
+        
+        schemaLock.readLock().lock();
+        try {
+            return indexes.get(normalizedIndexName);
+        } finally {
+            schemaLock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Check if an index exists in this schema
+     * @param indexName the index name
+     * @return true if the index exists
+     */
+    public boolean hasIndex(String indexName) {
+        return getIndexInfo(indexName) != null;
+    }
+    
+    /**
+     * Get all index names in this schema
+     * @return set of index names
+     */
+    public Set<String> getIndexNames() {
+        schemaLock.readLock().lock();
+        try {
+            return Set.copyOf(indexes.keySet());
+        } finally {
+            schemaLock.readLock().unlock();
+        }
+    }
 
     @Override
     public boolean equals(Object o) {
@@ -578,5 +678,37 @@ public class Schema {
     @Override
     public int hashCode() {
         return name.hashCode();
+    }
+    
+    /**
+     * Information about an index registered in the schema.
+     */
+    public static class IndexInfo {
+        private final String indexName;
+        private final String tableName;
+        private final Index index;
+        
+        public IndexInfo(String indexName, String tableName, Index index) {
+            this.indexName = indexName;
+            this.tableName = tableName;
+            this.index = index;
+        }
+        
+        public String getIndexName() {
+            return indexName;
+        }
+        
+        public String getTableName() {
+            return tableName;
+        }
+        
+        public Index getIndex() {
+            return index;
+        }
+        
+        @Override
+        public String toString() {
+            return String.format("IndexInfo[index=%s, table=%s]", indexName, tableName);
+        }
     }
 }

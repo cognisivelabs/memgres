@@ -315,6 +315,9 @@ public class CompositeIndex {
         private final int hashCode;
         
         public CompositeKey(List<Object> values) {
+            if (values == null) {
+                throw new IllegalArgumentException("Values list cannot be null");
+            }
             this.values = new ArrayList<>(values);
             this.hashCode = this.values.hashCode();
         }
