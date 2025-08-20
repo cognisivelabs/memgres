@@ -3,6 +3,7 @@ package com.memgres.sql.execution;
 import com.memgres.core.MemGresEngine;
 import com.memgres.functions.StringFunctions;
 import com.memgres.functions.UuidFunctions;
+import com.memgres.types.jsonb.JsonbValue;
 import com.memgres.sql.ast.expression.AggregateFunction;
 import com.memgres.sql.ast.expression.BinaryExpression;
 import com.memgres.sql.ast.expression.ColumnReference;
@@ -261,14 +262,63 @@ public class ExpressionEvaluator {
                 return likeMatch(String.valueOf(left), String.valueOf(right));
                 
             // JSONB operators (simplified implementation)
-            case JSONB_CONTAINS:
-            case JSONB_CONTAINED:
-            case JSONB_EXISTS:
-            case JSONB_EXTRACT:
-            case JSONB_EXTRACT_TEXT:
-            case JSONB_PATH_EXTRACT:
-            case JSONB_PATH_EXTRACT_TEXT:
-                throw new UnsupportedOperationException("JSONB operators not yet implemented");
+            case JSONB_CONTAINS: // @> operator
+                if (left instanceof JsonbValue && right instanceof JsonbValue) {
+                    return ((JsonbValue) left).contains((JsonbValue) right);
+                }
+                throw new IllegalArgumentException("JSONB_CONTAINS requires JSONB operands");
+                
+            case JSONB_CONTAINED: // <@ operator
+                if (left instanceof JsonbValue && right instanceof JsonbValue) {
+                    return ((JsonbValue) left).containedBy((JsonbValue) right);
+                }
+                throw new IllegalArgumentException("JSONB_CONTAINED requires JSONB operands");
+                
+            case JSONB_EXISTS: // ? operator
+                if (left instanceof JsonbValue && right instanceof String) {
+                    return ((JsonbValue) left).hasKey((String) right);
+                }
+                throw new IllegalArgumentException("JSONB_EXISTS requires JSONB and string operands");
+                
+            case JSONB_EXTRACT: // -> operator (returns JSONB)
+                if (left instanceof JsonbValue) {
+                    if (right instanceof String) {
+                        return ((JsonbValue) left).getField((String) right);
+                    } else if (right instanceof Number) {
+                        return ((JsonbValue) left).getElement(((Number) right).intValue());
+                    }
+                }
+                throw new IllegalArgumentException("JSONB_EXTRACT requires JSONB left operand and string/int right operand");
+                
+            case JSONB_EXTRACT_TEXT: // ->> operator (returns text)
+                if (left instanceof JsonbValue) {
+                    if (right instanceof String) {
+                        return ((JsonbValue) left).getFieldAsText((String) right);
+                    } else if (right instanceof Number) {
+                        return ((JsonbValue) left).getElementAsText(((Number) right).intValue());
+                    }
+                }
+                throw new IllegalArgumentException("JSONB_EXTRACT_TEXT requires JSONB left operand and string/int right operand");
+                
+            case JSONB_PATH_EXTRACT: // #> operator (returns JSONB)
+                if (left instanceof JsonbValue && right instanceof List) {
+                    List<?> pathList = (List<?>) right;
+                    String[] path = pathList.stream()
+                        .map(Object::toString)
+                        .toArray(String[]::new);
+                    return ((JsonbValue) left).getPath(path);
+                }
+                throw new IllegalArgumentException("JSONB_PATH_EXTRACT requires JSONB left operand and array right operand");
+                
+            case JSONB_PATH_EXTRACT_TEXT: // #>> operator (returns text)
+                if (left instanceof JsonbValue && right instanceof List) {
+                    List<?> pathList = (List<?>) right;
+                    String[] path = pathList.stream()
+                        .map(Object::toString)
+                        .toArray(String[]::new);
+                    return ((JsonbValue) left).getPathAsText(path);
+                }
+                throw new IllegalArgumentException("JSONB_PATH_EXTRACT_TEXT requires JSONB left operand and array right operand");
                 
             default:
                 throw new IllegalArgumentException("Unsupported binary operator: " + binary.getOperator());

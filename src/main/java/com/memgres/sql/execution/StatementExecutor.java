@@ -379,18 +379,32 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
     public SqlExecutionResult visitDropTableStatement(DropTableStatement node, ExecutionContext context) throws SqlExecutionException {
         try {
             String tableName = node.getTableName();
+            String schemaName = "public"; // Default schema
             
-            // For now, we don't have a direct dropTable method, so we'll simulate it
-            Table table = engine.getTable("public", tableName);
+            // Get the schema
+            Schema schema = engine.getSchema(schemaName);
+            if (schema == null) {
+                return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, false, 
+                    "Schema " + schemaName + " does not exist");
+            }
+            
+            // Check if table exists
+            Table table = schema.getTable(tableName);
             if (table == null) {
                 return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, false, 
                     "Table " + tableName + " does not exist");
             }
             
-            // TODO: Implement actual table dropping in the engine
-            logger.debug("DROP TABLE executed: {} (simulated)", tableName);
-            return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, 
-                "Table " + tableName + " would be dropped (not implemented)");
+            // Drop the table
+            boolean dropped = schema.dropTable(tableName);
+            if (dropped) {
+                logger.info("Table {} dropped successfully from schema {}", tableName, schemaName);
+                return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, 
+                    "Table " + tableName + " dropped successfully");
+            } else {
+                return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, false, 
+                    "Failed to drop table " + tableName);
+            }
             
         } catch (Exception e) {
             throw new SqlExecutionException("Failed to execute DROP TABLE statement", e);
