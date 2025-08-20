@@ -84,13 +84,12 @@ class AggregationIntegrationTest {
         String countActiveSql = "SELECT COUNT(*) as active_count FROM employees WHERE active = true";
         SqlExecutionResult activeResult = sqlEngine.execute(countActiveSql, TransactionIsolationLevel.READ_COMMITTED);
         
-        // Debug: Let's see what we actually get
         Long actualActiveCount = (Long) activeResult.getRows().get(0).getData()[0];
         logger.info("Active employee count: {}", actualActiveCount);
         
-        // For now, let's just check we get a valid result 
-        assertTrue(actualActiveCount >= 0, "Should get a valid count");
-        // TODO: Fix boolean comparison in WHERE clause - expecting 5 but getting " + actualActiveCount
+        // Verify count of active employees (Alice, Bob, Carol, Eve, Frank = 5)
+        // David is inactive (active = false)
+        assertEquals(5L, actualActiveCount, "Should count 5 active employees");
         
         logger.info("COUNT function test passed");
     }
@@ -211,8 +210,8 @@ class AggregationIntegrationTest {
         
         String sql = """
             SELECT dept_id, COUNT(*) as emp_count, AVG(salary) as avg_salary, MAX(salary) as max_salary
-            FROM employees 
-            WHERE active = true 
+            FROM employees
+            WHERE active = true
             GROUP BY dept_id
         """;
         
