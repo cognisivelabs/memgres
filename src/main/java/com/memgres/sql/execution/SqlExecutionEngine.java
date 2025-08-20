@@ -71,7 +71,7 @@ public class SqlExecutionEngine {
                 
                 // Execute each statement
                 for (Statement statement : statements) {
-                    result = statementExecutor.execute(statement);
+                    result = statementExecutor.executeWithMonitoring(statement, sql);
                 }
                 
                 // Only commit and clear context if we created the transaction
@@ -139,7 +139,7 @@ public class SqlExecutionEngine {
                 List<Statement> statements = sqlParser.parse(sql);
                 
                 for (Statement statement : statements) {
-                    result = statementExecutor.execute(statement);
+                    result = statementExecutor.executeWithMonitoring(statement, sql);
                 }
             }
             
