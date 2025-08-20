@@ -23,6 +23,8 @@ import com.memgres.types.Row;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.Connection;
+
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -1360,7 +1362,64 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
         if (expression instanceof AggregateFunction) {
             return true;
         }
-        // TODO: Recursively check nested expressions
+        
+        // Recursively check nested expressions
+        if (expression instanceof BinaryExpression) {
+            BinaryExpression binary = (BinaryExpression) expression;
+            return containsAggregateFunction(binary.getLeft()) || 
+                   containsAggregateFunction(binary.getRight());
+        }
+        
+        if (expression instanceof UnaryExpression) {
+            UnaryExpression unary = (UnaryExpression) expression;
+            return containsAggregateFunction(unary.getOperand());
+        }
+        
+        if (expression instanceof FunctionCall) {
+            FunctionCall func = (FunctionCall) expression;
+            for (Expression arg : func.getArguments()) {
+                if (containsAggregateFunction(arg)) {
+                    return true;
+                }
+            }
+        }
+        
+        if (expression instanceof CaseExpression) {
+            CaseExpression caseExpr = (CaseExpression) expression;
+            // Check WHEN clauses
+            for (CaseExpression.WhenClause whenClause : caseExpr.getWhenClauses()) {
+                if (containsAggregateFunction(whenClause.getCondition()) ||
+                    containsAggregateFunction(whenClause.getResult())) {
+                    return true;
+                }
+            }
+            // Check ELSE clause
+            if (caseExpr.getElseExpression().isPresent() && 
+                containsAggregateFunction(caseExpr.getElseExpression().get())) {
+                return true;
+            }
+        }
+        
+        if (expression instanceof SubqueryExpression) {
+            SubqueryExpression subquery = (SubqueryExpression) expression;
+            // Check if the subquery contains aggregate functions in its SELECT items
+            return hasAggregateFunction(subquery.getSelectStatement().getSelectItems());
+        }
+        
+        if (expression instanceof InSubqueryExpression) {
+            InSubqueryExpression inSubquery = (InSubqueryExpression) expression;
+            // Check the main expression and the subquery
+            return containsAggregateFunction(inSubquery.getExpression()) ||
+                   hasAggregateFunction(inSubquery.getSubquery().getSelectItems());
+        }
+        
+        if (expression instanceof ExistsExpression) {
+            ExistsExpression exists = (ExistsExpression) expression;
+            // Check if the subquery contains aggregate functions
+            return hasAggregateFunction(exists.getSubquery().getSelectItems());
+        }
+        
+        // Other expression types (LiteralExpression, ColumnReference, etc.) don't contain nested expressions
         return false;
     }
     
@@ -1381,7 +1440,64 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             AggregateFunction aggFunc = (AggregateFunction) expression;
             return aggFunc.isWindowFunction();
         }
-        // TODO: Recursively check nested expressions
+        
+        // Recursively check nested expressions
+        if (expression instanceof BinaryExpression) {
+            BinaryExpression binary = (BinaryExpression) expression;
+            return containsWindowFunction(binary.getLeft()) || 
+                   containsWindowFunction(binary.getRight());
+        }
+        
+        if (expression instanceof UnaryExpression) {
+            UnaryExpression unary = (UnaryExpression) expression;
+            return containsWindowFunction(unary.getOperand());
+        }
+        
+        if (expression instanceof FunctionCall) {
+            FunctionCall func = (FunctionCall) expression;
+            for (Expression arg : func.getArguments()) {
+                if (containsWindowFunction(arg)) {
+                    return true;
+                }
+            }
+        }
+        
+        if (expression instanceof CaseExpression) {
+            CaseExpression caseExpr = (CaseExpression) expression;
+            // Check WHEN clauses
+            for (CaseExpression.WhenClause whenClause : caseExpr.getWhenClauses()) {
+                if (containsWindowFunction(whenClause.getCondition()) ||
+                    containsWindowFunction(whenClause.getResult())) {
+                    return true;
+                }
+            }
+            // Check ELSE clause
+            if (caseExpr.getElseExpression().isPresent() && 
+                containsWindowFunction(caseExpr.getElseExpression().get())) {
+                return true;
+            }
+        }
+        
+        if (expression instanceof SubqueryExpression) {
+            SubqueryExpression subquery = (SubqueryExpression) expression;
+            // Check if the subquery contains window functions in its SELECT items
+            return hasWindowFunction(subquery.getSelectStatement().getSelectItems());
+        }
+        
+        if (expression instanceof InSubqueryExpression) {
+            InSubqueryExpression inSubquery = (InSubqueryExpression) expression;
+            // Check the main expression and the subquery
+            return containsWindowFunction(inSubquery.getExpression()) ||
+                   hasWindowFunction(inSubquery.getSubquery().getSelectItems());
+        }
+        
+        if (expression instanceof ExistsExpression) {
+            ExistsExpression exists = (ExistsExpression) expression;
+            // Check if the subquery contains window functions
+            return hasWindowFunction(exists.getSubquery().getSelectItems());
+        }
+        
+        // Other expression types (LiteralExpression, ColumnReference, etc.) don't contain nested expressions
         return false;
     }
     
@@ -3980,11 +4096,27 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
         logger.debug("Executing CREATE TRIGGER: {}", node.getTriggerName());
         
         try {
+            // Determine schema and table name from qualified table name
+            String fullTableName = node.getTableName();
+            String schemaName;
+            String tableName;
+            
+            if (fullTableName.contains(".")) {
+                // Table name is schema-qualified (e.g., "myschema.mytable")
+                String[] parts = fullTableName.split("\\.", 2);
+                schemaName = parts[0];
+                tableName = parts[1];
+            } else {
+                // Use default schema
+                schemaName = "public";
+                tableName = fullTableName;
+            }
+            
             // Build TriggerDefinition from AST node
             TriggerDefinition.Builder builder = new TriggerDefinition.Builder()
                 .name(node.getTriggerName())
-                .schemaName("public")  // TODO: Support schema names in triggers
-                .tableName(node.getTableName())
+                .schemaName(schemaName)
+                .tableName(tableName)
                 .timing(convertTiming(node.getTiming()))
                 .scope(convertScope(node.getScope()))
                 .ifNotExists(node.isIfNotExists())
@@ -4006,8 +4138,8 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             TriggerDefinition triggerDef = builder.build();
             
             // Create the trigger using TriggerManager
-            // TODO: Get proper database connection from context
-            engine.getTriggerManager().createTrigger(triggerDef, null);
+            Connection connection = context.getConnection();
+            engine.getTriggerManager().createTrigger(triggerDef, connection);
             
             logger.debug("CREATE TRIGGER executed successfully");
             return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, 
