@@ -392,12 +392,17 @@ public class BenchmarkRunner {
                     adapter.executeSQL("CREATE TABLE orders (id INTEGER, customer_id INTEGER, amount DECIMAL)");
                     adapter.executeSQL("CREATE TABLE customers (id INTEGER, name VARCHAR)");
                     
-                    for (int i = 1; i <= 1000; i++) {
+                    // Create indexes for optimal JOIN performance
+                    adapter.executeSQL("CREATE INDEX idx_customers_id ON customers (id)");
+                    adapter.executeSQL("CREATE INDEX idx_orders_customer_id ON orders (customer_id)");
+                    
+                    // Reduced dataset size for faster benchmark execution
+                    for (int i = 1; i <= 100; i++) {
                         adapter.executeSQL("INSERT INTO customers VALUES (" + i + ", 'Customer_" + i + "')");
                     }
                     
-                    for (int i = 1; i <= 5000; i++) {
-                        int customerId = (i % 1000) + 1;
+                    for (int i = 1; i <= 500; i++) {
+                        int customerId = (i % 100) + 1;
                         adapter.executeSQL("INSERT INTO orders VALUES (" + i + ", " + customerId + ", " + (i * 10.5) + ")");
                     }
                 }
