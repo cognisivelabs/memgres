@@ -4,6 +4,7 @@ import com.memgres.sql.execution.SqlExecutionEngine;
 import com.memgres.sql.execution.SqlExecutionResult;
 
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -24,6 +25,7 @@ public class MemGresTestStatement implements Statement {
     private int updateCount = -1;
     private int maxRows = 0;
     private int queryTimeout = 0;
+    private final List<String> batchCommands = new ArrayList<>();
     
     /**
      * Creates a new MemGresTestStatement.
@@ -246,17 +248,59 @@ public class MemGresTestStatement implements Statement {
     
     @Override
     public void addBatch(String sql) throws SQLException {
-        throw new SQLFeatureNotSupportedException("Batch updates not supported");
+        checkClosed();
+        if (sql == null || sql.trim().isEmpty()) {
+            throw new SQLException("SQL statement cannot be null or empty");
+        }
+        batchCommands.add(sql);
     }
     
     @Override
     public void clearBatch() throws SQLException {
-        throw new SQLFeatureNotSupportedException("Batch updates not supported");
+        checkClosed();
+        batchCommands.clear();
     }
     
     @Override
     public int[] executeBatch() throws SQLException {
-        throw new SQLFeatureNotSupportedException("Batch updates not supported");
+        checkClosed();
+        
+        if (batchCommands.isEmpty()) {
+            return new int[0];
+        }
+        
+        List<Integer> results = new ArrayList<>();
+        List<String> currentBatch = new ArrayList<>(batchCommands);
+        
+        try {
+            // Execute each SQL statement in the batch
+            for (String sql : currentBatch) {
+                try {
+                    SqlExecutionResult result = sqlEngine.execute(sql);
+                    
+                    // Return affected rows for DML operations, SUCCESS_NO_INFO for others
+                    if (result.getType() == SqlExecutionResult.ResultType.INSERT ||
+                        result.getType() == SqlExecutionResult.ResultType.UPDATE ||
+                        result.getType() == SqlExecutionResult.ResultType.DELETE) {
+                        results.add(result.getAffectedRows());
+                    } else {
+                        results.add(SUCCESS_NO_INFO);
+                    }
+                } catch (Exception e) {
+                    // For batch execution failures, we continue but mark as failed
+                    results.add(EXECUTE_FAILED);
+                }
+            }
+            
+            // Clear the batch after successful execution
+            batchCommands.clear();
+            
+            // Convert results to int array
+            return results.stream().mapToInt(Integer::intValue).toArray();
+            
+        } catch (Exception e) {
+            throw new BatchUpdateException("Batch execution failed", results.stream().mapToInt(Integer::intValue).toArray(), e);
+        }
     }
     
     @Override
