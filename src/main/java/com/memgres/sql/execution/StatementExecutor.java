@@ -3,6 +3,8 @@ package com.memgres.sql.execution;
 import com.memgres.core.MemGresEngine;
 import com.memgres.core.TriggerDefinition;
 import com.memgres.functions.UuidFunctions;
+import com.memgres.wal.WalRecord;
+import com.memgres.wal.WalTransactionManager;
 import com.memgres.monitoring.PerformanceMonitor;
 import com.memgres.monitoring.QueryAnalyzer;
 import com.memgres.monitoring.QueryAnalysis;
@@ -17,6 +19,7 @@ import com.memgres.storage.Schema;
 import com.memgres.storage.Sequence;
 import com.memgres.storage.Table;
 import com.memgres.storage.View;
+import com.memgres.transaction.Transaction;
 import com.memgres.types.Column;
 import com.memgres.types.DataType;
 import com.memgres.types.Row;
@@ -189,6 +192,22 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
                 table.insertRow(rowData);
                 affectedRows++;
                 
+                // Log to WAL if transaction manager supports it
+                if (engine.getTransactionManager() instanceof WalTransactionManager) {
+                    WalTransactionManager walTxnMgr = (WalTransactionManager) engine.getTransactionManager();
+                    Transaction currentTxn = walTxnMgr.getCurrentTransaction();
+                    if (currentTxn != null) {
+                        try {
+                            String sql = "INSERT INTO " + tableName + " VALUES (...)";
+                            walTxnMgr.logDataModification(currentTxn.getId(), 
+                                WalRecord.RecordType.INSERT, "public", tableName, 
+                                null, rowData, sql);
+                        } catch (Exception e) {
+                            logger.warn("Failed to log INSERT to WAL", e);
+                        }
+                    }
+                }
+                
                 // Fire AFTER INSERT triggers
                 engine.getTriggerManager().fireAfter("public", tableName, 
                     TriggerDefinition.Event.INSERT, null, rowData, null);
@@ -270,8 +289,25 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
                     TriggerDefinition.Event.UPDATE, row.getData(), newData, null);
                 
                 // Update the row
+                Object[] oldData = row.getData().clone();
                 table.updateRow(row.getId(), newData);
                 affectedRows++;
+                
+                // Log to WAL if transaction manager supports it
+                if (engine.getTransactionManager() instanceof WalTransactionManager) {
+                    WalTransactionManager walTxnMgr = (WalTransactionManager) engine.getTransactionManager();
+                    Transaction currentTxn = walTxnMgr.getCurrentTransaction();
+                    if (currentTxn != null) {
+                        try {
+                            String sql = "UPDATE " + tableName + " SET ...";
+                            walTxnMgr.logDataModification(currentTxn.getId(), 
+                                WalRecord.RecordType.UPDATE, "public", tableName, 
+                                oldData, newData, sql);
+                        } catch (Exception e) {
+                            logger.warn("Failed to log UPDATE to WAL", e);
+                        }
+                    }
+                }
                 
                 // Fire AFTER UPDATE triggers
                 engine.getTriggerManager().fireAfter("public", tableName, 
@@ -322,8 +358,25 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
                 engine.getTriggerManager().fireBefore("public", tableName, 
                     TriggerDefinition.Event.DELETE, row.getData(), null, null);
                 
+                Object[] deletedData = row.getData().clone();
                 if (table.deleteRow(row.getId())) {
                     affectedRows++;
+                    
+                    // Log to WAL if transaction manager supports it
+                    if (engine.getTransactionManager() instanceof WalTransactionManager) {
+                        WalTransactionManager walTxnMgr = (WalTransactionManager) engine.getTransactionManager();
+                        Transaction currentTxn = walTxnMgr.getCurrentTransaction();
+                        if (currentTxn != null) {
+                            try {
+                                String sql = "DELETE FROM " + tableName + " WHERE ...";
+                                walTxnMgr.logDataModification(currentTxn.getId(), 
+                                    WalRecord.RecordType.DELETE, "public", tableName, 
+                                    deletedData, null, sql);
+                            } catch (Exception e) {
+                                logger.warn("Failed to log DELETE to WAL", e);
+                            }
+                        }
+                    }
                     
                     // Fire AFTER DELETE triggers
                     engine.getTriggerManager().fireAfter("public", tableName, 
