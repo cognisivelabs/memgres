@@ -8,8 +8,10 @@ import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -34,6 +36,7 @@ public class MemGresTestPreparedStatement implements PreparedStatement {
     private final SqlExecutionEngine sqlEngine;
     private final String sql;
     private final Map<Integer, Object> parameters = new HashMap<>();
+    private final List<Map<Integer, Object>> batchParameters = new ArrayList<>();
     private boolean closed = false;
     
     /**
@@ -260,7 +263,11 @@ public class MemGresTestPreparedStatement implements PreparedStatement {
     
     @Override
     public void addBatch() throws SQLException {
-        throw new SQLFeatureNotSupportedException("Batch operations not supported");
+        checkClosed();
+        // Add current parameter set to batch
+        batchParameters.add(new HashMap<>(parameters));
+        // Clear current parameters for next batch entry
+        parameters.clear();
     }
     
     @Override
@@ -599,12 +606,61 @@ public class MemGresTestPreparedStatement implements PreparedStatement {
     
     @Override
     public void clearBatch() throws SQLException {
-        throw new SQLFeatureNotSupportedException("Batch operations not supported");
+        checkClosed();
+        batchParameters.clear();
     }
     
     @Override
     public int[] executeBatch() throws SQLException {
-        throw new SQLFeatureNotSupportedException("Batch operations not supported");
+        checkClosed();
+        
+        if (batchParameters.isEmpty()) {
+            return new int[0];
+        }
+        
+        List<Integer> results = new ArrayList<>();
+        List<Map<Integer, Object>> currentBatch = new ArrayList<>(batchParameters);
+        
+        try {
+            // Execute the prepared statement for each parameter set
+            for (Map<Integer, Object> parameterSet : currentBatch) {
+                try {
+                    // Temporarily set parameters for this batch entry
+                    Map<Integer, Object> originalParameters = new HashMap<>(parameters);
+                    parameters.clear();
+                    parameters.putAll(parameterSet);
+                    
+                    // Replace placeholders and execute
+                    String executableSql = replaceParameters();
+                    SqlExecutionResult result = sqlEngine.execute(executableSql);
+                    
+                    // Restore original parameters
+                    parameters.clear();
+                    parameters.putAll(originalParameters);
+                    
+                    // Return affected rows for DML operations, SUCCESS_NO_INFO for others
+                    if (result.getType() == SqlExecutionResult.ResultType.INSERT ||
+                        result.getType() == SqlExecutionResult.ResultType.UPDATE ||
+                        result.getType() == SqlExecutionResult.ResultType.DELETE) {
+                        results.add(result.getAffectedRows());
+                    } else {
+                        results.add(SUCCESS_NO_INFO);
+                    }
+                } catch (Exception e) {
+                    // For batch execution failures, we continue but mark as failed
+                    results.add(EXECUTE_FAILED);
+                }
+            }
+            
+            // Clear the batch after successful execution
+            batchParameters.clear();
+            
+            // Convert results to int array
+            return results.stream().mapToInt(Integer::intValue).toArray();
+            
+        } catch (Exception e) {
+            throw new BatchUpdateException("Batch execution failed", results.stream().mapToInt(Integer::intValue).toArray(), e);
+        }
     }
     
     // Wrapper interface
