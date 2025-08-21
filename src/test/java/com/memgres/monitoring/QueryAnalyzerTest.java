@@ -21,7 +21,7 @@ public class QueryAnalyzerTest {
     @Test
     void testSlowQueryAnalysis() {
         QueryAnalysis analysis = analyzer.analyzeQuery(
-            "SELECT * FROM users WHERE id = 1", 2000, 1);
+            "SELECT * FROM users WHERE id = 1", 1100, 1); // Reduced from 2000ms to reduce log noise
         
         assertTrue(analysis.hasIssues(), "Slow query should have issues");
         assertEquals(QueryAnalyzer.QueryPriority.MEDIUM, analysis.getPriority(), 
@@ -39,7 +39,7 @@ public class QueryAnalyzerTest {
         analyzer.setThresholds(1000, 3000);
         
         QueryAnalysis analysis = analyzer.analyzeQuery(
-            "SELECT * FROM products", 4000, 1000);
+            "SELECT * FROM products", 3500, 1000); // Reduced from 4000ms to reduce log noise while staying above very slow threshold
         
         assertTrue(analysis.hasIssues(), "Very slow query should have issues");
         assertEquals(QueryAnalyzer.QueryPriority.HIGH, analysis.getPriority(), 
@@ -74,7 +74,7 @@ public class QueryAnalyzerTest {
         QueryAnalysis analysis = analyzer.analyzeQuery(
             "SELECT * FROM users u JOIN orders o ON u.id = o.user_id " +
             "JOIN products p ON o.product_id = p.id " +
-            "JOIN categories c ON p.category_id = c.id", 1500, 100);
+            "JOIN categories c ON p.category_id = c.id", 1200, 100); // Reduced from 1500ms to reduce log noise
         
         assertTrue(analysis.hasIssues(), "Complex join should be flagged");
         
@@ -162,12 +162,13 @@ public class QueryAnalyzerTest {
     void testFrequentSlowQueryAnalysis() {
         String slowSql = "SELECT * FROM large_table WHERE unindexed_column = 'value'";
         
-        // Execute the same slow query multiple times to trigger frequency analysis
-        for (int i = 0; i < 101; i++) {
-            analyzer.analyzeQuery(slowSql, 1200, 100);
+        // Execute the same slow query multiple times to trigger frequency analysis (needs >100 for frequency detection)
+        // Using 1100ms to test slow query detection (just above 1000ms threshold) with reduced log noise
+        for (int i = 0; i < 102; i++) {
+            analyzer.analyzeQuery(slowSql, 1100, 100);
         }
         
-        QueryAnalysis analysis = analyzer.analyzeQuery(slowSql, 1200, 100);
+        QueryAnalysis analysis = analyzer.analyzeQuery(slowSql, 1100, 100);
         
         assertEquals(QueryAnalyzer.QueryPriority.HIGH, analysis.getPriority(),
             "Frequently executed slow query should have high priority");
@@ -184,7 +185,7 @@ public class QueryAnalyzerTest {
     @Test
     void testOptimizationReportGeneration() {
         // Add various queries with different patterns
-        analyzer.analyzeQuery("SELECT * FROM users", 2000, 1000); // Slow, high impact
+        analyzer.analyzeQuery("SELECT * FROM users", 1100, 1000); // Slow, high impact (reduced log noise)
         analyzer.analyzeQuery("SELECT id FROM products", 100, 1);
         
         // Make one query very frequent
@@ -193,7 +194,7 @@ public class QueryAnalyzerTest {
         }
         
         // Make another query slow but infrequent
-        analyzer.analyzeQuery("SELECT * FROM audit_log WHERE date > ?", 3000, 5000);
+        analyzer.analyzeQuery("SELECT * FROM audit_log WHERE date > ?", 1200, 5000); // Reduced from 3000ms to reduce log noise
         
         OptimizationReport report = analyzer.generateOptimizationReport(5);
         
