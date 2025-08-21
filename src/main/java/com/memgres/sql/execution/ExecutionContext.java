@@ -4,6 +4,7 @@ import com.memgres.storage.Table;
 import com.memgres.types.Column;
 import com.memgres.types.Row;
 
+import java.sql.Connection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,7 @@ public class ExecutionContext {
     private List<Column> joinedColumns;
     private Map<String, List<Column>> tableColumns;
     private List<String> tableOrder;
+    private Connection connection;
     
     // CTE support - store temporary result sets
     private Map<String, CTEResult> cteResults = new HashMap<>();
@@ -69,6 +71,14 @@ public class ExecutionContext {
     
     public void setTableOrder(List<String> tableOrder) {
         this.tableOrder = tableOrder;
+    }
+    
+    public Connection getConnection() {
+        return connection;
+    }
+    
+    public void setConnection(Connection connection) {
+        this.connection = connection;
     }
     
     // CTE support methods

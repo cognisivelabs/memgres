@@ -91,7 +91,8 @@ tableReference
 
 // JOIN clause with different types and conditions
 joinClause
-    : joinType JOIN tableReference joinCondition
+    : NATURAL joinType JOIN tableReference       # naturalJoinClause
+    | joinType JOIN tableReference joinCondition # regularJoinClause
     ;
 
 // JOIN types
