@@ -130,12 +130,131 @@ public class ColumnStatistics {
                 return 0.0; // No overlap
             }
             
-            // Calculate overlap ratio (simplified)
-            return 0.3; // Placeholder - would need proper range calculation
+            // Calculate overlap ratio using linear interpolation
+            return calculateRangeOverlap(colMin, colMax, queryMin, queryMax);
             
         } catch (ClassCastException e) {
             return 0.3; // Fallback
         }
+    }
+    
+    /**
+     * Calculate the overlap ratio between the query range and column range.
+     * Uses linear interpolation for numeric types and length-based calculation for strings.
+     */
+    private double calculateRangeOverlap(Object colMin, Object colMax, Object queryMin, Object queryMax) {
+        
+        // Handle different data types
+        if (colMin instanceof Number && colMax instanceof Number && 
+            queryMin instanceof Number && queryMax instanceof Number) {
+            
+            return calculateNumericOverlap((Number) colMin, (Number) colMax, 
+                                         (Number) queryMin, (Number) queryMax);
+            
+        } else if (colMin instanceof String && colMax instanceof String && 
+                   queryMin instanceof String && queryMax instanceof String) {
+            
+            return calculateStringOverlap((String) colMin, (String) colMax, 
+                                        (String) queryMin, (String) queryMax);
+            
+        } else if (colMin instanceof Comparable && colMax instanceof Comparable &&
+                   queryMin instanceof Comparable && queryMax instanceof Comparable) {
+            // For other comparable types (dates, etc.), use ordinal estimation
+            @SuppressWarnings("unchecked")
+            Comparable<Object> cMin = (Comparable<Object>) colMin;
+            @SuppressWarnings("unchecked") 
+            Comparable<Object> cMax = (Comparable<Object>) colMax;
+            @SuppressWarnings("unchecked")
+            Comparable<Object> qMin = (Comparable<Object>) queryMin;
+            @SuppressWarnings("unchecked")
+            Comparable<Object> qMax = (Comparable<Object>) queryMax;
+            
+            return calculateOrdinalOverlap(cMin, cMax, qMin, qMax);
+        } else {
+            // Non-comparable types
+            return 0.3;
+        }
+    }
+    
+    /**
+     * Calculate overlap ratio for numeric ranges.
+     */
+    private double calculateNumericOverlap(Number colMin, Number colMax, 
+                                         Number queryMin, Number queryMax) {
+        double cMin = colMin.doubleValue();
+        double cMax = colMax.doubleValue();
+        double qMin = queryMin.doubleValue();
+        double qMax = queryMax.doubleValue();
+        
+        if (cMax == cMin) {
+            // Single value column
+            return (qMin <= cMin && cMin <= qMax) ? 1.0 : 0.0;
+        }
+        
+        // Calculate overlap
+        double overlapMin = Math.max(cMin, qMin);
+        double overlapMax = Math.min(cMax, qMax);
+        
+        if (overlapMax <= overlapMin) {
+            return 0.0;
+        }
+        
+        double overlapRange = overlapMax - overlapMin;
+        double columnRange = cMax - cMin;
+        
+        return Math.min(1.0, overlapRange / columnRange);
+    }
+    
+    /**
+     * Calculate overlap ratio for string ranges (lexicographic).
+     */
+    private double calculateStringOverlap(String colMin, String colMax, 
+                                        String queryMin, String queryMax) {
+        // For strings, we estimate based on lexicographic position
+        // This is a simplified approach - real databases use more sophisticated methods
+        
+        if (colMin.equals(colMax)) {
+            // Single value
+            return (queryMin.compareTo(colMin) <= 0 && colMin.compareTo(queryMax) <= 0) ? 1.0 : 0.0;
+        }
+        
+        // Simple heuristic: if query range overlaps with column range, estimate 30%
+        // unless the ranges are very specific
+        if (queryMax.compareTo(colMin) >= 0 && queryMin.compareTo(colMax) <= 0) {
+            // Ranges overlap - estimate based on string length similarity
+            double avgQueryLen = (queryMin.length() + queryMax.length()) / 2.0;
+            double avgColLen = (colMin.length() + colMax.length()) / 2.0;
+            
+            if (Math.abs(avgQueryLen - avgColLen) <= 2) {
+                return 0.5; // Similar length strings
+            } else {
+                return 0.3; // Different length strings
+            }
+        }
+        
+        return 0.0;
+    }
+    
+    /**
+     * Calculate overlap ratio for other ordinal types.
+     */
+    private double calculateOrdinalOverlap(Comparable<Object> colMin, Comparable<Object> colMax,
+                                         Comparable<Object> queryMin, Comparable<Object> queryMax) {
+        // For dates and other ordinal types, we use a simplified approach
+        // In a real implementation, this would be type-specific
+        
+        if (colMin.equals(colMax)) {
+            // Single value
+            return (queryMin.compareTo(colMin) <= 0 && colMin.compareTo(queryMax) <= 0) ? 1.0 : 0.0;
+        }
+        
+        // Check if ranges overlap
+        if (queryMax.compareTo(colMin) >= 0 && queryMin.compareTo(colMax) <= 0) {
+            // Estimate 40% selectivity for overlapping ranges of unknown ordinal types
+            return 0.4;
+        }
+        
+        return 0.0;
     }
     
     /**
