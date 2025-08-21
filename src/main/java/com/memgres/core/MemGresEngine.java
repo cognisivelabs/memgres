@@ -6,6 +6,7 @@ import com.memgres.storage.Schema;
 import com.memgres.storage.Sequence;
 import com.memgres.storage.Table;
 import com.memgres.transaction.TransactionManager;
+import com.memgres.wal.WalTransactionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +43,26 @@ public class MemGresEngine {
     }
     
     /**
+     * Constructor with WAL support.
+     * @param walDirectory directory for WAL files
+     */
+    public MemGresEngine(String walDirectory) {
+        this.schemas = new ConcurrentHashMap<>();
+        try {
+            this.transactionManager = new WalTransactionManager(walDirectory);
+            logger.info("MemGres Engine created with WAL enabled: {}", walDirectory);
+        } catch (Exception e) {
+            logger.error("Failed to initialize WAL, falling back to regular transaction manager", e);
+            throw new RuntimeException("Failed to initialize WAL transaction manager", e);
+        }
+        this.triggerManager = new TriggerManager();
+        this.memoryManager = MemoryManager.getInstance();
+        this.memoryOptimizer = new MemoryOptimizer(this);
+        this.engineLock = new ReentrantReadWriteLock();
+        this.initialized = false;
+    }
+    
+    /**
      * Initialize the database engine with default schema
      */
     public void initialize() {
@@ -50,6 +71,18 @@ public class MemGresEngine {
             if (initialized) {
                 logger.warn("Engine already initialized");
                 return;
+            }
+            
+            // Perform WAL recovery if enabled
+            if (transactionManager instanceof WalTransactionManager) {
+                WalTransactionManager walTxnMgr = (WalTransactionManager) transactionManager;
+                try {
+                    walTxnMgr.performRecovery();
+                    logger.info("WAL recovery completed successfully");
+                } catch (Exception e) {
+                    logger.error("WAL recovery failed", e);
+                    throw new RuntimeException("WAL recovery failed during initialization", e);
+                }
             }
             
             // Create default 'public' schema
@@ -276,6 +309,24 @@ public class MemGresEngine {
     public MemoryOptimizer getMemoryOptimizer() {
         validateInitialized();
         return memoryOptimizer;
+    }
+    
+    /**
+     * Check if WAL (Write-Ahead Logging) is enabled.
+     */
+    public boolean isWalEnabled() {
+        return transactionManager instanceof WalTransactionManager;
+    }
+    
+    /**
+     * Get the WAL transaction manager if WAL is enabled.
+     * @return WalTransactionManager or null if WAL is not enabled
+     */
+    public WalTransactionManager getWalTransactionManager() {
+        if (transactionManager instanceof WalTransactionManager) {
+            return (WalTransactionManager) transactionManager;
+        }
+        return null;
     }
     
     /**
