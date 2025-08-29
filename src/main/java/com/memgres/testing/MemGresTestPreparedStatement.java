@@ -2,6 +2,10 @@ package com.memgres.testing;
 
 import com.memgres.sql.execution.SqlExecutionEngine;
 import com.memgres.sql.execution.SqlExecutionResult;
+import com.memgres.storage.Table;
+import com.memgres.types.Column;
+import com.memgres.types.DataType;
+import com.memgres.types.Row;
 
 import java.io.InputStream;
 import java.io.Reader;
@@ -38,6 +42,7 @@ public class MemGresTestPreparedStatement implements PreparedStatement {
     private final Map<Integer, Object> parameters = new HashMap<>();
     private final List<Map<Integer, Object>> batchParameters = new ArrayList<>();
     private boolean closed = false;
+    private List<Object> lastGeneratedKeys = new ArrayList<>();
     
     /**
      * Creates a new MemGresTestPreparedStatement.
@@ -84,6 +89,9 @@ public class MemGresTestPreparedStatement implements PreparedStatement {
             // Take snapshot after successful DML operations if in transaction
             connection.ensureTransactionSnapshotAfterDML(processedSql);
             
+            // Capture generated keys for INSERT operations
+            captureGeneratedKeys(processedSql, result);
+            
             return result.getAffectedRows();
         } catch (com.memgres.sql.execution.SqlExecutionException e) {
             throw new SQLException("SQL execution failed: " + e.getMessage(), e);
@@ -104,6 +112,9 @@ public class MemGresTestPreparedStatement implements PreparedStatement {
             
             // Take snapshot after successful DML operations if in transaction
             connection.ensureTransactionSnapshotAfterDML(processedSql);
+            
+            // Capture generated keys for INSERT operations
+            captureGeneratedKeys(processedSql, result);
             
             return result.getType() == SqlExecutionResult.ResultType.SELECT;
         } catch (com.memgres.sql.execution.SqlExecutionException e) {
@@ -504,7 +515,32 @@ public class MemGresTestPreparedStatement implements PreparedStatement {
     
     @Override
     public ResultSet getGeneratedKeys() throws SQLException {
-        throw new SQLFeatureNotSupportedException("Generated keys not supported");
+        checkClosed();
+        
+        // Create a ResultSet with the generated keys
+        if (lastGeneratedKeys.isEmpty()) {
+            // Return empty result set
+            return new MemGresTestResultSet(new ArrayList<>(), 
+                List.of(new Column.Builder()
+                    .name("GENERATED_KEY")
+                    .dataType(DataType.BIGINT)
+                    .nullable(false)
+                    .build()));
+        }
+        
+        // Convert generated keys to rows
+        List<Row> rows = new ArrayList<>();
+        long rowId = 1;
+        for (Object key : lastGeneratedKeys) {
+            rows.add(new Row(rowId++, new Object[]{key}));
+        }
+        
+        return new MemGresTestResultSet(rows, 
+            List.of(new Column.Builder()
+                .name("GENERATED_KEY")
+                .dataType(DataType.BIGINT)
+                .nullable(false)
+                .build()));
     }
     
     @Override
@@ -718,6 +754,47 @@ public class MemGresTestPreparedStatement implements PreparedStatement {
     private void checkClosed() throws SQLException {
         if (closed) {
             throw new SQLException("PreparedStatement is closed");
+        }
+    }
+    
+    /**
+     * Capture generated keys from INSERT operations.
+     */
+    private void captureGeneratedKeys(String sql, SqlExecutionResult result) {
+        lastGeneratedKeys.clear();
+        
+        // Only capture keys for INSERT operations
+        if (result.getType() != SqlExecutionResult.ResultType.INSERT) {
+            return;
+        }
+        
+        // Parse table name from SQL (simple approach)
+        String upperSql = sql.trim().toUpperCase();
+        if (!upperSql.startsWith("INSERT")) {
+            return;
+        }
+        
+        // Extract table name from INSERT INTO table_name ...
+        String[] parts = sql.trim().split("\\s+");
+        if (parts.length < 3) {
+            return;
+        }
+        
+        String tableName = parts[2]; // INSERT INTO table_name
+        // Remove parentheses if present
+        int parenIndex = tableName.indexOf('(');
+        if (parenIndex > 0) {
+            tableName = tableName.substring(0, parenIndex);
+        }
+        
+        // Get the table and retrieve generated keys
+        try {
+            Table table = connection.getEngine().getTable("public", tableName);
+            if (table != null) {
+                lastGeneratedKeys.addAll(table.getLastGeneratedKeys());
+            }
+        } catch (Exception e) {
+            // Ignore errors in key retrieval
         }
     }
 }

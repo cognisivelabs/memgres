@@ -2,6 +2,10 @@ package com.memgres.testing;
 
 import com.memgres.sql.execution.SqlExecutionEngine;
 import com.memgres.sql.execution.SqlExecutionResult;
+import com.memgres.storage.Table;
+import com.memgres.types.Column;
+import com.memgres.types.DataType;
+import com.memgres.types.Row;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -26,6 +30,7 @@ public class MemGresTestStatement implements Statement {
     private int maxRows = 0;
     private int queryTimeout = 0;
     private final List<String> batchCommands = new ArrayList<>();
+    private List<Object> lastGeneratedKeys = new ArrayList<>();
     
     /**
      * Creates a new MemGresTestStatement.
@@ -80,6 +85,9 @@ public class MemGresTestStatement implements Statement {
         
         // Take snapshot after successful DML operations if in transaction
         connection.ensureTransactionSnapshotAfterDML(sql);
+        
+        // Capture generated keys for INSERT operations
+        captureGeneratedKeys(sql, result);
         
         lastResultSet = null;
         updateCount = result.getAffectedRows();
@@ -178,6 +186,9 @@ public class MemGresTestStatement implements Statement {
         
         // Take snapshot after successful DML operations if in transaction
         connection.ensureTransactionSnapshotAfterDML(sql);
+        
+        // Capture generated keys for INSERT operations
+        captureGeneratedKeys(sql, result);
         
         if (result.getRows() != null) {
             // Query that returns results
@@ -317,7 +328,32 @@ public class MemGresTestStatement implements Statement {
     
     @Override
     public ResultSet getGeneratedKeys() throws SQLException {
-        throw new SQLFeatureNotSupportedException("Generated keys not supported");
+        checkClosed();
+        
+        // Create a ResultSet with the generated keys
+        if (lastGeneratedKeys.isEmpty()) {
+            // Return empty result set
+            return new MemGresTestResultSet(new ArrayList<>(), 
+                List.of(new Column.Builder()
+                    .name("GENERATED_KEY")
+                    .dataType(DataType.BIGINT)
+                    .nullable(false)
+                    .build()));
+        }
+        
+        // Convert generated keys to rows
+        List<Row> rows = new ArrayList<>();
+        long rowId = 1;
+        for (Object key : lastGeneratedKeys) {
+            rows.add(new Row(rowId++, new Object[]{key}));
+        }
+        
+        return new MemGresTestResultSet(rows, 
+            List.of(new Column.Builder()
+                .name("GENERATED_KEY")
+                .dataType(DataType.BIGINT)
+                .nullable(false)
+                .build()));
     }
     
     @Override
@@ -402,6 +438,47 @@ public class MemGresTestStatement implements Statement {
     private void checkClosed() throws SQLException {
         if (closed) {
             throw new SQLException("Statement is closed");
+        }
+    }
+    
+    /**
+     * Capture generated keys from INSERT operations.
+     */
+    private void captureGeneratedKeys(String sql, SqlExecutionResult result) {
+        lastGeneratedKeys.clear();
+        
+        // Only capture keys for INSERT operations
+        if (result.getType() != SqlExecutionResult.ResultType.INSERT) {
+            return;
+        }
+        
+        // Parse table name from SQL (simple approach)
+        String upperSql = sql.trim().toUpperCase();
+        if (!upperSql.startsWith("INSERT")) {
+            return;
+        }
+        
+        // Extract table name from INSERT INTO table_name ...
+        String[] parts = sql.trim().split("\\s+");
+        if (parts.length < 3) {
+            return;
+        }
+        
+        String tableName = parts[2]; // INSERT INTO table_name
+        // Remove parentheses if present
+        int parenIndex = tableName.indexOf('(');
+        if (parenIndex > 0) {
+            tableName = tableName.substring(0, parenIndex);
+        }
+        
+        // Get the table and retrieve generated keys
+        try {
+            Table table = connection.getEngine().getTable("public", tableName);
+            if (table != null) {
+                lastGeneratedKeys.addAll(table.getLastGeneratedKeys());
+            }
+        } catch (Exception e) {
+            // Ignore errors in key retrieval
         }
     }
 }

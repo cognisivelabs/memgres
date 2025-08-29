@@ -83,6 +83,7 @@ TRUNCATE: [Tt][Rr][Uu][Nn][Cc][Aa][Tt][Ee];
 RESTART: [Rr][Ee][Ss][Tt][Aa][Rr][Tt];
 CONTINUE: [Cc][Oo][Nn][Tt][Ii][Nn][Uu][Ee];
 IDENTITY: [Ii][Dd][Ee][Nn][Tt][Ii][Tt][Yy];
+AUTO_INCREMENT: [Aa][Uu][Tt][Oo]'_'[Ii][Nn][Cc][Rr][Ee][Mm][Ee][Nn][Tt];
 NOMINVALUE: [Nn][Oo][Mm][Ii][Nn][Vv][Aa][Ll][Uu][Ee];
 NOMAXVALUE: [Nn][Oo][Mm][Aa][Xx][Vv][Aa][Ll][Uu][Ee];
 CYCLE: [Cc][Yy][Cc][Ll][Ee];

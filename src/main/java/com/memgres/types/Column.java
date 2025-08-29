@@ -14,6 +14,7 @@ public class Column {
     private final boolean unique;
     private final Object defaultValue;
     private final int maxLength;
+    private final boolean autoIncrement;
     
     /**
      * Builder class for creating Column instances
@@ -26,6 +27,7 @@ public class Column {
         private boolean unique = false;
         private Object defaultValue = null;
         private int maxLength = -1;
+        private boolean autoIncrement = false;
         
         public Builder name(String name) {
             this.name = name;
@@ -66,6 +68,20 @@ public class Column {
             return this;
         }
         
+        public Builder autoIncrement(boolean autoIncrement) {
+            this.autoIncrement = autoIncrement;
+            if (autoIncrement) {
+                // Auto-increment columns must be numeric
+                if (dataType != null && 
+                    dataType != DataType.INTEGER && 
+                    dataType != DataType.BIGINT && 
+                    dataType != DataType.SMALLINT) {
+                    throw new IllegalArgumentException("Auto-increment can only be applied to numeric columns");
+                }
+            }
+            return this;
+        }
+        
         public Column build() {
             if (name == null || name.trim().isEmpty()) {
                 throw new IllegalArgumentException("Column name cannot be null or empty");
@@ -86,6 +102,7 @@ public class Column {
         this.unique = builder.unique;
         this.defaultValue = builder.defaultValue;
         this.maxLength = builder.maxLength;
+        this.autoIncrement = builder.autoIncrement;
         
         // Validate default value against data type
         if (defaultValue != null && !dataType.isValidValue(defaultValue)) {
@@ -188,6 +205,10 @@ public class Column {
      */
     public int getMaxLength() {
         return maxLength;
+    }
+    
+    public boolean isAutoIncrement() {
+        return autoIncrement;
     }
     
     /**
