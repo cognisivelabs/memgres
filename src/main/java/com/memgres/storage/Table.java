@@ -296,6 +296,38 @@ public class Table {
     }
     
     /**
+     * Clear all rows from the table.
+     * This is used for savepoint rollback operations.
+     */
+    public void clear() {
+        tableLock.writeLock().lock();
+        try {
+            // Clear all data
+            rows.clear();
+            
+            // Clear all indexes
+            for (Index index : indexes.values()) {
+                index.clear();
+            }
+            for (CompositeIndex index : compositeIndexes.values()) {
+                index.clear();
+            }
+            
+            // Clear generated keys tracking
+            lastGeneratedKeys.get().clear();
+            
+            // Reset auto-increment counters to 0
+            for (AtomicLong counter : autoIncrementCounters.values()) {
+                counter.set(0);
+            }
+            
+            logger.debug("Cleared all data from table {}", name);
+        } finally {
+            tableLock.writeLock().unlock();
+        }
+    }
+    
+    /**
      * Get all rows in the table
      * @return list of all rows (copies)
      */
