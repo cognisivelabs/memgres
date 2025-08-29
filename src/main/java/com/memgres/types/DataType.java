@@ -411,6 +411,35 @@ public enum DataType {
         }
     },
     
+    BLOB("blob") {
+        @Override
+        public boolean isValidValue(Object value) {
+            return value instanceof byte[] || value instanceof java.sql.Blob;
+        }
+        
+        @Override
+        public Object convertValue(Object value) {
+            if (value instanceof java.sql.Blob) {
+                try {
+                    java.sql.Blob blob = (java.sql.Blob) value;
+                    return blob.getBytes(1, (int) blob.length());
+                } catch (Exception e) {
+                    throw new IllegalArgumentException("Failed to convert BLOB to byte array", e);
+                }
+            }
+            if (value instanceof String) {
+                String str = (String) value;
+                if (str.startsWith("\\x") || str.startsWith("0x")) {
+                    // Hex string format
+                    str = str.substring(2);
+                    return hexStringToByteArray(str);
+                }
+                return str.getBytes();
+            }
+            return value;
+        }
+    },
+    
     INTERVAL("interval") {
         @Override
         public boolean isValidValue(Object value) {
@@ -720,6 +749,8 @@ public enum DataType {
                 return CLOB;
             case "char large object":
                 return CLOB;
+            case "binary large object":
+                return BLOB;
             case "binary varying":
                 return VARBINARY;
             case "interval year":

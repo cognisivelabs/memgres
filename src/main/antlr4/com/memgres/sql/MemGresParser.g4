@@ -418,6 +418,8 @@ dataType
     | BYTEA                                             # byteaType
     | CLOB (LPAREN INTEGER_LITERAL RPAREN)?            # clobType
     | CHARACTER LARGE OBJECT (LPAREN INTEGER_LITERAL RPAREN)? # characterLargeObjectType
+    | BLOB (LPAREN INTEGER_LITERAL RPAREN)?            # blobType
+    | BINARY LARGE OBJECT (LPAREN INTEGER_LITERAL RPAREN)? # binaryLargeObjectType
     | BINARY (LPAREN INTEGER_LITERAL RPAREN)?          # binaryType
     | VARBINARY (LPAREN INTEGER_LITERAL RPAREN)?       # varbinaryType
     | BINARY VARYING (LPAREN INTEGER_LITERAL RPAREN)?  # binaryVaryingType

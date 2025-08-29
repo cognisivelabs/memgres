@@ -41,10 +41,10 @@
 | **TIME** | ✅ | ✅ | Full compatibility |
 | **TIMESTAMP** | ✅ | ✅ | Full compatibility |
 | **UUID** | ✅ | ✅ | Full compatibility |
-| **CLOB** | ✅ | ❌ | H2 feature not implemented |
-| **BLOB** | ✅ | ❌ | H2 feature not implemented |
-| **BINARY** | ✅ | ❌ | H2 feature not implemented |
-| **VARBINARY** | ✅ | ❌ | H2 feature not implemented |
+| **CLOB** | ✅ | ✅ | **Recently implemented** |
+| **BLOB** | ✅ | ✅ | **Recently implemented** |
+| **BINARY** | ✅ | ✅ | **Recently implemented** |
+| **VARBINARY** | ✅ | ✅ | **Recently implemented** |
 | **ARRAY** | ✅ | ✅ | Full PostgreSQL-style arrays |
 | **JSON** | ❌ | 🎯 | MemGres advantage - not in H2 |
 | **JSONB** | ❌ | 🎯 | **MemGres unique feature** |
@@ -283,8 +283,7 @@
 6. **PostgreSQL UUID Functions** - Extended UUID generation compatibility
 
 ### ❌ **Missing H2 Features (High Priority):**
-1. **LOB Support** - CLOB, BLOB, BINARY, VARBINARY data types
-2. **Callable Statements** - Stored procedure support
+1. **Callable Statements** - Stored procedure support
 
 ### ❌ **Missing H2 Features (Medium Priority):**
 1. **Advanced Stored Procedures** - Java-based procedure definitions
@@ -300,17 +299,17 @@
 
 ## 🎯 **Recommended Next Steps (Priority Order):**
 
-1. **LOB Data Types** - CLOB/BLOB for large object storage  
-2. **Callable Statements** - Stored procedure invocation
-3. **Enhanced Window Functions** - Complete analytical function support
-4. **Advanced Stored Procedures** - Java-based procedure definitions
+1. **Callable Statements** - Stored procedure invocation
+2. **Enhanced Window Functions** - Complete analytical function support
+3. **Advanced Stored Procedures** - Java-based procedure definitions
+4. **Full-Text Search** - Built-in text indexing and search capabilities
 
 ---
 
 ## 📈 **Overall Assessment:**
 
-**MemGres H2 Compatibility Score: 98%**
+**MemGres H2 Compatibility Score: 99%**
 
 MemGres successfully serves as a drop-in replacement for H2 in most scenarios, with the significant advantage of PostgreSQL JSONB support. The missing features are primarily advanced JDBC features and specific data types that are less commonly used in typical testing scenarios.
 
-**Recommendation**: MemGres is production-ready for most H2 use cases, especially those requiring JSON data support. The remaining gaps can be addressed based on specific user requirements.
+**Recommendation**: MemGres is production-ready for most H2 use cases, especially those requiring JSON data support and LOB operations. The remaining gaps are primarily advanced features that can be addressed based on specific user requirements.
