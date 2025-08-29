@@ -3,7 +3,10 @@ package com.memgres.testing;
 import com.memgres.core.MemGresEngine;
 import com.memgres.sql.execution.SqlExecutionEngine;
 import com.memgres.sql.execution.SqlExecutionResult;
+import com.memgres.storage.Schema;
 import com.memgres.storage.Table;
+import com.memgres.transaction.SavepointImpl;
+import com.memgres.transaction.TableSnapshot;
 import com.memgres.transaction.Transaction;
 import com.memgres.transaction.TransactionIsolationLevel;
 import com.memgres.types.Row;
@@ -248,22 +251,83 @@ public class MemGresTestConnection implements Connection {
     
     @Override
     public Savepoint setSavepoint() throws SQLException {
-        throw new SQLFeatureNotSupportedException("Savepoints not supported");
+        checkClosed();
+        
+        if (getAutoCommit()) {
+            throw new SQLException("Cannot set savepoint in auto-commit mode");
+        }
+        
+        Transaction transaction = getCurrentTransaction();
+        if (transaction == null) {
+            throw new SQLException("No active transaction");
+        }
+        
+        SavepointImpl savepoint = transaction.setSavepoint();
+        captureTableSnapshotsForSavepoint(savepoint);
+        return savepoint;
     }
     
     @Override
     public Savepoint setSavepoint(String name) throws SQLException {
-        throw new SQLFeatureNotSupportedException("Savepoints not supported");
+        checkClosed();
+        
+        if (name == null || name.trim().isEmpty()) {
+            throw new SQLException("Savepoint name cannot be null or empty");
+        }
+        
+        if (getAutoCommit()) {
+            throw new SQLException("Cannot set savepoint in auto-commit mode");
+        }
+        
+        Transaction transaction = getCurrentTransaction();
+        if (transaction == null) {
+            throw new SQLException("No active transaction");
+        }
+        
+        SavepointImpl savepoint = transaction.setSavepoint(name.trim());
+        captureTableSnapshotsForSavepoint(savepoint);
+        return savepoint;
     }
     
     @Override
     public void rollback(Savepoint savepoint) throws SQLException {
-        throw new SQLFeatureNotSupportedException("Savepoints not supported");
+        checkClosed();
+        
+        if (savepoint == null) {
+            throw new SQLException("Savepoint cannot be null");
+        }
+        
+        if (getAutoCommit()) {
+            throw new SQLException("Cannot rollback to savepoint in auto-commit mode");
+        }
+        
+        Transaction transaction = getCurrentTransaction();
+        if (transaction == null) {
+            throw new SQLException("No active transaction");
+        }
+        
+        // Perform the actual rollback with engine access
+        rollbackToSavepointWithEngine(transaction, savepoint);
     }
     
     @Override
     public void releaseSavepoint(Savepoint savepoint) throws SQLException {
-        throw new SQLFeatureNotSupportedException("Savepoints not supported");
+        checkClosed();
+        
+        if (savepoint == null) {
+            throw new SQLException("Savepoint cannot be null");
+        }
+        
+        if (getAutoCommit()) {
+            throw new SQLException("Cannot release savepoint in auto-commit mode");
+        }
+        
+        Transaction transaction = getCurrentTransaction();
+        if (transaction == null) {
+            throw new SQLException("No active transaction");
+        }
+        
+        transaction.releaseSavepoint(savepoint);
     }
     
     @Override
@@ -443,6 +507,95 @@ public class MemGresTestConnection implements Connection {
      */
     public MemGresEngine getEngine() {
         return engine;
+    }
+    
+    /**
+     * Capture snapshots of all tables for a savepoint.
+     */
+    private void captureTableSnapshotsForSavepoint(SavepointImpl savepoint) {
+        try {
+            // Get all schemas from the engine
+            Collection<Schema> schemas = engine.getAllSchemas();
+            
+            for (Schema schema : schemas) {
+                Set<String> tableNames = schema.getTableNames();
+                
+                for (String tableName : tableNames) {
+                    Table table = schema.getTable(tableName);
+                    if (table != null) {
+                        // Create snapshot of current table state
+                        TableSnapshot snapshot = new TableSnapshot(schema.getName(), tableName, table.getAllRows());
+                        savepoint.addTableSnapshot(snapshot);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Log error but don't fail savepoint creation
+            System.err.println("Warning: Failed to capture table snapshots for savepoint: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Rollback to savepoint with engine access for data restoration.
+     */
+    private void rollbackToSavepointWithEngine(Transaction transaction, Savepoint savepoint) throws SQLException {
+        if (!(savepoint instanceof SavepointImpl)) {
+            throw new SQLException("Invalid savepoint type");
+        }
+        
+        SavepointImpl sp = (SavepointImpl) savepoint;
+        
+        // Verify savepoint belongs to this transaction
+        if (sp.getTransactionId() != transaction.getId()) {
+            throw new SQLException("Savepoint does not belong to this transaction");
+        }
+        
+        if (sp.isReleased()) {
+            throw new SQLException("Savepoint has been released");
+        }
+        
+        // Find the savepoint in the transaction's list
+        List<SavepointImpl> transactionSavepoints = transaction.getSavepoints();
+        int savepointIndex = -1;
+        for (int i = 0; i < transactionSavepoints.size(); i++) {
+            if (transactionSavepoints.get(i).getInternalId() == sp.getInternalId()) {
+                savepointIndex = i;
+                break;
+            }
+        }
+        
+        if (savepointIndex == -1) {
+            throw new SQLException("Savepoint not found in transaction");
+        }
+        
+        // Restore table states from savepoint snapshots
+        Map<String, TableSnapshot> snapshots = sp.getTableSnapshots();
+        
+        for (TableSnapshot snapshot : snapshots.values()) {
+            var schema = engine.getSchema(snapshot.getSchemaName());
+            if (schema != null) {
+                var table = schema.getTable(snapshot.getTableName());
+                if (table != null) {
+                    // Clear current table content
+                    table.clear();
+                    
+                    // Restore rows from snapshot
+                    for (var row : snapshot.getRows()) {
+                        table.insertRowWithId(row.getId(), row.getData());
+                    }
+                }
+            }
+        }
+        
+        // Invalidate all savepoints created after this one
+        for (int i = savepointIndex + 1; i < transactionSavepoints.size(); i++) {
+            transactionSavepoints.get(i).release();
+        }
+        
+        // Remove invalidated savepoints from the transaction
+        // Note: We can't modify the list directly since getSavepoints() returns a copy
+        // The transaction class needs to handle this internally
+        transaction.rollbackToSavepoint(savepoint); // This will handle savepoint lifecycle
     }
     
     private void checkClosed() throws SQLException {

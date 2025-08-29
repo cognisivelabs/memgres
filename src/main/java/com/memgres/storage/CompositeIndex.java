@@ -297,6 +297,19 @@ public class CompositeIndex {
         }
     }
     
+    /**
+     * Clear all entries from the index.
+     */
+    public void clear() {
+        indexLock.writeLock().lock();
+        try {
+            indexMap.clear();
+            logger.debug("Cleared composite index {}", name);
+        } finally {
+            indexLock.writeLock().unlock();
+        }
+    }
+    
     @Override
     public String toString() {
         return String.format("CompositeIndex{name='%s', columns=%s, unique=%s, keyCount=%d}",

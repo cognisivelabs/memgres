@@ -3,7 +3,11 @@ package com.memgres.transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.SQLException;
+import java.sql.Savepoint;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -22,6 +26,7 @@ public class Transaction {
     private final LocalDateTime startTime;
     private final ConcurrentMap<String, Object> attributes;
     private final ReadWriteLock transactionLock;
+    private final List<SavepointImpl> savepoints;
     
     private volatile TransactionState state;
     private volatile LocalDateTime commitTime;
@@ -44,6 +49,7 @@ public class Transaction {
         this.startTime = LocalDateTime.now();
         this.attributes = new ConcurrentHashMap<>();
         this.transactionLock = new ReentrantReadWriteLock();
+        this.savepoints = new ArrayList<>();
         this.state = TransactionState.ACTIVE;
         
         logger.debug("Created transaction {} with isolation level {}", id, isolationLevel);
@@ -330,6 +336,187 @@ public class Transaction {
         return Long.hashCode(id);
     }
     
+    /**
+     * Create an unnamed savepoint within this transaction.
+     * 
+     * @return the new savepoint
+     * @throws SQLException if the transaction is not active
+     */
+    public SavepointImpl setSavepoint() throws SQLException {
+        transactionLock.writeLock().lock();
+        try {
+            checkActive();
+            
+            SavepointImpl savepoint = new SavepointImpl(id);
+            savepoints.add(savepoint);
+            
+            logger.debug("Created unnamed savepoint {} in transaction {}", 
+                savepoint.getInternalId(), id);
+            
+            return savepoint;
+        } finally {
+            transactionLock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Create a named savepoint within this transaction.
+     * 
+     * @param name the name for the savepoint
+     * @return the new savepoint
+     * @throws SQLException if the transaction is not active or a savepoint with the same name exists
+     */
+    public SavepointImpl setSavepoint(String name) throws SQLException {
+        transactionLock.writeLock().lock();
+        try {
+            checkActive();
+            
+            // Check for duplicate name
+            for (SavepointImpl sp : savepoints) {
+                if (!sp.isReleased() && name.equals(sp.getInternalName())) {
+                    throw new SQLException("Savepoint with name '" + name + "' already exists");
+                }
+            }
+            
+            SavepointImpl savepoint = new SavepointImpl(id, name);
+            savepoints.add(savepoint);
+            
+            logger.debug("Created named savepoint '{}' ({}) in transaction {}", 
+                name, savepoint.getInternalId(), id);
+            
+            return savepoint;
+        } finally {
+            transactionLock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Roll back to a specific savepoint.
+     * All savepoints created after the specified savepoint are invalidated.
+     * 
+     * @param savepoint the savepoint to roll back to
+     * @throws SQLException if the savepoint is invalid or transaction is not active
+     */
+    public void rollbackToSavepoint(Savepoint savepoint) throws SQLException {
+        if (!(savepoint instanceof SavepointImpl)) {
+            throw new SQLException("Invalid savepoint type");
+        }
+        
+        SavepointImpl sp = (SavepointImpl) savepoint;
+        
+        transactionLock.writeLock().lock();
+        try {
+            checkActive();
+            
+            // Verify savepoint belongs to this transaction
+            if (sp.getTransactionId() != id) {
+                throw new SQLException("Savepoint does not belong to this transaction");
+            }
+            
+            if (sp.isReleased()) {
+                throw new SQLException("Savepoint has been released");
+            }
+            
+            // Find the savepoint in our list
+            int savepointIndex = -1;
+            for (int i = 0; i < savepoints.size(); i++) {
+                if (savepoints.get(i).getInternalId() == sp.getInternalId()) {
+                    savepointIndex = i;
+                    break;
+                }
+            }
+            
+            if (savepointIndex == -1) {
+                throw new SQLException("Savepoint not found in transaction");
+            }
+            
+            // Note: Actual data rollback is handled by the Connection class
+            
+            // Invalidate all savepoints created after this one
+            for (int i = savepointIndex + 1; i < savepoints.size(); i++) {
+                savepoints.get(i).release();
+            }
+            
+            // Remove invalidated savepoints
+            savepoints.subList(savepointIndex + 1, savepoints.size()).clear();
+            
+            logger.debug("Rolled back to savepoint {} in transaction {}", 
+                sp.getInternalId(), id);
+                
+        } finally {
+            transactionLock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Release a savepoint, making it no longer available for rollback.
+     * All savepoints created after the specified savepoint remain valid.
+     * 
+     * @param savepoint the savepoint to release
+     * @throws SQLException if the savepoint is invalid or transaction is not active
+     */
+    public void releaseSavepoint(Savepoint savepoint) throws SQLException {
+        if (!(savepoint instanceof SavepointImpl)) {
+            throw new SQLException("Invalid savepoint type");
+        }
+        
+        SavepointImpl sp = (SavepointImpl) savepoint;
+        
+        transactionLock.writeLock().lock();
+        try {
+            checkActive();
+            
+            // Verify savepoint belongs to this transaction
+            if (sp.getTransactionId() != id) {
+                throw new SQLException("Savepoint does not belong to this transaction");
+            }
+            
+            if (sp.isReleased()) {
+                throw new SQLException("Savepoint has already been released");
+            }
+            
+            sp.release();
+            
+            logger.debug("Released savepoint {} in transaction {}", 
+                sp.getInternalId(), id);
+                
+        } finally {
+            transactionLock.writeLock().unlock();
+        }
+    }
+    
+    /**
+     * Get all active savepoints for this transaction.
+     * 
+     * @return list of active savepoints
+     */
+    public List<SavepointImpl> getSavepoints() {
+        transactionLock.readLock().lock();
+        try {
+            List<SavepointImpl> activeSavepoints = new ArrayList<>();
+            for (SavepointImpl sp : savepoints) {
+                if (!sp.isReleased()) {
+                    activeSavepoints.add(sp);
+                }
+            }
+            return activeSavepoints;
+        } finally {
+            transactionLock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Check if the transaction is active and throw exception if not.
+     * 
+     * @throws SQLException if the transaction is not active
+     */
+    private void checkActive() throws SQLException {
+        if (state != TransactionState.ACTIVE) {
+            throw new SQLException("Transaction is not active: " + state);
+        }
+    }
+    
+    
     @Override
     public String toString() {
         return "Transaction{" +
@@ -338,6 +525,7 @@ public class Transaction {
                 ", state=" + getState() +
                 ", startTime=" + startTime +
                 ", durationMs=" + getDurationMillis() +
+                ", savepoints=" + savepoints.size() +
                 '}';
     }
 }
