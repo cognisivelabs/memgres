@@ -231,7 +231,7 @@
 | **Generated Keys** | ✅ | ✅ | **Recently implemented** |
 | **Savepoints** | ✅ | ✅ | **Recently implemented** |
 | **Callable Statements** | ✅ | ❌ | Missing H2 feature |
-| **LOB Support** | ✅ | ❌ | Missing H2 feature |
+| **LOB Support** | ✅ | ✅ | **Recently implemented** |
 
 ---
 
