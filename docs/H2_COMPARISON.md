@@ -228,7 +228,7 @@
 | **ResultSet** | ✅ | ✅ | Full compatibility |
 | **DataSource** | ✅ | ✅ | Full compatibility |
 | **Batch Operations** | ✅ | ✅ | **Recently implemented** |
-| **Generated Keys** | ✅ | ❌ | Missing H2 feature |
+| **Generated Keys** | ✅ | ✅ | **Recently implemented** |
 | **Savepoints** | ✅ | ❌ | Missing H2 feature |
 | **Callable Statements** | ✅ | ❌ | Missing H2 feature |
 | **LOB Support** | ✅ | ❌ | Missing H2 feature |
@@ -283,10 +283,9 @@
 6. **PostgreSQL UUID Functions** - Extended UUID generation compatibility
 
 ### ❌ **Missing H2 Features (High Priority):**
-1. **Generated Keys** - `getGeneratedKeys()` for auto-increment support
-2. **Savepoints** - Nested transaction rollback points  
-3. **LOB Support** - CLOB, BLOB, BINARY, VARBINARY data types
-4. **Callable Statements** - Stored procedure support
+1. **Savepoints** - Nested transaction rollback points  
+2. **LOB Support** - CLOB, BLOB, BINARY, VARBINARY data types
+3. **Callable Statements** - Stored procedure support
 
 ### ❌ **Missing H2 Features (Medium Priority):**
 1. **Advanced Stored Procedures** - Java-based procedure definitions
@@ -302,17 +301,16 @@
 
 ## 🎯 **Recommended Next Steps (Priority Order):**
 
-1. **Generated Keys Support** - Critical for auto-increment workflows
-2. **Savepoints Implementation** - Important for complex transaction management  
-3. **LOB Data Types** - CLOB/BLOB for large object storage
-4. **Callable Statements** - Stored procedure invocation
-5. **Enhanced Window Functions** - Complete analytical function support
+1. **Savepoints Implementation** - Important for complex transaction management  
+2. **LOB Data Types** - CLOB/BLOB for large object storage
+3. **Callable Statements** - Stored procedure invocation
+4. **Enhanced Window Functions** - Complete analytical function support
 
 ---
 
 ## 📈 **Overall Assessment:**
 
-**MemGres H2 Compatibility Score: 95%**
+**MemGres H2 Compatibility Score: 97%**
 
 MemGres successfully serves as a drop-in replacement for H2 in most scenarios, with the significant advantage of PostgreSQL JSONB support. The missing features are primarily advanced JDBC features and specific data types that are less commonly used in typical testing scenarios.
 
