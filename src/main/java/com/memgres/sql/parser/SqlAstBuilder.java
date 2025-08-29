@@ -956,6 +956,16 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
     }
     
     @Override
+    public DataTypeNode visitBlobType(MemGresParser.BlobTypeContext ctx) {
+        return new DataTypeNode(DataType.BLOB);
+    }
+    
+    @Override
+    public DataTypeNode visitBinaryLargeObjectType(MemGresParser.BinaryLargeObjectTypeContext ctx) {
+        return new DataTypeNode(DataType.BLOB);
+    }
+    
+    @Override
     public DataTypeNode visitBinaryType(MemGresParser.BinaryTypeContext ctx) {
         return new DataTypeNode(DataType.BINARY);
     }

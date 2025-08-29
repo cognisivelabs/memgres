@@ -135,6 +135,7 @@ UUID: [Uu][Uu][Ii][Dd];
 JSONB: [Jj][Ss][Oo][Nn][Bb];
 BYTEA: [Bb][Yy][Tt][Ee][Aa];
 CLOB: [Cc][Ll][Oo][Bb];
+BLOB: [Bb][Ll][Oo][Bb];
 CHARACTER: [Cc][Hh][Aa][Rr][Aa][Cc][Tt][Ee][Rr];
 LARGE: [Ll][Aa][Rr][Gg][Ee];
 OBJECT: [Oo][Bb][Jj][Ee][Cc][Tt];
