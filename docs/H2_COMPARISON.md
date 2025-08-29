@@ -229,7 +229,7 @@
 | **DataSource** | ✅ | ✅ | Full compatibility |
 | **Batch Operations** | ✅ | ✅ | **Recently implemented** |
 | **Generated Keys** | ✅ | ✅ | **Recently implemented** |
-| **Savepoints** | ✅ | ❌ | Missing H2 feature |
+| **Savepoints** | ✅ | ✅ | **Recently implemented** |
 | **Callable Statements** | ✅ | ❌ | Missing H2 feature |
 | **LOB Support** | ✅ | ❌ | Missing H2 feature |
 
@@ -283,9 +283,8 @@
 6. **PostgreSQL UUID Functions** - Extended UUID generation compatibility
 
 ### ❌ **Missing H2 Features (High Priority):**
-1. **Savepoints** - Nested transaction rollback points  
-2. **LOB Support** - CLOB, BLOB, BINARY, VARBINARY data types
-3. **Callable Statements** - Stored procedure support
+1. **LOB Support** - CLOB, BLOB, BINARY, VARBINARY data types
+2. **Callable Statements** - Stored procedure support
 
 ### ❌ **Missing H2 Features (Medium Priority):**
 1. **Advanced Stored Procedures** - Java-based procedure definitions
@@ -301,16 +300,16 @@
 
 ## 🎯 **Recommended Next Steps (Priority Order):**
 
-1. **Savepoints Implementation** - Important for complex transaction management  
-2. **LOB Data Types** - CLOB/BLOB for large object storage
-3. **Callable Statements** - Stored procedure invocation
-4. **Enhanced Window Functions** - Complete analytical function support
+1. **LOB Data Types** - CLOB/BLOB for large object storage  
+2. **Callable Statements** - Stored procedure invocation
+3. **Enhanced Window Functions** - Complete analytical function support
+4. **Advanced Stored Procedures** - Java-based procedure definitions
 
 ---
 
 ## 📈 **Overall Assessment:**
 
-**MemGres H2 Compatibility Score: 97%**
+**MemGres H2 Compatibility Score: 98%**
 
 MemGres successfully serves as a drop-in replacement for H2 in most scenarios, with the significant advantage of PostgreSQL JSONB support. The missing features are primarily advanced JDBC features and specific data types that are less commonly used in typical testing scenarios.
 

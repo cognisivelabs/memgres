@@ -9,7 +9,7 @@
 ## Features
 
 - **Pure Java**: Requires Java 17+, small footprint (~5MB jar), zero external dependencies
-- **H2-compatible SQL**: Standard DDL/DML operations, joins, subqueries, aggregation, views  
+- **H2-compatible SQL**: Standard DDL/DML operations, joins, subqueries, aggregation, views, savepoints  
 - **PostgreSQL JSONB**: Full JSON operators (`@>`, `?`, `->`, `->>`) for modern applications
 - **Advanced DDL**: CREATE INDEX, MERGE statements, SEQUENCE support, CREATE VIEW / DROP VIEW, TRUNCATE TABLE, ALTER TABLE
 - **Advanced SQL**: Window Functions, Recursive CTEs, Complete Set Operations (UNION, UNION ALL, INTERSECT, EXCEPT)
@@ -19,7 +19,7 @@
 - **H2 Essential Functions**: Date/Time (CURRENT_TIMESTAMP, DATEADD, DATEDIFF), System (H2VERSION, MEMORY_USED), String utilities (LEFT, RIGHT, POSITION, ASCII)
 - **Testing-focused**: `@MemGres` annotations for JUnit 5, TestNG, and Spring Test
 - **High performance**: < 100ms startup, < 1ms simple queries, thread-safe operations
-- **ACID transactions**: Four isolation levels with automatic rollback for testing
+- **ACID transactions**: Four isolation levels with savepoints and automatic rollback for testing
 
 ## Installation
 
@@ -86,6 +86,31 @@ void testWithMemGres(SqlExecutionEngine sql) {
     var result = sql.execute("SELECT name FROM adult_users");
     assertEquals("Alice", result.getRows().get(0).getValue(0));
 }
+
+@Test  
+@MemGres
+void testSavepointsForTransactionManagement(Connection conn) throws SQLException {
+    // H2-compatible savepoints for complex transaction scenarios
+    conn.setAutoCommit(false);
+    
+    Statement stmt = conn.createStatement();
+    stmt.execute("CREATE TABLE accounts (id INTEGER, balance DECIMAL(10,2))");
+    stmt.execute("INSERT INTO accounts VALUES (1, 1000.00)");
+    
+    // Create savepoint before risky operations
+    Savepoint savepoint = conn.setSavepoint("before_transfer");
+    
+    try {
+        stmt.execute("UPDATE accounts SET balance = balance - 500 WHERE id = 1");
+        // Simulate error condition
+        if (Math.random() > 0.5) throw new RuntimeException("Transfer failed");
+        conn.commit();
+    } catch (Exception e) {
+        // Rollback to savepoint, not entire transaction
+        conn.rollback(savepoint);
+        conn.commit(); // Original balance preserved
+    }
+}
 ```
 
 ## Use Cases
@@ -105,7 +130,7 @@ void testWithMemGres(SqlExecutionEngine sql) {
 
 ## Status
 
-**Current**: Phase 3.4 In Progress - H2 Essential Functions (540+ tests passing - 100% success rate)
+**Current**: Phase 3.4 In Progress - H2 Essential Functions (785+ tests passing - 100% success rate)
 - ✅ H2-compatible SQL operations (DDL, DML, joins, subqueries, aggregation)  
 - ✅ PostgreSQL JSONB with all operators and functions
 - ✅ Testing framework integration (JUnit 5, TestNG, Spring Test)
@@ -118,6 +143,7 @@ void testWithMemGres(SqlExecutionEngine sql) {
 - ✅ **H2 Triggers**: Complete trigger system with BEFORE/AFTER timing, Java class implementation
 - ✅ **Materialized Views**: CREATE/DROP/REFRESH MATERIALIZED VIEW with thread-safe data caching
 - ✅ **H2 String Functions**: REGEXP_REPLACE, SOUNDEX, REGEXP_LIKE, REGEXP_SUBSTR, INITCAP
+- ✅ **JDBC Savepoints**: Named/unnamed savepoints with data rollback for transaction management
 - 🔄 **H2 Essential Functions**: Date/Time (CURRENT_TIMESTAMP, DATEADD, DATEDIFF), System functions (H2VERSION, DATABASE_PATH, MEMORY_USED), String utilities (LEFT, RIGHT, POSITION, ASCII, CHAR)
 
 **Next**: Complete Phase 3.4 for 98% H2 compatibility, then Phase 4 - Performance Optimization
