@@ -1,8 +1,8 @@
-# InMemoPG - In-Memory PostgreSQL-Like Database
+# MemGres - In-Memory PostgreSQL-Like Database
 
 ## Project Overview
 
-InMemoPG is an in-memory database system designed to be PostgreSQL-compatible but optimized for testing environments. It provides fast, lightweight database operations while maintaining ACID properties and supporting key PostgreSQL features.
+MemGres is an in-memory database system designed to be PostgreSQL-compatible but optimized for testing environments. It provides fast, lightweight database operations while maintaining ACID properties and supporting key PostgreSQL features.
 
 ## Architecture Overview
 
