@@ -436,6 +436,15 @@ public class MemGresTestConnection implements Connection {
         return currentTransaction;
     }
     
+    /**
+     * Gets the MemGres engine.
+     * 
+     * @return the MemGres engine
+     */
+    public MemGresEngine getEngine() {
+        return engine;
+    }
+    
     private void checkClosed() throws SQLException {
         if (closed) {
             throw new SQLException("Connection is closed");

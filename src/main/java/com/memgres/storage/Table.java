@@ -1,6 +1,7 @@
 package com.memgres.storage;
 
 import com.memgres.types.Column;
+import com.memgres.types.DataType;
 import com.memgres.types.Row;
 import com.memgres.storage.statistics.StatisticsManager;
 import org.slf4j.Logger;
@@ -29,6 +30,8 @@ public class Table {
     private final ReadWriteLock tableLock;
     private final AtomicLong rowIdGenerator;
     private volatile StatisticsManager statisticsManager;
+    private final ThreadLocal<List<Object>> lastGeneratedKeys;
+    private final Map<String, AtomicLong> autoIncrementCounters;
     
     public Table(String name, List<Column> columns) {
         if (name == null || name.trim().isEmpty()) {
@@ -46,10 +49,15 @@ public class Table {
         this.compositeIndexes = new ConcurrentHashMap<>();
         this.tableLock = new ReentrantReadWriteLock();
         this.rowIdGenerator = new AtomicLong(0);
+        this.lastGeneratedKeys = ThreadLocal.withInitial(ArrayList::new);
+        this.autoIncrementCounters = new ConcurrentHashMap<>();
         
-        // Build column map for fast lookup
+        // Build column map for fast lookup and initialize auto-increment counters
         for (Column column : columns) {
             columnMap.put(column.getName().toLowerCase(), column);
+            if (column.isAutoIncrement()) {
+                autoIncrementCounters.put(column.getName(), new AtomicLong(0));
+            }
         }
         
         logger.debug("Created table: {} with {} columns", this.name, columns.size());
@@ -107,8 +115,53 @@ public class Table {
         
         tableLock.writeLock().lock();
         try {
+            // Clear previous generated keys for this thread
+            lastGeneratedKeys.get().clear();
+            
+            // Process auto-increment columns
+            Object[] processedData = new Object[rowData.length];
+            for (int i = 0; i < columns.size(); i++) {
+                Column column = columns.get(i);
+                if (column.isAutoIncrement() && (rowData[i] == null || 
+                    (rowData[i] instanceof Number && ((Number)rowData[i]).longValue() == 0))) {
+                    // Generate auto-increment value
+                    AtomicLong counter = autoIncrementCounters.get(column.getName());
+                    long generatedValue = counter.incrementAndGet();
+                    
+                    // Convert to appropriate type
+                    if (column.getDataType() == DataType.INTEGER) {
+                        processedData[i] = (int) generatedValue;
+                    } else if (column.getDataType() == DataType.BIGINT) {
+                        processedData[i] = generatedValue;
+                    } else if (column.getDataType() == DataType.SMALLINT) {
+                        processedData[i] = (short) generatedValue;
+                    } else {
+                        processedData[i] = generatedValue;
+                    }
+                    
+                    // Track generated key
+                    lastGeneratedKeys.get().add(processedData[i]);
+                } else {
+                    processedData[i] = rowData[i];
+                    
+                    // Update auto-increment counter for explicit values
+                    if (column.isAutoIncrement() && rowData[i] instanceof Number) {
+                        long explicitValue = ((Number) rowData[i]).longValue();
+                        AtomicLong counter = autoIncrementCounters.get(column.getName());
+                        // Update counter to be at least as high as the explicit value
+                        long currentMax = counter.get();
+                        while (explicitValue > currentMax) {
+                            if (counter.compareAndSet(currentMax, explicitValue)) {
+                                break;
+                            }
+                            currentMax = counter.get();
+                        }
+                    }
+                }
+            }
+            
             long rowId = rowIdGenerator.incrementAndGet();
-            Row row = new Row(rowId, rowData);
+            Row row = new Row(rowId, processedData);
             
             // Validate data types
             validateRowData(row);
@@ -129,6 +182,14 @@ public class Table {
         } finally {
             tableLock.writeLock().unlock();
         }
+    }
+    
+    /**
+     * Get the last generated keys for the current thread.
+     * @return list of generated keys from the last insert operation
+     */
+    public List<Object> getLastGeneratedKeys() {
+        return new ArrayList<>(lastGeneratedKeys.get());
     }
     
     /**

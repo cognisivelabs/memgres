@@ -153,34 +153,90 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             List<Column> tableColumns = table.getColumns();
             int affectedRows = 0;
             
+            // Get list of specified columns, or all columns if none specified
+            List<String> insertColumns = node.getColumns().orElse(
+                tableColumns.stream().map(Column::getName).toList()
+            );
+            
             // Process each set of values
             for (List<Expression> values : node.getValuesList()) {
-                if (values.size() != tableColumns.size()) {
+                if (values.size() != insertColumns.size()) {
                     throw new SqlExecutionException("Column count mismatch: expected " + 
-                        tableColumns.size() + ", got " + values.size());
+                        insertColumns.size() + ", got " + values.size());
                 }
                 
-                // Evaluate values
-                Object[] rowData = new Object[values.size()];
+                // Create array for all table columns (not just specified ones)
+                Object[] rowData = new Object[tableColumns.size()];
+                
+                // Map provided values to their corresponding columns
                 for (int i = 0; i < values.size(); i++) {
-                    rowData[i] = expressionEvaluator.evaluate(values.get(i), context);
+                    String columnName = insertColumns.get(i);
+                    Object value = expressionEvaluator.evaluate(values.get(i), context);
                     
-                    // Convert and validate data type
-                    Column column = tableColumns.get(i);
-                    
-                    // Check null constraint first
-                    if (rowData[i] == null && !column.isNullable()) {
-                        throw new SqlExecutionException("NULL value not allowed for column " + column.getName());
+                    // Find the column index in the table
+                    int columnIndex = -1;
+                    for (int j = 0; j < tableColumns.size(); j++) {
+                        if (tableColumns.get(j).getName().equalsIgnoreCase(columnName)) {
+                            columnIndex = j;
+                            break;
+                        }
                     }
                     
-                    // Only convert and validate non-null values
-                    if (rowData[i] != null) {
-                        rowData[i] = column.getDataType().convertValue(rowData[i]);
+                    if (columnIndex == -1) {
+                        throw new SqlExecutionException("Column not found: " + columnName);
+                    }
+                    
+                    Column column = tableColumns.get(columnIndex);
+                    
+                    // Convert and validate data type
+                    if (value != null) {
+                        value = column.getDataType().convertValue(value);
                         
-                        if (!column.getDataType().isValidValue(rowData[i])) {
+                        if (!column.getDataType().isValidValue(value)) {
                             throw new SqlExecutionException("Invalid value for column " + 
-                                column.getName() + ": " + rowData[i]);
+                                column.getName() + ": " + value);
                         }
+                    }
+                    
+                    rowData[columnIndex] = value;
+                }
+                
+                // Handle columns not explicitly provided
+                for (int i = 0; i < tableColumns.size(); i++) {
+                    Column column = tableColumns.get(i);
+                    
+                    // Skip columns that were explicitly provided
+                    boolean wasProvided = false;
+                    for (String insertColumn : insertColumns) {
+                        if (column.getName().equalsIgnoreCase(insertColumn)) {
+                            wasProvided = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!wasProvided) {
+                        // Use default value or null for columns not provided
+                        if (column.hasDefaultValue()) {
+                            rowData[i] = column.getDefaultValue();
+                        } else if (column.isAutoIncrement()) {
+                            // Auto-increment columns will be handled by Table.insertRow()
+                            rowData[i] = null;
+                        } else if (!column.isNullable() && !column.isAutoIncrement()) {
+                            throw new SqlExecutionException("Column " + column.getName() + 
+                                " cannot be null and has no default value");
+                        } else {
+                            rowData[i] = null;
+                        }
+                    }
+                }
+                
+                // Final validation for all columns
+                for (int i = 0; i < tableColumns.size(); i++) {
+                    Column column = tableColumns.get(i);
+                    
+                    // Check null constraint (but allow null for auto-increment columns)
+                    if (rowData[i] == null && !column.isNullable() && !column.isAutoIncrement()) {
+                        throw new SqlExecutionException("NULL value not allowed for column " + column.getName());
                     }
                 }
                 
@@ -403,14 +459,24 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
                 String columnName = colDef.getColumnName();
                 DataType dataType = colDef.getDataType().getDataType();
                 
-                // Check constraints (simplified - only handling NOT NULL for now)
+                // Check constraints
                 boolean nullable = !colDef.getConstraints().contains(ColumnDefinition.Constraint.NOT_NULL);
+                boolean primaryKey = colDef.getConstraints().contains(ColumnDefinition.Constraint.PRIMARY_KEY);
+                boolean unique = colDef.getConstraints().contains(ColumnDefinition.Constraint.UNIQUE);
+                boolean autoIncrement = colDef.getConstraints().contains(ColumnDefinition.Constraint.AUTO_INCREMENT);
                 
-                columns.add(new Column.Builder()
+                Column.Builder columnBuilder = new Column.Builder()
                     .name(columnName)
                     .dataType(dataType)
                     .nullable(nullable)
-                    .build());
+                    .primaryKey(primaryKey)
+                    .unique(unique);
+                    
+                if (autoIncrement) {
+                    columnBuilder.autoIncrement(true);
+                }
+                
+                columns.add(columnBuilder.build());
             }
             
             // Create table

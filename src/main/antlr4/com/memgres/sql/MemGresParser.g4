@@ -178,6 +178,8 @@ columnConstraint
     | NULL
     | PRIMARY KEY
     | UNIQUE
+    | AUTO_INCREMENT
+    | IDENTITY
     ;
 
 // ALTER TABLE statement

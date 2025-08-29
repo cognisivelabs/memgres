@@ -699,6 +699,10 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
                         constraints.add(ColumnDefinition.Constraint.PRIMARY_KEY);
                     } else if (constraintCtx.UNIQUE() != null) {
                         constraints.add(ColumnDefinition.Constraint.UNIQUE);
+                    } else if (constraintCtx.AUTO_INCREMENT() != null) {
+                        constraints.add(ColumnDefinition.Constraint.AUTO_INCREMENT);
+                    } else if (constraintCtx.IDENTITY() != null) {
+                        constraints.add(ColumnDefinition.Constraint.AUTO_INCREMENT); // Map IDENTITY to AUTO_INCREMENT
                     }
                 }
             }
