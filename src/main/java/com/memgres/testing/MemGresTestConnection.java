@@ -25,16 +25,16 @@ import java.util.concurrent.Executor;
  * <p><strong>Supported features:</strong></p>
  * <ul>
  *   <li>SQL statement execution via createStatement()</li>
+ *   <li>Prepared statement execution</li>
+ *   <li>Callable statement execution (stored procedures)</li>
  *   <li>Transaction management (commit, rollback)</li>
+ *   <li>Savepoints support</li>
  *   <li>Auto-commit mode</li>
  *   <li>Connection metadata</li>
  * </ul>
  * 
  * <p><strong>Not supported:</strong></p>
  * <ul>
- *   <li>Prepared statements (throws SQLFeatureNotSupportedException)</li>
- *   <li>Callable statements</li>
- *   <li>Savepoints</li>
  *   <li>Advanced JDBC features</li>
  * </ul>
  * 
@@ -77,7 +77,8 @@ public class MemGresTestConnection implements Connection {
     
     @Override
     public CallableStatement prepareCall(String sql) throws SQLException {
-        throw new SQLFeatureNotSupportedException("Callable statements not supported");
+        checkClosed();
+        return new MemGresCallableStatement(this, sqlEngine, sql);
     }
     
     @Override
@@ -224,7 +225,8 @@ public class MemGresTestConnection implements Connection {
     
     @Override
     public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency) throws SQLException {
-        throw new SQLFeatureNotSupportedException("Callable statements not supported");
+        // Ignore result set parameters for now - MemGres uses defaults
+        return prepareCall(sql);
     }
     
     @Override
@@ -342,7 +344,8 @@ public class MemGresTestConnection implements Connection {
     
     @Override
     public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
-        throw new SQLFeatureNotSupportedException("Callable statements not supported");
+        // Ignore result set parameters for now - MemGres uses defaults
+        return prepareCall(sql);
     }
     
     @Override
