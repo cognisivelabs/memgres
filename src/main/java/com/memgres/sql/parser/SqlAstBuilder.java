@@ -283,10 +283,27 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
     
     @Override
     public TableReference visitTableReference(MemGresParser.TableReferenceContext ctx) {
-        String tableName = ctx.tableName().getText();
-        Optional<String> alias = ctx.alias() != null ? 
-            Optional.of(ctx.alias().getText()) : Optional.empty();
-        return new TableReference(tableName, alias);
+        if (ctx.tableName() != null) {
+            // Regular table reference
+            String tableName = ctx.tableName().getText();
+            Optional<String> alias = ctx.alias() != null ? 
+                Optional.of(ctx.alias().getText()) : Optional.empty();
+            return new TableReference(tableName, alias);
+        } else if (ctx.FT_SEARCH() != null) {
+            // FT_SEARCH table function
+            String searchText = ctx.STRING().getText();
+            String limit = ctx.INTEGER_LITERAL(0).getText();
+            String offset = ctx.INTEGER_LITERAL(1).getText();
+            
+            // Create a special table name that encodes the FT_SEARCH call
+            String tableName = "FT_SEARCH(" + searchText + "," + limit + "," + offset + ")";
+            Optional<String> alias = ctx.alias() != null ? 
+                Optional.of(ctx.alias().getText()) : Optional.empty();
+            return new TableReference(tableName, alias);
+        } else {
+            // Subquery reference - handle this case if needed
+            throw new UnsupportedOperationException("Subquery table references not yet implemented");
+        }
     }
     
     @Override
@@ -1626,6 +1643,57 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
     public FunctionCall visitRawToHexFunction(MemGresParser.RawToHexFunctionContext ctx) {
         Expression rawValue = (Expression) visit(ctx.expression());
         return new FunctionCall("RAWTOHEX", List.of(rawValue));
+    }
+    
+    // Full-Text Search functions
+    @Override
+    public FunctionCall visitFtInitFunction(MemGresParser.FtInitFunctionContext ctx) {
+        return new FunctionCall("FT_INIT", List.of());
+    }
+    
+    @Override
+    public FunctionCall visitFtCreateIndexFunction(MemGresParser.FtCreateIndexFunctionContext ctx) {
+        Expression schema = (Expression) visit(ctx.expression(0));
+        Expression table = (Expression) visit(ctx.expression(1));
+        Expression columnList = (Expression) visit(ctx.expression(2));
+        return new FunctionCall("FT_CREATE_INDEX", List.of(schema, table, columnList));
+    }
+    
+    @Override
+    public FunctionCall visitFtDropIndexFunction(MemGresParser.FtDropIndexFunctionContext ctx) {
+        Expression schema = (Expression) visit(ctx.expression(0));
+        Expression table = (Expression) visit(ctx.expression(1));
+        return new FunctionCall("FT_DROP_INDEX", List.of(schema, table));
+    }
+    
+    @Override
+    public FunctionCall visitFtSearchFunction(MemGresParser.FtSearchFunctionContext ctx) {
+        Expression text = (Expression) visit(ctx.expression(0));
+        Expression limit = (Expression) visit(ctx.expression(1));
+        Expression offset = (Expression) visit(ctx.expression(2));
+        return new FunctionCall("FT_SEARCH", List.of(text, limit, offset));
+    }
+    
+    @Override
+    public FunctionCall visitFtReindexFunction(MemGresParser.FtReindexFunctionContext ctx) {
+        return new FunctionCall("FT_REINDEX", List.of());
+    }
+    
+    @Override
+    public FunctionCall visitFtDropAllFunction(MemGresParser.FtDropAllFunctionContext ctx) {
+        return new FunctionCall("FT_DROP_ALL", List.of());
+    }
+    
+    @Override
+    public FunctionCall visitFtSetIgnoreListFunction(MemGresParser.FtSetIgnoreListFunctionContext ctx) {
+        Expression ignoreList = (Expression) visit(ctx.expression());
+        return new FunctionCall("FT_SET_IGNORE_LIST", List.of(ignoreList));
+    }
+    
+    @Override
+    public FunctionCall visitFtSetWhitespaceCharsFunction(MemGresParser.FtSetWhitespaceCharsFunctionContext ctx) {
+        Expression whitespaceChars = (Expression) visit(ctx.expression());
+        return new FunctionCall("FT_SET_WHITESPACE_CHARS", List.of(whitespaceChars));
     }
     
     // CREATE SCHEMA statement

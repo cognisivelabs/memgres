@@ -439,6 +439,24 @@ public class ExpressionEvaluator {
             case "rawtohex":
                 return evaluateRawToHexFunction(arguments, context);
                 
+            // Full-Text Search Functions
+            case "ft_init":
+                return evaluateFtInitFunction();
+            case "ft_create_index":
+                return evaluateFtCreateIndexFunction(arguments, context);
+            case "ft_drop_index":
+                return evaluateFtDropIndexFunction(arguments, context);
+            case "ft_search":
+                return evaluateFtSearchFunction(arguments, context);
+            case "ft_reindex":
+                return evaluateFtReindexFunction();
+            case "ft_drop_all":
+                return evaluateFtDropAllFunction();
+            case "ft_set_ignore_list":
+                return evaluateFtSetIgnoreListFunction(arguments, context);
+            case "ft_set_whitespace_chars":
+                return evaluateFtSetWhitespaceCharsFunction(arguments, context);
+                
             default:
                 throw new UnsupportedOperationException("Function not supported: " + functionName);
         }
@@ -1413,5 +1431,105 @@ public class ExpressionEvaluator {
         }
         
         return result.toString();
+    }
+    
+    // Full-Text Search Function Implementations
+    private Object evaluateFtInitFunction() {
+        try {
+            com.memgres.functions.FullTextFunctions.ftInit(engine);
+            return "Full-text search initialized";
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to initialize full-text search", e);
+        }
+    }
+    
+    private Object evaluateFtCreateIndexFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() != 3) {
+            throw new IllegalArgumentException("FT_CREATE_INDEX requires exactly 3 arguments");
+        }
+        
+        try {
+            Object schemaValue = evaluate(arguments.get(0), context);
+            Object tableValue = evaluate(arguments.get(1), context);
+            Object columnListValue = evaluate(arguments.get(2), context);
+            
+            String schema = schemaValue != null ? schemaValue.toString() : "PUBLIC";
+            String table = tableValue.toString();
+            String columnList = columnListValue != null ? columnListValue.toString() : null;
+            
+            com.memgres.functions.FullTextFunctions.ftCreateIndex(schema, table, columnList);
+            return "Full-text index created";
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create full-text index", e);
+        }
+    }
+    
+    private Object evaluateFtDropIndexFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() != 2) {
+            throw new IllegalArgumentException("FT_DROP_INDEX requires exactly 2 arguments");
+        }
+        
+        Object schemaValue = evaluate(arguments.get(0), context);
+        Object tableValue = evaluate(arguments.get(1), context);
+        
+        String schema = schemaValue != null ? schemaValue.toString() : "PUBLIC";
+        String table = tableValue.toString();
+        
+        com.memgres.functions.FullTextFunctions.ftDropIndex(schema, table);
+        return "Full-text index dropped";
+    }
+    
+    private Object evaluateFtSearchFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() != 3) {
+            throw new IllegalArgumentException("FT_SEARCH requires exactly 3 arguments");
+        }
+        
+        Object textValue = evaluate(arguments.get(0), context);
+        Object limitValue = evaluate(arguments.get(1), context);
+        Object offsetValue = evaluate(arguments.get(2), context);
+        
+        String text = textValue != null ? textValue.toString() : "";
+        int limit = limitValue != null ? ((Number) limitValue).intValue() : 0;
+        int offset = offsetValue != null ? ((Number) offsetValue).intValue() : 0;
+        
+        return com.memgres.functions.FullTextFunctions.ftSearch(text, limit, offset);
+    }
+    
+    private Object evaluateFtReindexFunction() {
+        try {
+            com.memgres.functions.FullTextFunctions.ftReindex();
+            return "Full-text indexes rebuilt";
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to reindex full-text search", e);
+        }
+    }
+    
+    private Object evaluateFtDropAllFunction() {
+        com.memgres.functions.FullTextFunctions.ftDropAll();
+        return "All full-text indexes dropped";
+    }
+    
+    private Object evaluateFtSetIgnoreListFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() != 1) {
+            throw new IllegalArgumentException("FT_SET_IGNORE_LIST requires exactly 1 argument");
+        }
+        
+        Object ignoreListValue = evaluate(arguments.get(0), context);
+        String ignoreList = ignoreListValue != null ? ignoreListValue.toString() : "";
+        
+        com.memgres.functions.FullTextFunctions.ftSetIgnoreList(ignoreList);
+        return "Ignore list updated";
+    }
+    
+    private Object evaluateFtSetWhitespaceCharsFunction(List<Expression> arguments, ExecutionContext context) {
+        if (arguments.size() != 1) {
+            throw new IllegalArgumentException("FT_SET_WHITESPACE_CHARS requires exactly 1 argument");
+        }
+        
+        Object whitespaceValue = evaluate(arguments.get(0), context);
+        String whitespaceChars = whitespaceValue != null ? whitespaceValue.toString() : " \t\n\r";
+        
+        com.memgres.functions.FullTextFunctions.ftSetWhitespaceChars(whitespaceChars);
+        return "Whitespace characters updated";
     }
 }

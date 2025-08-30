@@ -250,8 +250,12 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
                     TriggerDefinition.Event.INSERT, null, rowData, null);
                 
                 // Insert row
-                table.insertRow(rowData);
+                long rowId = table.insertRow(rowData);
                 affectedRows++;
+                
+                // Update full-text search indexes
+                Row newRow = new Row(rowId, rowData);
+                com.memgres.functions.FullTextFunctions.onRowInserted("public", tableName, newRow, tableColumns);
                 
                 // Log to WAL if transaction manager supports it
                 if (engine.getTransactionManager() instanceof WalTransactionManager) {
@@ -354,6 +358,11 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
                 table.updateRow(row.getId(), newData);
                 affectedRows++;
                 
+                // Update full-text search indexes
+                Row oldRow = new Row(row.getId(), oldData);
+                Row updatedRow = new Row(row.getId(), newData);
+                com.memgres.functions.FullTextFunctions.onRowUpdated("public", tableName, oldRow, updatedRow, columns);
+                
                 // Log to WAL if transaction manager supports it
                 if (engine.getTransactionManager() instanceof WalTransactionManager) {
                     WalTransactionManager walTxnMgr = (WalTransactionManager) engine.getTransactionManager();
@@ -422,6 +431,10 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
                 Object[] deletedData = row.getData().clone();
                 if (table.deleteRow(row.getId())) {
                     affectedRows++;
+                    
+                    // Update full-text search indexes
+                    Row deletedRow = new Row(row.getId(), deletedData);
+                    com.memgres.functions.FullTextFunctions.onRowDeleted("public", tableName, deletedRow, table.getColumns());
                     
                     // Log to WAL if transaction manager supports it
                     if (engine.getTransactionManager() instanceof WalTransactionManager) {
@@ -587,6 +600,12 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             resultColumns = new ArrayList<>(cteResult.columns);
             resultRows = new ArrayList<>(cteResult.rows);
             logger.debug("Resolved table '{}' as CTE with {} rows", baseTableName, resultRows.size());
+        } else if (baseTableName.startsWith("FT_SEARCH(")) {
+            // It's a FT_SEARCH table function
+            SqlExecutionResult ftResult = executeFtSearchTableFunction(baseTableName);
+            resultColumns = new ArrayList<>(ftResult.getColumns());
+            resultRows = new ArrayList<>(ftResult.getRows());
+            logger.debug("Resolved table '{}' as FT_SEARCH with {} rows", baseTableName, resultRows.size());
         } else {
             // Try to get table
             Table baseTable = engine.getTable("public", baseTableName);
@@ -2826,6 +2845,35 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
         }
     }
     
+    /**
+     * Execute FT_SEARCH table function from encoded table name.
+     */
+    private SqlExecutionResult executeFtSearchTableFunction(String tableName) throws SqlExecutionException {
+        try {
+            // Parse FT_SEARCH(text,limit,offset) from the table name
+            String params = tableName.substring(10, tableName.length() - 1); // Remove "FT_SEARCH(" and ")"
+            String[] parts = params.split(",");
+            
+            if (parts.length != 3) {
+                throw new SqlExecutionException("Invalid FT_SEARCH parameters: " + tableName);
+            }
+            
+            String searchText = parts[0].trim();
+            // Remove quotes from search text
+            if (searchText.startsWith("'") && searchText.endsWith("'")) {
+                searchText = searchText.substring(1, searchText.length() - 1);
+            }
+            
+            int limit = Integer.parseInt(parts[1].trim());
+            int offset = Integer.parseInt(parts[2].trim());
+            
+            return com.memgres.functions.FullTextFunctions.ftSearch(searchText, limit, offset);
+            
+        } catch (Exception e) {
+            throw new SqlExecutionException("Failed to execute FT_SEARCH: " + e.getMessage());
+        }
+    }
+
     /**
      * Try to extract the underlying table from a simple subquery like SELECT * FROM table.
      */

@@ -207,6 +207,16 @@ OVER: [Oo][Vv][Ee][Rr];
 PARTITION: [Pp][Aa][Rr][Tt][Ii][Tt][Ii][Oo][Nn];
 WINDOW: [Ww][Ii][Nn][Dd][Oo][Ww];
 
+// Full-Text Search functions
+FT_INIT: [Ff][Tt]'_'[Ii][Nn][Ii][Tt];
+FT_CREATE_INDEX: [Ff][Tt]'_'[Cc][Rr][Ee][Aa][Tt][Ee]'_'[Ii][Nn][Dd][Ee][Xx];
+FT_DROP_INDEX: [Ff][Tt]'_'[Dd][Rr][Oo][Pp]'_'[Ii][Nn][Dd][Ee][Xx];
+FT_SEARCH: [Ff][Tt]'_'[Ss][Ee][Aa][Rr][Cc][Hh];
+FT_REINDEX: [Ff][Tt]'_'[Rr][Ee][Ii][Nn][Dd][Ee][Xx];
+FT_DROP_ALL: [Ff][Tt]'_'[Dd][Rr][Oo][Pp]'_'[Aa][Ll][Ll];
+FT_SET_IGNORE_LIST: [Ff][Tt]'_'[Ss][Ee][Tt]'_'[Ii][Gg][Nn][Oo][Rr][Ee]'_'[Ll][Ii][Ss][Tt];
+FT_SET_WHITESPACE_CHARS: [Ff][Tt]'_'[Ss][Ee][Tt]'_'[Ww][Hh][Ii][Tt][Ee][Ss][Pp][Aa][Cc][Ee]'_'[Cc][Hh][Aa][Rr][Ss];
+
 // Operators
 EQ: '=';
 NE: '!=' | '<>';
