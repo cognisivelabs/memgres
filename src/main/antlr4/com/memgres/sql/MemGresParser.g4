@@ -345,6 +345,12 @@ functionCall
     | DENSE_RANK LPAREN RPAREN OVER overClause         # denseRankFunction
     | PERCENT_RANK LPAREN RPAREN OVER overClause       # percentRankFunction
     | CUME_DIST LPAREN RPAREN OVER overClause          # cumeDistFunction
+    | FIRST_VALUE LPAREN expression RPAREN OVER overClause # firstValueFunction
+    | LAST_VALUE LPAREN expression RPAREN OVER overClause  # lastValueFunction
+    | NTH_VALUE LPAREN expression COMMA expression RPAREN OVER overClause # nthValueFunction
+    | LAG LPAREN expression (COMMA expression)? (COMMA expression)? RPAREN OVER overClause # lagFunction
+    | LEAD LPAREN expression (COMMA expression)? (COMMA expression)? RPAREN OVER overClause # leadFunction
+    | NTILE LPAREN expression RPAREN OVER overClause   # ntileFunction
     | NEXT VALUE FOR sequenceName                      # nextValueForFunction
     | CURRENT VALUE FOR sequenceName                   # currentValueForFunction
     | DATABASE LPAREN RPAREN                           # databaseFunction

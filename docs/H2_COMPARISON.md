@@ -120,6 +120,26 @@
 
 ---
 
+## 🪟 **Window Functions**
+
+| Function | H2 Support | MemGres Support | Notes |
+|----------|------------|-----------------|-------|
+| **ROW_NUMBER** | ✅ | ✅ | Full compatibility |
+| **RANK** | ✅ | ✅ | Full compatibility |
+| **DENSE_RANK** | ✅ | ✅ | Full compatibility |
+| **PERCENT_RANK** | ✅ | ✅ | Full compatibility |
+| **CUME_DIST** | ✅ | ✅ | Full compatibility |
+| **LAG** | ✅ | ✅ | **Recently implemented** |
+| **LEAD** | ✅ | ✅ | **Recently implemented** |
+| **FIRST_VALUE** | ✅ | ✅ | **Recently implemented** |
+| **LAST_VALUE** | ✅ | ✅ | **Recently implemented** |
+| **NTH_VALUE** | ✅ | ✅ | **Recently implemented** |
+| **NTILE** | ✅ | ✅ | **Recently implemented** |
+| **PARTITION BY** | ✅ | ✅ | Full compatibility |
+| **ORDER BY** | ✅ | ✅ | Full compatibility |
+
+---
+
 ## 🔤 **String Functions**
 
 | Function | H2 Support | MemGres Support | Notes |
@@ -287,17 +307,16 @@
 2. **Advanced Backup/Restore** - H2's database file utilities
 
 ### 🔶 **Partially Implemented Features:**
-1. **Window Functions** - Basic implementation, could be enhanced
-2. **Complex Triggers** - Basic BEFORE/AFTER, missing complex interactions
-3. **Advanced Constraints** - CHECK constraints partially implemented
+1. **Complex Triggers** - Basic BEFORE/AFTER, missing complex interactions
+2. **Advanced Constraints** - CHECK constraints partially implemented
 
 ---
 
 ## 🎯 **Recommended Next Steps (Priority Order):**
 
-1. **Enhanced Window Functions** - Complete analytical function support
-2. **Full-Text Search** - Built-in text indexing and search capabilities
-3. **Advanced Backup/Restore** - H2's database file utilities
+1. **Full-Text Search** - Built-in text indexing and search capabilities
+2. **Advanced Backup/Restore** - H2's database file utilities
+3. **Complex Triggers** - Enhanced trigger functionality with complex interactions
 
 ---
 

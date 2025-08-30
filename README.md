@@ -14,7 +14,7 @@
 - **PostgreSQL JSONB**: Full JSON operators (`@>`, `?`, `->`, `->>`) for modern applications
 - **LOB Support**: Full CLOB, BLOB, BINARY, VARBINARY data types with JDBC interfaces
 - **Advanced DDL**: CREATE INDEX, MERGE statements, SEQUENCE support, CREATE VIEW / DROP VIEW, TRUNCATE TABLE, ALTER TABLE
-- **Advanced SQL**: Window Functions, Recursive CTEs, Complete Set Operations (UNION, UNION ALL, INTERSECT, EXCEPT)
+- **Advanced SQL**: Enhanced Window Functions (LAG, LEAD, FIRST_VALUE, LAST_VALUE, NTH_VALUE, NTILE), Recursive CTEs, Complete Set Operations (UNION, UNION ALL, INTERSECT, EXCEPT)
 - **H2 Triggers**: BEFORE/AFTER triggers with INSERT/UPDATE/DELETE events, FOR EACH ROW/STATEMENT scope
 - **Materialized Views**: CREATE/DROP/REFRESH MATERIALIZED VIEW with thread-safe caching
 - **H2 String Functions**: REGEXP_REPLACE, SOUNDEX, REGEXP_LIKE, REGEXP_SUBSTR, INITCAP
@@ -155,7 +155,7 @@ void testSavepointsForTransactionManagement(Connection conn) throws SQLException
 - ✅ Essential H2 DDL commands (CREATE INDEX, MERGE statements, SEQUENCE support)
 - ✅ Advanced H2 features (CREATE VIEW / DROP VIEW, TRUNCATE TABLE, ALTER TABLE)
 - ✅ H2 System & Math Functions (DATABASE(), USER(), SQRT(), POWER(), ABS(), ROUND(), RAND())
-- ✅ Window Functions (ROW_NUMBER, RANK, DENSE_RANK, PERCENT_RANK, CUME_DIST with OVER clause)
+- ✅ **Enhanced Window Functions**: Complete H2 compatibility with LAG, LEAD, FIRST_VALUE, LAST_VALUE, NTH_VALUE, NTILE
 - ✅ Common Table Expressions (WITH clause, RECURSIVE CTEs with iterative execution)
 - ✅ **Complete Set Operations**: UNION, UNION ALL, INTERSECT, EXCEPT with proper duplicate handling
 - ✅ **H2 Triggers**: Complete trigger system with BEFORE/AFTER timing, Java class implementation
