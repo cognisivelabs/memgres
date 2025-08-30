@@ -69,6 +69,7 @@ mvn package -P release
 - **JOIN Operations**: INNER, LEFT, RIGHT, FULL OUTER joins with optimization ✅
 - **Subqueries**: Scalar, EXISTS, IN/NOT IN with correlated support ✅
 - **Aggregation Functions**: GROUP BY, HAVING, COUNT, SUM, AVG, MIN, MAX ✅
+- **Enhanced Window Functions**: Complete H2 compatibility - LAG, LEAD, FIRST_VALUE, LAST_VALUE, NTH_VALUE, NTILE ✅
 
 ### ✅ COMPLETED PRODUCTION FEATURES (Phase 4.2 - Current)
 7. **Connection Pooling** (`src/main/java/com/memgres/core/ConnectionPool.java`) ✅

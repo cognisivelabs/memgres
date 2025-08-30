@@ -1285,6 +1285,73 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
     }
     
     @Override
+    public WindowFunction visitFirstValueFunction(MemGresParser.FirstValueFunctionContext ctx) {
+        Expression argument = (Expression) visit(ctx.expression());
+        OverClause overClause = (OverClause) visit(ctx.overClause());
+        return new WindowFunction(WindowFunction.WindowFunctionType.FIRST_VALUE, List.of(argument), overClause);
+    }
+    
+    @Override
+    public WindowFunction visitLastValueFunction(MemGresParser.LastValueFunctionContext ctx) {
+        Expression argument = (Expression) visit(ctx.expression());
+        OverClause overClause = (OverClause) visit(ctx.overClause());
+        return new WindowFunction(WindowFunction.WindowFunctionType.LAST_VALUE, List.of(argument), overClause);
+    }
+    
+    @Override
+    public WindowFunction visitNthValueFunction(MemGresParser.NthValueFunctionContext ctx) {
+        Expression valueExpression = (Expression) visit(ctx.expression(0));
+        Expression nExpression = (Expression) visit(ctx.expression(1));
+        OverClause overClause = (OverClause) visit(ctx.overClause());
+        return new WindowFunction(WindowFunction.WindowFunctionType.NTH_VALUE, List.of(valueExpression, nExpression), overClause);
+    }
+    
+    @Override
+    public WindowFunction visitLagFunction(MemGresParser.LagFunctionContext ctx) {
+        List<Expression> arguments = new ArrayList<>();
+        arguments.add((Expression) visit(ctx.expression(0))); // value expression
+        
+        // Optional offset (default 1)
+        if (ctx.expression().size() > 1) {
+            arguments.add((Expression) visit(ctx.expression(1)));
+        }
+        
+        // Optional default value
+        if (ctx.expression().size() > 2) {
+            arguments.add((Expression) visit(ctx.expression(2)));
+        }
+        
+        OverClause overClause = (OverClause) visit(ctx.overClause());
+        return new WindowFunction(WindowFunction.WindowFunctionType.LAG, arguments, overClause);
+    }
+    
+    @Override
+    public WindowFunction visitLeadFunction(MemGresParser.LeadFunctionContext ctx) {
+        List<Expression> arguments = new ArrayList<>();
+        arguments.add((Expression) visit(ctx.expression(0))); // value expression
+        
+        // Optional offset (default 1)
+        if (ctx.expression().size() > 1) {
+            arguments.add((Expression) visit(ctx.expression(1)));
+        }
+        
+        // Optional default value
+        if (ctx.expression().size() > 2) {
+            arguments.add((Expression) visit(ctx.expression(2)));
+        }
+        
+        OverClause overClause = (OverClause) visit(ctx.overClause());
+        return new WindowFunction(WindowFunction.WindowFunctionType.LEAD, arguments, overClause);
+    }
+    
+    @Override
+    public WindowFunction visitNtileFunction(MemGresParser.NtileFunctionContext ctx) {
+        Expression bucketExpression = (Expression) visit(ctx.expression());
+        OverClause overClause = (OverClause) visit(ctx.overClause());
+        return new WindowFunction(WindowFunction.WindowFunctionType.NTILE, List.of(bucketExpression), overClause);
+    }
+    
+    @Override
     public OverClause visitOverClause(MemGresParser.OverClauseContext ctx) {
         Optional<List<Expression>> partitionByExpressions = Optional.empty();
         if (ctx.PARTITION() != null && ctx.expressionList() != null) {

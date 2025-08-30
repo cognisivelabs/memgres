@@ -1975,6 +1975,24 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             case CUME_DIST:
                 return calculateCumeDistribution(windowRows, columns, currentRowIndex, overClause, context);
                 
+            case FIRST_VALUE:
+                return calculateFirstValue(windowFunc, windowRows, columns, currentRowIndex, overClause, context);
+                
+            case LAST_VALUE:
+                return calculateLastValue(windowFunc, windowRows, columns, currentRowIndex, overClause, context);
+                
+            case NTH_VALUE:
+                return calculateNthValue(windowFunc, windowRows, columns, currentRowIndex, overClause, context);
+                
+            case LAG:
+                return calculateLag(windowFunc, allRows, columns, currentRowIndex, overClause, context);
+                
+            case LEAD:
+                return calculateLead(windowFunc, allRows, columns, currentRowIndex, overClause, context);
+                
+            case NTILE:
+                return calculateNtile(windowFunc, windowRows, columns, currentRowIndex, overClause, context);
+                
             default:
                 throw new IllegalArgumentException("Unsupported window function: " + windowFunc.getWindowFunctionType());
         }
@@ -2166,6 +2184,213 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
         }
         
         return (double) countLessOrEqual / windowRows.size();
+    }
+    
+    private Object calculateFirstValue(WindowFunction windowFunc, List<Row> windowRows, List<Column> columns,
+                                     int currentRowIndex, OverClause overClause, ExecutionContext context) {
+        
+        if (windowRows.isEmpty()) {
+            return null;
+        }
+        
+        // Return value of the expression evaluated on the first row in the window frame
+        Expression valueExpression = windowFunc.getArguments().get(0);
+        Row firstRow = windowRows.get(0);
+        context.setCurrentRow(firstRow);
+        context.setJoinedColumns(columns);
+        
+        return expressionEvaluator.evaluate(valueExpression, context);
+    }
+    
+    private Object calculateLastValue(WindowFunction windowFunc, List<Row> windowRows, List<Column> columns,
+                                    int currentRowIndex, OverClause overClause, ExecutionContext context) {
+        
+        if (windowRows.isEmpty()) {
+            return null;
+        }
+        
+        // Return value of the expression evaluated on the last row in the window frame
+        Expression valueExpression = windowFunc.getArguments().get(0);
+        Row lastRow = windowRows.get(windowRows.size() - 1);
+        context.setCurrentRow(lastRow);
+        context.setJoinedColumns(columns);
+        
+        return expressionEvaluator.evaluate(valueExpression, context);
+    }
+    
+    private Object calculateNthValue(WindowFunction windowFunc, List<Row> windowRows, List<Column> columns,
+                                   int currentRowIndex, OverClause overClause, ExecutionContext context) {
+        
+        if (windowRows.isEmpty() || windowFunc.getArguments().size() < 2) {
+            return null;
+        }
+        
+        // Evaluate the N expression to get the row number
+        Expression nExpression = windowFunc.getArguments().get(1);
+        context.setCurrentRow(windowRows.get(currentRowIndex));
+        context.setJoinedColumns(columns);
+        Object nValue = expressionEvaluator.evaluate(nExpression, context);
+        
+        int n = ((Number) nValue).intValue();
+        
+        // For default frame (RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
+        // we need to consider only rows up to current position
+        int frameEnd = currentRowIndex + 1; // Include current row
+        if (n <= 0 || n > frameEnd) {
+            return null;
+        }
+        
+        // Return value of the expression evaluated on the Nth row (1-based indexing)
+        Expression valueExpression = windowFunc.getArguments().get(0);
+        Row nthRow = windowRows.get(n - 1);
+        context.setCurrentRow(nthRow);
+        context.setJoinedColumns(columns);
+        
+        return expressionEvaluator.evaluate(valueExpression, context);
+    }
+    
+    private Object calculateLag(WindowFunction windowFunc, List<Row> allRows, List<Column> columns,
+                              int currentRowIndex, OverClause overClause, ExecutionContext context) {
+        
+        // Default offset is 1
+        int offset = 1;
+        Object defaultValue = null;
+        
+        // Get partition rows if partitioning is specified
+        List<Row> partitionRows;
+        int partitionCurrentIndex;
+        
+        if (overClause.getPartitionByExpressions().isPresent()) {
+            partitionRows = getPartitionRows(overClause, allRows, columns, currentRowIndex, context);
+            // Find current row position within partition
+            Row currentRow = allRows.get(currentRowIndex);
+            partitionCurrentIndex = partitionRows.indexOf(currentRow);
+        } else {
+            partitionRows = allRows;
+            partitionCurrentIndex = currentRowIndex;
+        }
+        
+        // Get offset if provided
+        if (windowFunc.getArguments().size() > 1) {
+            Expression offsetExpression = windowFunc.getArguments().get(1);
+            context.setCurrentRow(allRows.get(currentRowIndex));
+            context.setJoinedColumns(columns);
+            Object offsetValue = expressionEvaluator.evaluate(offsetExpression, context);
+            offset = ((Number) offsetValue).intValue();
+        }
+        
+        // Get default value if provided
+        if (windowFunc.getArguments().size() > 2) {
+            Expression defaultExpression = windowFunc.getArguments().get(2);
+            context.setCurrentRow(allRows.get(currentRowIndex));
+            context.setJoinedColumns(columns);
+            defaultValue = expressionEvaluator.evaluate(defaultExpression, context);
+        }
+        
+        // Calculate target row index within the partition
+        int targetIndex = partitionCurrentIndex - offset;
+        if (targetIndex < 0 || targetIndex >= partitionRows.size()) {
+            return defaultValue;
+        }
+        
+        // Evaluate the value expression on the target row
+        Expression valueExpression = windowFunc.getArguments().get(0);
+        Row targetRow = partitionRows.get(targetIndex);
+        context.setCurrentRow(targetRow);
+        context.setJoinedColumns(columns);
+        
+        return expressionEvaluator.evaluate(valueExpression, context);
+    }
+    
+    private Object calculateLead(WindowFunction windowFunc, List<Row> allRows, List<Column> columns,
+                               int currentRowIndex, OverClause overClause, ExecutionContext context) {
+        
+        // Default offset is 1
+        int offset = 1;
+        Object defaultValue = null;
+        
+        // Get partition rows if partitioning is specified
+        List<Row> partitionRows;
+        int partitionCurrentIndex;
+        
+        if (overClause.getPartitionByExpressions().isPresent()) {
+            partitionRows = getPartitionRows(overClause, allRows, columns, currentRowIndex, context);
+            // Find current row position within partition
+            Row currentRow = allRows.get(currentRowIndex);
+            partitionCurrentIndex = partitionRows.indexOf(currentRow);
+        } else {
+            partitionRows = allRows;
+            partitionCurrentIndex = currentRowIndex;
+        }
+        
+        // Get offset if provided
+        if (windowFunc.getArguments().size() > 1) {
+            Expression offsetExpression = windowFunc.getArguments().get(1);
+            context.setCurrentRow(allRows.get(currentRowIndex));
+            context.setJoinedColumns(columns);
+            Object offsetValue = expressionEvaluator.evaluate(offsetExpression, context);
+            offset = ((Number) offsetValue).intValue();
+        }
+        
+        // Get default value if provided
+        if (windowFunc.getArguments().size() > 2) {
+            Expression defaultExpression = windowFunc.getArguments().get(2);
+            context.setCurrentRow(allRows.get(currentRowIndex));
+            context.setJoinedColumns(columns);
+            defaultValue = expressionEvaluator.evaluate(defaultExpression, context);
+        }
+        
+        // Calculate target row index within the partition
+        int targetIndex = partitionCurrentIndex + offset;
+        if (targetIndex < 0 || targetIndex >= partitionRows.size()) {
+            return defaultValue;
+        }
+        
+        // Evaluate the value expression on the target row
+        Expression valueExpression = windowFunc.getArguments().get(0);
+        Row targetRow = partitionRows.get(targetIndex);
+        context.setCurrentRow(targetRow);
+        context.setJoinedColumns(columns);
+        
+        return expressionEvaluator.evaluate(valueExpression, context);
+    }
+    
+    private Object calculateNtile(WindowFunction windowFunc, List<Row> windowRows, List<Column> columns,
+                                int currentRowIndex, OverClause overClause, ExecutionContext context) {
+        
+        if (windowRows.isEmpty() || windowFunc.getArguments().isEmpty()) {
+            return null;
+        }
+        
+        // Evaluate the bucket count expression
+        Expression bucketExpression = windowFunc.getArguments().get(0);
+        context.setCurrentRow(windowRows.get(currentRowIndex));
+        context.setJoinedColumns(columns);
+        Object bucketValue = expressionEvaluator.evaluate(bucketExpression, context);
+        
+        int buckets = ((Number) bucketValue).intValue();
+        if (buckets <= 0) {
+            return null;
+        }
+        
+        int totalRows = windowRows.size();
+        int bucketSize = totalRows / buckets;
+        int remainder = totalRows % buckets;
+        
+        // Calculate which bucket the current row belongs to
+        int bucket = 1;
+        int processedRows = 0;
+        
+        for (int i = 0; i < buckets; i++) {
+            int currentBucketSize = bucketSize + (i < remainder ? 1 : 0);
+            if (currentRowIndex < processedRows + currentBucketSize) {
+                bucket = i + 1;
+                break;
+            }
+            processedRows += currentBucketSize;
+        }
+        
+        return (long) bucket;
     }
     
     private boolean compareOrderByValues(Row row1, Row row2, List<OrderByClause.OrderItem> orderItems,
