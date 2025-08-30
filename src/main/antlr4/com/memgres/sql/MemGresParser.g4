@@ -86,10 +86,11 @@ joinableTable
     : tableReference joinClause*
     ;
 
-// Basic table reference (table name or subquery)
+// Basic table reference (table name, subquery, or table function)
 tableReference
     : tableName (AS? alias)?
     | LPAREN selectStatement RPAREN (AS? alias)?
+    | FT_SEARCH LPAREN STRING COMMA INTEGER_LITERAL COMMA INTEGER_LITERAL RPAREN (AS? alias)?
     ;
 
 // JOIN clause with different types and conditions
@@ -199,7 +200,7 @@ alterTableAction
 
 // DROP TABLE statement
 dropTableStatement
-    : DROP TABLE tableName
+    : DROP TABLE (IF EXISTS)? tableName
     ;
 
 // TRUNCATE TABLE statement  
@@ -381,6 +382,15 @@ functionCall
     | ASCII LPAREN expression RPAREN                   # asciiFunction
     | HEXTORAW LPAREN expression RPAREN                # hexToRawFunction
     | RAWTOHEX LPAREN expression RPAREN                # rawToHexFunction
+    // Full-Text Search functions
+    | FT_INIT LPAREN RPAREN                            # ftInitFunction
+    | FT_CREATE_INDEX LPAREN expression COMMA expression COMMA expression RPAREN # ftCreateIndexFunction
+    | FT_DROP_INDEX LPAREN expression COMMA expression RPAREN # ftDropIndexFunction
+    | FT_SEARCH LPAREN expression COMMA expression COMMA expression RPAREN # ftSearchFunction
+    | FT_REINDEX LPAREN RPAREN                         # ftReindexFunction
+    | FT_DROP_ALL LPAREN RPAREN                        # ftDropAllFunction
+    | FT_SET_IGNORE_LIST LPAREN expression RPAREN      # ftSetIgnoreListFunction
+    | FT_SET_WHITESPACE_CHARS LPAREN expression RPAREN # ftSetWhitespaceCharsFunction
     | functionName LPAREN (expressionList)? RPAREN     # genericFunction
     ;
 

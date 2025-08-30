@@ -19,6 +19,7 @@
 - **Materialized Views**: CREATE/DROP/REFRESH MATERIALIZED VIEW with thread-safe caching
 - **H2 String Functions**: REGEXP_REPLACE, SOUNDEX, REGEXP_LIKE, REGEXP_SUBSTR, INITCAP
 - **H2 Essential Functions**: Date/Time (CURRENT_TIMESTAMP, DATEADD, DATEDIFF), System (H2VERSION, MEMORY_USED), String utilities (LEFT, RIGHT, POSITION, ASCII)
+- **Full-Text Search**: H2-compatible FT_* functions with inverted indexing, TF-IDF scoring, and automatic CRUD integration
 - **Testing-focused**: `@MemGres` annotations for JUnit 5, TestNG, and Spring Test
 - **High performance**: < 100ms startup, < 1ms simple queries, thread-safe operations
 - **ACID transactions**: Four isolation levels with savepoints and automatic rollback for testing
@@ -101,6 +102,13 @@ void testWithMemGres(SqlExecutionEngine sql) {
     sql.execute("SELECT DATEADD('DAY', 30, CURRENT_TIMESTAMP) as future_date");
     sql.execute("SELECT H2VERSION(), DATABASE_PATH() as system_info");
     
+    // Full-Text Search for content discovery (Phase 4.2!)
+    sql.execute("CREATE TABLE articles (id INTEGER, title VARCHAR(255), content TEXT)");
+    sql.execute("INSERT INTO articles VALUES (1, 'Database Guide', 'Learn about SQL and database management')");
+    sql.execute("SELECT FT_INIT()");  // Initialize full-text search
+    sql.execute("SELECT FT_CREATE_INDEX('PUBLIC', 'ARTICLES', 'title,content')");  // Create text index
+    var searchResults = sql.execute("SELECT * FROM FT_SEARCH('database', 10, 0)");  // Search with limit
+    
     var result = sql.execute("SELECT name FROM adult_users");
     assertEquals("Alice", result.getRows().get(0).getValue(0));
 }
@@ -148,7 +156,7 @@ void testSavepointsForTransactionManagement(Connection conn) throws SQLException
 
 ## Status
 
-**Current**: Phase 4.2 In Progress - Production Features (821+ tests passing - 100% success rate)
+**Current**: Phase 4.2 In Progress - Production Features (678+ tests passing - 100% success rate)
 - ✅ H2-compatible SQL operations (DDL, DML, joins, subqueries, aggregation)  
 - ✅ PostgreSQL JSONB with all operators and functions
 - ✅ Testing framework integration (JUnit 5, TestNG, Spring Test)
@@ -166,6 +174,7 @@ void testSavepointsForTransactionManagement(Connection conn) throws SQLException
 - ✅ **H2 Essential Functions**: Date/Time (CURRENT_TIMESTAMP, DATEADD, DATEDIFF), System functions (H2VERSION, DATABASE_PATH, MEMORY_USED), String utilities (LEFT, RIGHT, POSITION, ASCII, CHAR)
 - ✅ **Stored Procedures**: Complete CREATE/DROP PROCEDURE DDL statements with Java class integration
 - ✅ **CallableStatement Support**: Full JDBC CallableStatement implementation with parameter handling
+- ✅ **Full-Text Search**: Complete H2-compatible FT_* function suite with inverted indexing, TF-IDF scoring, and real-time index updates
 
 **Next**: Continue Phase 4.2 - Memory optimization and performance benchmarking suite
 
