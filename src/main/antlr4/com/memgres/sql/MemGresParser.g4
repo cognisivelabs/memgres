@@ -548,7 +548,7 @@ triggerImplementation
 
 // CREATE PROCEDURE statement
 createProcedureStatement
-    : CREATE PROCEDURE procedureName LPAREN procedureParameterList? RPAREN AS javaClassName
+    : CREATE PROCEDURE procedureName (LPAREN procedureParameterList? RPAREN)? AS javaClassName
     ;
 
 // DROP PROCEDURE statement
@@ -585,7 +585,7 @@ procedureName
     ;
 
 javaClassName
-    : STRING_LITERAL
+    : STRING
     ;
 
 // Call parameter list (values for CALL statement)

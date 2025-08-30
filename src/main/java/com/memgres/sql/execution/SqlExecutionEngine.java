@@ -101,6 +101,9 @@ public class SqlExecutionEngine {
             
         } catch (SqlParseException e) {
             throw new SqlExecutionException("Failed to parse SQL: " + sql, e);
+        } catch (SqlExecutionException e) {
+            // Re-throw SqlExecutionException without wrapping to preserve original error message
+            throw e;
         } catch (Exception e) {
             throw new SqlExecutionException("Failed to execute SQL: " + sql, e);
         }

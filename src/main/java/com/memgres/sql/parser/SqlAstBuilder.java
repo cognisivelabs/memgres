@@ -1619,7 +1619,7 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
             .map(id -> id.getText())
             .collect(Collectors.joining("."));
         
-        String javaClassName = ctx.javaClassName().STRING_LITERAL().getText();
+        String javaClassName = ctx.javaClassName().STRING().getText();
         // Remove quotes from string literal
         javaClassName = javaClassName.substring(1, javaClassName.length() - 1);
         

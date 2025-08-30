@@ -175,32 +175,33 @@ public class SimpleCallableStatementTest {
     @Test
     @MemGres
     void testSqlParsing(SqlExecutionEngine sql) throws SQLException {
-        // Test that procedure-related SQL statements are handled gracefully
-        try {
+        // Test that procedure-related SQL statements are now fully implemented
+        
+        // CREATE PROCEDURE with non-existent class should fail with class loading error
+        SqlExecutionException exception = assertThrows(SqlExecutionException.class, () -> {
             sql.execute("CREATE PROCEDURE test_proc() AS 'com.example.TestProcedure'");
-            assertTrue(true, "CREATE PROCEDURE parsed successfully");
-        } catch (SqlExecutionException e) {
-            // Expected for now - procedure statements may not be fully integrated
-            assertTrue(e.getMessage().contains("Failed to parse SQL") || e.getMessage().contains("CREATE PROCEDURE"),
-                "Expected parsing error for CREATE PROCEDURE");
-        }
+        }, "CREATE PROCEDURE should fail for non-existent class");
         
-        try {
+        assertTrue(exception.getMessage().contains("Failed to create procedure") || 
+                  exception.getMessage().contains("ClassNotFoundException") ||
+                  exception.getMessage().contains("class not found"), 
+            "Expected class loading error for CREATE PROCEDURE: " + exception.getMessage());
+        
+        // CALL statement for non-existent procedure should fail
+        SqlExecutionException callException = assertThrows(SqlExecutionException.class, () -> {
             sql.execute("CALL test_proc()");
-            assertTrue(true, "CALL statement parsed successfully");
-        } catch (SqlExecutionException e) {
-            // Expected for now - CALL statements may not be fully integrated
-            assertTrue(e.getMessage().contains("Failed to execute SQL") || e.getMessage().contains("CALL"),
-                "Expected execution error for CALL statement");
-        }
+        }, "CALL should fail for non-existent procedure");
         
-        try {
+        assertTrue(callException.getMessage().contains("does not exist") || 
+                  callException.getMessage().contains("not found"), 
+            "Expected procedure not found error for CALL statement: " + callException.getMessage());
+        
+        // DROP PROCEDURE for non-existent procedure should fail
+        SqlExecutionException dropException = assertThrows(SqlExecutionException.class, () -> {
             sql.execute("DROP PROCEDURE test_proc");
-            assertTrue(true, "DROP PROCEDURE parsed successfully");
-        } catch (SqlExecutionException e) {
-            // Expected for now - procedure statements may not be fully integrated
-            assertTrue(e.getMessage().contains("Failed to execute SQL") || e.getMessage().contains("DROP PROCEDURE"),
-                "Expected execution error for DROP PROCEDURE");
-        }
+        }, "DROP PROCEDURE should fail for non-existent procedure");
+        
+        assertTrue(dropException.getMessage().contains("does not exist"), 
+            "Expected procedure not found error for DROP PROCEDURE: " + dropException.getMessage());
     }
 }
