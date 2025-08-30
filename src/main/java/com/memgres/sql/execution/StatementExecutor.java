@@ -12,6 +12,8 @@ import com.memgres.sql.ast.AstVisitor;
 import com.memgres.sql.ast.expression.*;
 import com.memgres.sql.ast.statement.*;
 import com.memgres.sql.ast.CallStatement;
+import com.memgres.sql.ast.CreateProcedureStatement;
+import com.memgres.sql.ast.DropProcedureStatement;
 import com.memgres.sql.optimizer.QueryPlanner;
 import com.memgres.sql.procedure.ProcedureRegistry;
 import com.memgres.sql.optimizer.QueryExecutionPlan;
@@ -4618,21 +4620,17 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
             
             String procedureName = node.getProcedureName();
             
-            Map<String, Object> results;
             if (!registry.exists(procedureName)) {
-                // For testing purposes, return a dummy result instead of throwing error
-                logger.warn("Procedure '{}' not found, returning dummy result for testing", procedureName);
-                results = new HashMap<>();
-                results.put("result", "Procedure not found - dummy result");
-            } else {
-                // Execute the procedure
-                Map<String, Object> params = new HashMap<>();
-                // For now, we don't extract parameters from the CALL statement
-                // In a full implementation, we would evaluate the parameter expressions
-                // and pass them to the procedure
-                
-                results = registry.executeProcedure(procedureName, params);
+                throw new SqlExecutionException("Procedure '" + procedureName + "' does not exist");
             }
+            
+            // Execute the procedure
+            Map<String, Object> params = new HashMap<>();
+            // For now, we don't extract parameters from the CALL statement
+            // In a full implementation, we would evaluate the parameter expressions
+            // and pass them to the procedure
+            
+            Map<String, Object> results = registry.executeProcedure(procedureName, params);
             
             // Return a simple result indicating procedure execution
             List<Column> columns = List.of(
@@ -4651,6 +4649,64 @@ public class StatementExecutor implements AstVisitor<SqlExecutionResult, Executi
         } catch (Exception e) {
             logger.error("Failed to execute CALL statement: {}", e.getMessage());
             throw new SqlExecutionException("Failed to execute CALL statement: " + e.getMessage(), e);
+        }
+    }
+    
+    public SqlExecutionResult visitCreateProcedureStatement(CreateProcedureStatement node, ExecutionContext context) throws SqlExecutionException {
+        try {
+            // Get procedure registry from engine
+            ProcedureRegistry registry = engine.getProcedureRegistry();
+            
+            String procedureName = node.getProcedureName();
+            String javaClassName = node.getJavaClassName();
+            
+            // Register the procedure with the provided Java class name
+            registry.registerProcedure(procedureName, javaClassName);
+            
+            logger.info("Successfully created procedure '{}' with class '{}'", procedureName, javaClassName);
+            
+            return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, "CREATE PROCEDURE completed successfully");
+            
+        } catch (SQLException e) {
+            throw new SqlExecutionException("Failed to create procedure: " + e.getMessage(), e);
+        } catch (Exception e) {
+            logger.error("Failed to execute CREATE PROCEDURE statement: {}", e.getMessage());
+            throw new SqlExecutionException("Failed to execute CREATE PROCEDURE statement: " + e.getMessage(), e);
+        }
+    }
+    
+    public SqlExecutionResult visitDropProcedureStatement(DropProcedureStatement node, ExecutionContext context) throws SqlExecutionException {
+        try {
+            // Get procedure registry from engine
+            ProcedureRegistry registry = engine.getProcedureRegistry();
+            
+            String procedureName = node.getProcedureName();
+            
+            // Check if procedure exists
+            if (!registry.exists(procedureName)) {
+                if (node.isIfExists()) {
+                    // IF EXISTS specified, don't fail
+                    logger.info("Procedure '{}' does not exist, but IF EXISTS specified", procedureName);
+                    return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, "DROP PROCEDURE IF EXISTS completed successfully");
+                } else {
+                    throw new SqlExecutionException("Procedure '" + procedureName + "' does not exist");
+                }
+            }
+            
+            // Unregister the procedure
+            boolean removed = registry.unregisterProcedure(procedureName);
+            if (removed) {
+                logger.info("Successfully dropped procedure '{}'", procedureName);
+            }
+            
+            return new SqlExecutionResult(SqlExecutionResult.ResultType.DDL, true, "DROP PROCEDURE completed successfully");
+            
+        } catch (Exception e) {
+            logger.error("Failed to execute DROP PROCEDURE statement: {}", e.getMessage());
+            if (e instanceof SqlExecutionException) {
+                throw (SqlExecutionException) e;
+            }
+            throw new SqlExecutionException("Failed to execute DROP PROCEDURE statement: " + e.getMessage(), e);
         }
     }
     

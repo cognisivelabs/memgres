@@ -253,7 +253,7 @@ public class TruncateTableIntegrationTest {
                              TransactionIsolationLevel.READ_COMMITTED);
         });
         
-        assertTrue(exception.getMessage().contains("Failed to execute SQL"));
+        assertTrue(exception.getMessage().contains("not found") || exception.getMessage().contains("does not exist"));
         
         logger.info("TRUNCATE non-existent table error test passed");
     }

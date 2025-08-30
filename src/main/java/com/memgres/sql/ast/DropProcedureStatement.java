@@ -26,8 +26,14 @@ public class DropProcedureStatement extends Statement {
     
     @Override
     public <T, C> T accept(AstVisitor<T, C> visitor, C context) throws Exception {
-        // Simplified implementation - return string representation
-        return (T) toString();
+        if (visitor instanceof com.memgres.sql.execution.StatementExecutor) {
+            // Cast to the concrete visitor type that has visitDropProcedureStatement
+            com.memgres.sql.execution.StatementExecutor executor = (com.memgres.sql.execution.StatementExecutor) visitor;
+            return (T) executor.visitDropProcedureStatement(this, (com.memgres.sql.execution.ExecutionContext) context);
+        } else {
+            // Fallback for other visitors or simplified implementation
+            return (T) toString();
+        }
     }
     
     @Override

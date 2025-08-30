@@ -234,7 +234,7 @@ class AlterTableIntegrationTest {
             sqlEngine.execute(alterSql2, TransactionIsolationLevel.READ_COMMITTED);
         });
         
-        assertTrue(exception.getMessage().contains("Failed to execute SQL"));
+        assertTrue(exception.getMessage().contains("does not exist"));
         
         logger.info("DROP COLUMN IF EXISTS test passed");
     }
@@ -254,7 +254,7 @@ class AlterTableIntegrationTest {
             sqlEngine.execute(alterSql, TransactionIsolationLevel.READ_COMMITTED);
         });
         
-        assertTrue(exception.getMessage().contains("Failed to execute SQL"));
+        assertTrue(exception.getMessage().contains("Cannot drop the last column"));
         
         logger.info("DROP COLUMN last column error test passed");
     }
@@ -365,7 +365,7 @@ class AlterTableIntegrationTest {
             sqlEngine.execute(alterSql2, TransactionIsolationLevel.READ_COMMITTED);
         });
         
-        assertTrue(exception.getMessage().contains("Failed to execute SQL"));
+        assertTrue(exception.getMessage().contains("does not exist"));
         
         logger.info("ALTER TABLE IF EXISTS test passed");
     }
@@ -454,25 +454,25 @@ class AlterTableIntegrationTest {
         Exception exception1 = assertThrows(Exception.class, () -> {
             sqlEngine.execute("ALTER TABLE test_errors ADD COLUMN name VARCHAR", TransactionIsolationLevel.READ_COMMITTED);
         });
-        assertTrue(exception1.getMessage().contains("Failed to execute SQL"));
+        assertTrue(exception1.getMessage().contains("already exists"));
         
         // Test 2: Drop column that doesn't exist
         Exception exception2 = assertThrows(Exception.class, () -> {
             sqlEngine.execute("ALTER TABLE test_errors DROP COLUMN non_existent", TransactionIsolationLevel.READ_COMMITTED);
         });
-        assertTrue(exception2.getMessage().contains("Failed to execute SQL"));
+        assertTrue(exception2.getMessage().contains("does not exist"));
         
         // Test 3: Rename column that doesn't exist
         Exception exception3 = assertThrows(Exception.class, () -> {
             sqlEngine.execute("ALTER TABLE test_errors ALTER COLUMN non_existent RENAME TO new_name", TransactionIsolationLevel.READ_COMMITTED);
         });
-        assertTrue(exception3.getMessage().contains("Failed to execute SQL"));
+        assertTrue(exception3.getMessage().contains("does not exist"));
         
         // Test 4: Rename column to existing column name
         Exception exception4 = assertThrows(Exception.class, () -> {
             sqlEngine.execute("ALTER TABLE test_errors ALTER COLUMN name RENAME TO id", TransactionIsolationLevel.READ_COMMITTED);
         });
-        assertTrue(exception4.getMessage().contains("Failed to execute SQL"));
+        assertTrue(exception4.getMessage().contains("already exists"));
         
         // Test 5: Rename table to existing table name
         sqlEngine.execute("CREATE TABLE other_table (col1 INTEGER)", TransactionIsolationLevel.READ_COMMITTED);
@@ -480,7 +480,7 @@ class AlterTableIntegrationTest {
         Exception exception5 = assertThrows(Exception.class, () -> {
             sqlEngine.execute("ALTER TABLE test_errors RENAME TO other_table", TransactionIsolationLevel.READ_COMMITTED);
         });
-        assertTrue(exception5.getMessage().contains("Failed to execute SQL"));
+        assertTrue(exception5.getMessage().contains("already exists"));
         
         logger.info("ALTER TABLE error handling test passed");
     }

@@ -5,6 +5,7 @@ import com.memgres.testing.MemGresExtension;
 import com.memgres.testing.MemGresTestConnection;
 import com.memgres.sql.execution.SqlExecutionEngine;
 import com.memgres.sql.execution.SqlExecutionException;
+import com.memgres.sql.execution.SqlExecutionResult;
 import com.memgres.core.MemGresEngine;
 import com.memgres.sql.procedure.StoredProcedure;
 import com.memgres.sql.procedure.ProcedureMetadata;
@@ -90,16 +91,20 @@ public class CallableStatementTest {
     @Test
     @MemGres
     void testDropProcedureStatement(SqlExecutionEngine sql) throws SQLException, SqlExecutionException {
-        // Test DROP PROCEDURE DDL statement
-        try {
+        // Test DROP PROCEDURE DDL statement - now that it's implemented
+        
+        // Test DROP PROCEDURE without IF EXISTS should fail for non-existent procedure
+        SqlExecutionException exception = assertThrows(SqlExecutionException.class, () -> {
             sql.execute("DROP PROCEDURE test_proc");
-            sql.execute("DROP PROCEDURE IF EXISTS non_existent_proc");
-            assertTrue(true, "DROP PROCEDURE statement parsed successfully");
-        } catch (SqlExecutionException e) {
-            // This is expected since procedure statements may not be fully integrated yet
-            assertTrue(e.getMessage().contains("Failed to execute SQL") || e.getMessage().contains("DROP PROCEDURE"),
-                "Expected execution error for DROP PROCEDURE: " + e.getMessage());
-        }
+        }, "DROP PROCEDURE should fail for non-existent procedure");
+        
+        assertTrue(exception.getMessage().contains("does not exist"), 
+            "Error message should mention procedure doesn't exist: " + exception.getMessage());
+        
+        // Test DROP PROCEDURE IF EXISTS should succeed for non-existent procedure
+        SqlExecutionResult result = sql.execute("DROP PROCEDURE IF EXISTS non_existent_proc");
+        assertNotNull(result, "DROP PROCEDURE IF EXISTS should return a result");
+        assertTrue(result.isSuccess(), "DROP PROCEDURE IF EXISTS should succeed for non-existent procedure");
     }
     
     @Test
@@ -234,7 +239,10 @@ public class CallableStatementTest {
     
     @Test
     @MemGres
-    void testParameterTypes(MemGresEngine engine, SqlExecutionEngine sqlEngine) throws SQLException {
+    void testParameterTypes(MemGresEngine engine, SqlExecutionEngine sqlEngine) throws SQLException, SqlExecutionException {
+        // Create the procedure first
+        sqlEngine.execute("CREATE PROCEDURE test_procedure AS 'com.memgres.jdbc.CallableStatementTest$TestProcedure'");
+        
         try (MemGresTestConnection conn = new MemGresTestConnection(engine, sqlEngine)) {
             String sql = "CALL test_procedure(?, ?, ?, ?, ?, ?)";
             
@@ -270,7 +278,9 @@ public class CallableStatementTest {
     
     @Test
     @MemGres
-    void testNullParameterHandling(MemGresEngine engine, SqlExecutionEngine sqlEngine) throws SQLException {
+    void testNullParameterHandling(MemGresEngine engine, SqlExecutionEngine sqlEngine) throws SQLException, SqlExecutionException {
+        // Create the procedure first
+        sqlEngine.execute("CREATE PROCEDURE test_procedure AS 'com.memgres.jdbc.CallableStatementTest$TestProcedure'");
         try (MemGresTestConnection conn = new MemGresTestConnection(engine, sqlEngine)) {
             String sql = "CALL test_procedure(?)";
             
@@ -293,7 +303,9 @@ public class CallableStatementTest {
     
     @Test
     @MemGres
-    void testComplexParameterScenario(MemGresEngine engine, SqlExecutionEngine sqlEngine) throws SQLException {
+    void testComplexParameterScenario(MemGresEngine engine, SqlExecutionEngine sqlEngine) throws SQLException, SqlExecutionException {
+        // Create the procedure first
+        sqlEngine.execute("CREATE PROCEDURE complex_procedure AS 'com.memgres.jdbc.CallableStatementTest$TestProcedure'");
         try (MemGresTestConnection conn = new MemGresTestConnection(engine, sqlEngine)) {
             String sql = "CALL complex_procedure(?, ?, ?, ?)";
             
@@ -318,7 +330,9 @@ public class CallableStatementTest {
     
     @Test
     @MemGres
-    void testBatchParameterTypes(MemGresEngine engine, SqlExecutionEngine sqlEngine) throws SQLException {
+    void testBatchParameterTypes(MemGresEngine engine, SqlExecutionEngine sqlEngine) throws SQLException, SqlExecutionException {
+        // Create the procedure first
+        sqlEngine.execute("CREATE PROCEDURE test_procedure AS 'com.memgres.jdbc.CallableStatementTest$TestProcedure'");
         try (MemGresTestConnection conn = new MemGresTestConnection(engine, sqlEngine)) {
             String sql = "CALL test_procedure(?, ?, ?, ?)";
             
@@ -347,7 +361,9 @@ public class CallableStatementTest {
     
     @Test
     @MemGres
-    void testCallWithResultSet(MemGresEngine engine, SqlExecutionEngine sqlEngine) throws SQLException {
+    void testCallWithResultSet(MemGresEngine engine, SqlExecutionEngine sqlEngine) throws SQLException, SqlExecutionException {
+        // Create the procedure first
+        sqlEngine.execute("CREATE PROCEDURE procedure_with_results AS 'com.memgres.jdbc.CallableStatementTest$TestProcedure'");
         try (MemGresTestConnection conn = new MemGresTestConnection(engine, sqlEngine)) {
             String sql = "CALL procedure_with_results()";
             
@@ -363,7 +379,10 @@ public class CallableStatementTest {
     
     @Test
     @MemGres
-    void testMultipleProcedureCalls(MemGresEngine engine, SqlExecutionEngine sqlEngine) throws SQLException {
+    void testMultipleProcedureCalls(MemGresEngine engine, SqlExecutionEngine sqlEngine) throws SQLException, SqlExecutionException {
+        // Create the procedures first
+        sqlEngine.execute("CREATE PROCEDURE proc1 AS 'com.memgres.jdbc.CallableStatementTest$TestProcedure'");
+        sqlEngine.execute("CREATE PROCEDURE proc2 AS 'com.memgres.jdbc.CallableStatementTest$TestProcedure'");
         try (MemGresTestConnection conn = new MemGresTestConnection(engine, sqlEngine)) {
             // Test calling multiple procedures in sequence
             try (CallableStatement stmt1 = conn.prepareCall("CALL proc1(?)");
