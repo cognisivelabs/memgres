@@ -4,6 +4,8 @@ import com.memgres.sql.MemGresParser;
 import com.memgres.sql.MemGresParserBaseVisitor;
 import com.memgres.sql.ast.expression.*;
 import com.memgres.sql.ast.statement.*;
+import com.memgres.sql.ast.*;
+import com.memgres.sql.procedure.ProcedureMetadata;
 import com.memgres.types.DataType;
 
 import java.math.BigDecimal;
@@ -75,6 +77,12 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
             return (Statement) visit(ctx.createSchemaStatement());
         } else if (ctx.dropSchemaStatement() != null) {
             return (Statement) visit(ctx.dropSchemaStatement());
+        } else if (ctx.createProcedureStatement() != null) {
+            return (Statement) visit(ctx.createProcedureStatement());
+        } else if (ctx.dropProcedureStatement() != null) {
+            return (Statement) visit(ctx.dropProcedureStatement());
+        } else if (ctx.callStatement() != null) {
+            return (Statement) visit(ctx.callStatement());
         } else if (ctx.setStatement() != null) {
             return (Statement) visit(ctx.setStatement());
         } else if (ctx.explainStatement() != null) {
@@ -1602,5 +1610,70 @@ public class SqlAstBuilder extends MemGresParserBaseVisitor<Object> {
         }
         
         return new ExplainStatement(targetStatement);
+    }
+    
+    // CREATE PROCEDURE statement
+    @Override
+    public CreateProcedureStatement visitCreateProcedureStatement(MemGresParser.CreateProcedureStatementContext ctx) {
+        String procedureName = ctx.procedureName().identifier().stream()
+            .map(id -> id.getText())
+            .collect(Collectors.joining("."));
+        
+        String javaClassName = ctx.javaClassName().STRING_LITERAL().getText();
+        // Remove quotes from string literal
+        javaClassName = javaClassName.substring(1, javaClassName.length() - 1);
+        
+        List<ProcedureMetadata.Parameter> parameters = new ArrayList<>();
+        if (ctx.procedureParameterList() != null) {
+            int position = 1;
+            for (MemGresParser.ProcedureParameterContext paramCtx : ctx.procedureParameterList().procedureParameter()) {
+                String paramName = paramCtx.parameterName().identifier().getText();
+                String dataType = paramCtx.dataType().getText();
+                
+                ProcedureMetadata.ParameterDirection direction = ProcedureMetadata.ParameterDirection.IN; // Default
+                if (paramCtx.parameterDirection() != null) {
+                    String dirText = paramCtx.parameterDirection().getText().toUpperCase();
+                    direction = ProcedureMetadata.ParameterDirection.valueOf(dirText);
+                }
+                
+                parameters.add(new ProcedureMetadata.Parameter(paramName, direction, dataType, position++));
+            }
+        }
+        
+        return new CreateProcedureStatement(procedureName, parameters, javaClassName);
+    }
+    
+    // DROP PROCEDURE statement
+    @Override
+    public DropProcedureStatement visitDropProcedureStatement(MemGresParser.DropProcedureStatementContext ctx) {
+        String procedureName = ctx.procedureName().identifier().stream()
+            .map(id -> id.getText())
+            .collect(Collectors.joining("."));
+        
+        boolean ifExists = ctx.EXISTS() != null;
+        
+        return new DropProcedureStatement(procedureName, ifExists);
+    }
+    
+    // CALL statement
+    @Override
+    public CallStatement visitCallStatement(MemGresParser.CallStatementContext ctx) {
+        String procedureName = ctx.procedureName().identifier().stream()
+            .map(id -> id.getText())
+            .collect(Collectors.joining("."));
+        
+        List<Expression> parameters = new ArrayList<>();
+        if (ctx.callParameterList() != null) {
+            for (MemGresParser.CallParameterContext paramCtx : ctx.callParameterList().callParameter()) {
+                if (paramCtx.expression() != null) {
+                    parameters.add((Expression) visit(paramCtx.expression()));
+                } else if (paramCtx.JSONB_EXISTS() != null) {
+                    // Parameter placeholder - create a placeholder expression
+                    parameters.add(new ParameterExpression(parameters.size() + 1));
+                }
+            }
+        }
+        
+        return new CallStatement(procedureName, parameters);
     }
 }

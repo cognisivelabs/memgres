@@ -30,6 +30,9 @@ statement
     | dropTriggerStatement
     | createSchemaStatement
     | dropSchemaStatement
+    | createProcedureStatement
+    | dropProcedureStatement
+    | callStatement
     | setStatement
     | explainStatement
     ;
@@ -541,6 +544,58 @@ triggerEvent
 triggerImplementation
     : CALL STRING                           # callTriggerImplementation
     | AS STRING                             # sourceTriggerImplementation
+    ;
+
+// CREATE PROCEDURE statement
+createProcedureStatement
+    : CREATE PROCEDURE procedureName LPAREN procedureParameterList? RPAREN AS javaClassName
+    ;
+
+// DROP PROCEDURE statement
+dropProcedureStatement
+    : DROP PROCEDURE (IF EXISTS)? procedureName
+    ;
+
+// CALL statement
+callStatement
+    : CALL procedureName LPAREN callParameterList? RPAREN
+    ;
+
+// Procedure parameter definition
+procedureParameterList
+    : procedureParameter (COMMA procedureParameter)*
+    ;
+
+procedureParameter
+    : parameterDirection? parameterName dataType
+    ;
+
+parameterDirection
+    : IN
+    | OUT
+    | INOUT
+    ;
+
+parameterName
+    : identifier
+    ;
+
+procedureName
+    : identifier (DOT identifier)*
+    ;
+
+javaClassName
+    : STRING_LITERAL
+    ;
+
+// Call parameter list (values for CALL statement)
+callParameterList
+    : callParameter (COMMA callParameter)*
+    ;
+
+callParameter
+    : expression
+    | JSONB_EXISTS  // Parameter placeholder (reusing ? token)
     ;
 
 // CREATE SCHEMA statement

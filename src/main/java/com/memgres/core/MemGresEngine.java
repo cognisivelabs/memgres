@@ -7,6 +7,7 @@ import com.memgres.storage.Sequence;
 import com.memgres.storage.Table;
 import com.memgres.transaction.TransactionManager;
 import com.memgres.wal.WalTransactionManager;
+import com.memgres.sql.procedure.ProcedureRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +27,7 @@ public class MemGresEngine {
     private final ConcurrentMap<String, Schema> schemas;
     private final TransactionManager transactionManager;
     private final TriggerManager triggerManager;
+    private final ProcedureRegistry procedureRegistry;
     private final MemoryManager memoryManager;
     private final MemoryOptimizer memoryOptimizer;
     private final ReadWriteLock engineLock;
@@ -35,6 +37,7 @@ public class MemGresEngine {
         this.schemas = new ConcurrentHashMap<>();
         this.transactionManager = new TransactionManager();
         this.triggerManager = new TriggerManager();
+        this.procedureRegistry = new ProcedureRegistry();
         this.memoryManager = MemoryManager.getInstance();
         this.memoryOptimizer = new MemoryOptimizer(this);
         this.engineLock = new ReentrantReadWriteLock();
@@ -56,6 +59,7 @@ public class MemGresEngine {
             throw new RuntimeException("Failed to initialize WAL transaction manager", e);
         }
         this.triggerManager = new TriggerManager();
+        this.procedureRegistry = new ProcedureRegistry();
         this.memoryManager = MemoryManager.getInstance();
         this.memoryOptimizer = new MemoryOptimizer(this);
         this.engineLock = new ReentrantReadWriteLock();
@@ -293,6 +297,14 @@ public class MemGresEngine {
     public TriggerManager getTriggerManager() {
         validateInitialized();
         return triggerManager;
+    }
+    
+    /**
+     * Get the procedure registry for this engine.
+     */
+    public ProcedureRegistry getProcedureRegistry() {
+        validateInitialized();
+        return procedureRegistry;
     }
     
     /**

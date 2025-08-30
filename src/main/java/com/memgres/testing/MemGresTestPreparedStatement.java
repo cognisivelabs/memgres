@@ -127,7 +127,8 @@ public class MemGresTestPreparedStatement implements PreparedStatement {
     @Override
     public void setNull(int parameterIndex, int sqlType) throws SQLException {
         checkClosed();
-        parameters.put(parameterIndex, null);
+        // ConcurrentHashMap doesn't allow null values, so we use a special marker
+        parameters.put(parameterIndex, "NULL_VALUE_MARKER");
     }
     
     @Override
